@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectFrameBounds">
+    <option name="x" value="42" />
+    <option name="y" value="42" />
+    <option name="width" value="1388" />
+    <option name="height" value="838" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+  </component>
+  <component name="RunManager" selected="Boost.Test.constructors">
+    <configuration name="constructors" type="CMakeBoostTestRunConfigurationType" factoryName="Boost Test" temporary="true" PASS_PARENT_ENVS_2="true" PROJECT_NAME="TEST" TARGET_NAME="test_document_persister" RUN_TARGET_PROJECT_NAME="TEST" RUN_TARGET_NAME="test_document_persister" TEST_METHOD="constructors" TEST_MODE="SUITE_TEST" />
+    <configuration name="Build All" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" CONFIG_NAME="Debug" EXPLICIT_BUILD_TARGET_NAME="all" />
+    <configuration name="test_document_persister" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" PROJECT_NAME="TEST" TARGET_NAME="test_document_persister" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="TEST" RUN_TARGET_NAME="test_document_persister" />
+    <list>
+      <item itemvalue="Application.Build All" />
+      <item itemvalue="Application.test_document_persister" />
+      <item itemvalue="Boost.Test.constructors" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Boost.Test.constructors" />
+      </list>
+    </recent_temporary>
+  </component>
+</project>
