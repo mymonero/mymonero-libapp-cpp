@@ -115,14 +115,13 @@ namespace Passwords
     class PasswordControllerEventParticipant
     { // abstract interface - implement with another interface
     public:
-        virtual std::string identifier() = 0; // To support isEqual
+        virtual std::string identifier() const = 0; // To support isEqual
+        //
+        bool operator==(PasswordControllerEventParticipant const &rhs) const
+        {
+            return identifier() == rhs.identifier();
+        }
     };
-    static inline bool isEqual(
-        PasswordControllerEventParticipant &l,
-        PasswordControllerEventParticipant &r
-    ) {
-        return l.identifier() == r.identifier();
-    }
 }
 namespace Passwords
 { // EventParticipants
