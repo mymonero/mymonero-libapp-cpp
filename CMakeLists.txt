@@ -10,8 +10,22 @@ enable_testing()
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
+include_directories("src")
+include_directories("test")
+
 # keeping test files in a separate source directory 
 file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/*.cpp)
+
+set(
+    SRC_FILES
+    #
+    src/Passwords/PasswordController.hpp
+    src/Passwords/PasswordController.cpp
+    src/Persistence/document_persister.hpp
+    src/Persistence/document_persister.cpp
+    src/App/AppServiceLocator.hpp
+    src/App/AppServiceLocator.cpp
+)
 
 #Run through each source
 foreach(testSrc ${TEST_SRCS})
@@ -20,6 +34,7 @@ foreach(testSrc ${TEST_SRCS})
     add_executable(
         ${testName}
         ${testSrc}
+        ${SRC_FILES}
     )
     target_link_libraries(
         ${testName}
