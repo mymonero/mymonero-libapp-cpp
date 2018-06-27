@@ -40,8 +40,11 @@
 #include <iterator>
 #include <sstream>
 #include <boost/filesystem.hpp>
+using namespace std;
+using namespace boost;
 //
 #include "../src/Persistence/document_persister.hpp"
+using namespace document_persister;
 //
 const document_persister::CollectionName mockedPlainStringDocs__CollectionName = "TestDocuments";
 static inline const std::string documentsPath()
@@ -59,7 +62,7 @@ static inline const std::string documentsPath()
 // Tests
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_insert)
 {
-	const document_persister::DocumentId id = document_persister::new_documentId();
+	const DocumentId id = new_documentId();
 	std::stringstream jsonSS;
 	jsonSS << "{\"a\":2,\"id\":\"" << id << "\"}";
 	const std::string jsonString = jsonSS.str();
@@ -78,7 +81,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_insert)
 }
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds)
 {
-	document_persister::errOr_documentIds result  = document_persister::idsOfAllDocuments(
+	errOr_documentIds result  = idsOfAllDocuments(
 		documentsPath(),
 		mockedPlainStringDocs__CollectionName
 	);
@@ -86,12 +89,10 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds)
 		std::cout << *result.err_str << std::endl;
 		BOOST_REQUIRE(!result.err_str);
 	}
-	boost::optional<std::vector<document_persister::DocumentId>> ids = result.ids;
-	BOOST_REQUIRE_MESSAGE(ids, "Expected non-nil ids with nil err_str");
-	BOOST_REQUIRE_MESSAGE((*ids).size() > 0, "Expected to find at least one id."); // from __insert
-	std::stringstream joinedIdsString_ss;
-	std::copy((*ids).begin(), (*ids).end(), std::ostream_iterator<std::string>(joinedIdsString_ss, ", "));
-	std::cout << "ids: " << joinedIdsString_ss.str() << std::endl;
+	BOOST_REQUIRE_MESSAGE(result.ids, "Expected non-nil ids with nil err_str");
+	string joinedIdsString = algorithm::join(*(result.ids), ", ");
+	cout << "ids: " << joinedIdsString << endl;
+	BOOST_REQUIRE_MESSAGE((*(result.ids)).size() > 0, "Expected to find at least one id."); // from __insert
 }
 /*
 	@Test fun mockedPlainStringDoc__allDocuments()

@@ -33,6 +33,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <boost/atomic.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
@@ -41,14 +42,18 @@
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/throw_exception.hpp>
+#include <boost/algorithm/string.hpp>
+using namespace std;
+using namespace boost;
 
 namespace document_persister
 {
-   typedef std::string DocumentId;
-   typedef std::string CollectionName;
-   typedef std::string DocumentContentString;
-   typedef boost::property_tree::ptree DocumentJSON;
-   typedef boost::property_tree::ptree MutableDocumentJSON;
+   typedef string DocumentId;
+   typedef string CollectionName;
+   typedef string DocumentContentString;
+   typedef property_tree::ptree DocumentJSON;
+   typedef property_tree::ptree MutableDocumentJSON;
 }
 namespace document_persister
 {
@@ -58,7 +63,7 @@ namespace document_persister
        DocumentId documentId;
    };
    const std::string fileKeyComponentDelimiterString = "__";
-   const std::string filenameExt = std::string("MMDBDoc"); // just trying to pick something fairly unique, and short
+   const std::string filenameExt = std::string(".MMDBDoc"); // just trying to pick something fairly unique, and short
    //
    static inline DocumentId new_documentId()
    {
@@ -79,11 +84,13 @@ namespace document_persister
    }
    static inline std::string new_filename(const DocumentFileDescription &description)
    {
-       return (new_fileKey_ss(description) << "." << filenameExt).str();
+       return (new_fileKey_ss(description) << filenameExt).str();
    }
 }
 namespace document_persister
 {
+	namespace fs = boost::filesystem;
+	//
 	struct errOr_documentFileDescriptions
 	{
 		boost::optional<std::string> err_str;
@@ -112,46 +119,46 @@ namespace document_persister
 	//
 	// Accessors - Internal
 	static inline const errOr_documentFileDescriptions __read_documentFileDescriptions(
-		const std::string &documentsPath,
-		const CollectionName *collectionName
+		const string &documentsPath,
+		const CollectionName &collectionName
 	) {
-		if (!boost::filesystem::exists(documentsPath)) {
+		if (!fs::exists(documentsPath)) {
 			return {std::string("documentsPath doesn't exist"), boost::none};
 		}
-		if (!boost::filesystem::is_directory(documentsPath)) {
+		if (!fs::is_directory(documentsPath)) {
 			return {std::string("documentsPath isn't a directory"), boost::none};
 		}
-	    std::vector<DocumentFileDescription> fileDescriptions;
-		//
-		boost::filesystem::directory_iterator end_itr; // "default construction yields past-the-end"
-		for (boost::filesystem::directory_iterator itr(documentsPath); itr != end_itr; itr++) {
-			// filtering to what should be app document_persister files..
-			if (is_directory(itr->status())) {
-				continue;
+	    vector<DocumentFileDescription> fileDescriptions;
+		fs::directory_iterator end_itr; // "default construction yields past-the-end"
+		for (fs::directory_iterator itr(documentsPath); itr != end_itr; itr++) {
+			try {
+				// filtering to what should be app document_persister files..
+				if (is_directory(itr->status())) {
+					continue;
+				}
+				if (itr->path().extension()/* has '.' */.string() != filenameExt) {
+					continue;
+				}
+				string fileKey = itr->path().stem()/* assumption */.string();
+				vector<string> fileKey_components;
+				split(fileKey_components, fileKey, is_any_of(fileKeyComponentDelimiterString), token_compress_on);
+				if (fileKey_components.size() != 2) {
+					return { string("Unrecognized filename format in db data directory."), none };
+				}
+				string fileKey_collectionName = fileKey_components[0]; // CollectionName
+				if (fileKey_collectionName != collectionName) {
+					continue;
+				}
+				string fileKey_id  = fileKey_components[1]; // DocumentId
+				fileDescriptions.push_back({
+					fileKey_collectionName,
+					fileKey_id
+				}); // ought to be a JSON doc file
+			} catch (const std::exception &e) {
+				return {string(e.what()), none};
 			}
-			if (itr->path().extension().string() != filenameExt) {
-				continue;
-			}
-			std::string fileKey = itr->path().stem().string(); // assumption
-//			val fileKey_components = fileKey.split(DocumentFileDescription.fileKeyComponentDelimiterString)
-//			if (fileKey_components.count() != 2) {
-//				return ErrorOr_DocumentFileDescriptions(
-//						"Unrecognized filename format in db data directory.",
-//						null
-//				)
-//			}
-//			val fileKey_collectionName = fileKey_components[0] // CollectionName
-//			if (fileKey_collectionName != collectionName) {
-//				continue
-//			}
-//			val fileKey_id  = fileKey_components[1] // DocumentId
-//			auto fileDescription = DocumentFileDescription{
-//				fileKey_collectionName,
-//				fileKey_id
-//			};
-//			fileDescriptions.push_back(fileDescription); // ought to be a JSON doc file
 		}
-		return {boost::none, fileDescriptions};
+		return {none, fileDescriptions};
 	}
 	static inline const errOr_contentString __read_existentDocumentContentString(
 		const std::string &documentsPath,
@@ -218,29 +225,24 @@ namespace document_persister
 namespace document_persister {
 	//
 	// Accessors
-	static inline errOr_documentIds idsOfAllDocuments(
+	static inline const errOr_documentIds idsOfAllDocuments(
 		const std::string &documentsPath,
 		const CollectionName &collectionName
 	) {
-//		val (err_str, fileDescriptions) = _read_documentFileDescriptions(collectionName)
-//		if (err_str != null) {
-//			return errOr_documentIds(err_str, boost::none);
-		return { std::string("TODO"), boost::none };
-//		}
-//		if (fileDescriptions == null) {
-//			throw AssertionError("nil fileDescriptions")
-//		}
-//		var ids = mutableListOf<DocumentId>()
-//		val unwrapped_fileDescriptions = fileDescriptions as List<DocumentFileDescription>
-//		for (fileDescription in unwrapped_fileDescriptions) {
-//			ids.add(fileDescription.documentId)
-//		}
-//		//
-//		return ErrorOr_DocumentIds(null, ids)
+		errOr_documentFileDescriptions result = __read_documentFileDescriptions(documentsPath, collectionName);
+		if (result.err_str) {
+			return { std::move(*result.err_str), boost::none };
+		}
+		std::vector<DocumentId> ids;
+		for (auto it = (*result.descriptions).begin(); it != (*result.descriptions).end(); it++) {
+			ids.push_back((*it).documentId);
+		}
+		//
+		return { boost::none, ids };
 	}
 	//
 	// Imperatives - Interface
-	static inline boost::optional<std::string> write( // returning optl err str
+	static inline const boost::optional<std::string> write( // returning optl err str
 		const std::string &documentsPath,
 		const std::string &contentString, // if you're using this for Documents, be sure to set field _id to id within your fileData
 		const DocumentId &id, // consumer must supply the document ID since we can't make assumptions about fileData
