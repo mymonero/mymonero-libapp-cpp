@@ -31,6 +31,9 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
+#ifndef __document_persister_hpp
+#define __document_persister_hpp
+
 #include <iostream>
 #include <fstream>
 #include <boost/atomic.hpp>
@@ -45,43 +48,43 @@
 
 namespace document_persister
 {
-    typedef std::string DocumentId;
-    typedef std::string CollectionName;
-    typedef std::string DocumentContentString;
-    typedef boost::property_tree::ptree DocumentJSON;
-    typedef boost::property_tree::ptree MutableDocumentJSON;
+   typedef std::string DocumentId;
+   typedef std::string CollectionName;
+   typedef std::string DocumentContentString;
+   typedef boost::property_tree::ptree DocumentJSON;
+   typedef boost::property_tree::ptree MutableDocumentJSON;
 }
 namespace document_persister
 {
-    struct  DocumentFileDescription
-    {
-        CollectionName inCollectionName;
-        DocumentId documentId;
-    };
-    const std::string fileKeyComponentDelimiterString = "__";
-    const std::string filenameExt = std::string("MMDBDoc"); // just trying to pick something fairly unique, and short
-    //
-    static inline DocumentId new_documentId()
-    {
-        boost::uuids::uuid uuid = (boost::uuids::random_generator())();
-        //
-        return boost::uuids::to_string(uuid);
-    }
-    static inline std::stringstream new_fileKey_ss(const DocumentFileDescription &description)
-    {
-        std::stringstream ss;
-        ss << description.inCollectionName << fileKeyComponentDelimiterString << description.documentId;
-        //
-        return ss;
-    }
-    static inline std::string new_fileKey(const DocumentFileDescription &description)
-    {
-        return new_fileKey_ss(description).str();
-    }
-    static inline std::string new_filename(const DocumentFileDescription &description)
-    {
-        return (new_fileKey_ss(description) << filenameExt).str();
-    }
+   struct  DocumentFileDescription
+   {
+       CollectionName inCollectionName;
+       DocumentId documentId;
+   };
+   const std::string fileKeyComponentDelimiterString = "__";
+   const std::string filenameExt = std::string("MMDBDoc"); // just trying to pick something fairly unique, and short
+   //
+   static inline DocumentId new_documentId()
+   {
+       boost::uuids::uuid uuid = (boost::uuids::random_generator())();
+       //
+       return boost::uuids::to_string(uuid);
+   }
+   static inline std::stringstream new_fileKey_ss(const DocumentFileDescription &description)
+   {
+       std::stringstream ss;
+       ss << description.inCollectionName << fileKeyComponentDelimiterString << description.documentId;
+       //
+       return ss;
+   }
+   static inline std::string new_fileKey(const DocumentFileDescription &description)
+   {
+       return new_fileKey_ss(description).str();
+   }
+   static inline std::string new_filename(const DocumentFileDescription &description)
+   {
+       return (new_fileKey_ss(description) << filenameExt).str();
+   }
 }
 namespace document_persister
 {
@@ -256,3 +259,5 @@ namespace document_persister {
 		);
 	}
 }
+
+#endif 

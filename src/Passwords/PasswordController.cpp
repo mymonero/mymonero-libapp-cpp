@@ -36,24 +36,24 @@
 // Accessors - Interfaces - PasswordProvider
 boost::optional<Passwords::Password> Passwords::Controller::getPassword() const
 {
-    return m_password;
+   return m_password;
 }
 //
 // Constants - Persistence
 enum class DictKey
 {
-    _id,
-    passwordType,
-    messageAsEncryptedDataForUnlockChallenge_base64String
+   _id,
+   passwordType,
+   messageAsEncryptedDataForUnlockChallenge_base64String
 };
 std::string _dictKey(DictKey fromKey)
 {
-    switch (fromKey) {
-        case DictKey::_id:
-            return "_id";
-        case DictKey::passwordType:
-            return "passwordType";
-        case DictKey::messageAsEncryptedDataForUnlockChallenge_base64String:
-            return "messageAsEncryptedDataForUnlockChallenge_base64String";
-    }
+   switch (fromKey) {
+       case DictKey::_id:
+           return "_id";
+       case DictKey::passwordType:
+           return "passwordType";
+       case DictKey::messageAsEncryptedDataForUnlockChallenge_base64String:
+           return "messageAsEncryptedDataForUnlockChallenge_base64String";
+   }
 }

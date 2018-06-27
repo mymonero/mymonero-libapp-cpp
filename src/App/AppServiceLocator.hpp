@@ -36,41 +36,41 @@
 #define AppServiceLocator_HPP_
 //
 #include <iostream> // TODO: this is to obtain stdlib.. what should be imported instead of this?
-//
+
 #include "../Passwords/PasswordController.hpp"
 //
 namespace App
 {
-    class ServiceLocator
-    {
-        private:
-            ServiceLocator()
-            {
-                // initialize
-                num = -1;
-            }
-            static ServiceLocator* pInstance;
-        //
-        public:
-            static ServiceLocator& instance()
-            {
-                if (pInstance == nullptr) {
-                    pInstance = new ServiceLocator();
-                }
-                return *pInstance;
-            }
-        public:
-            //
-            // Properties - Initial: Required for build()
-            std::string documentsPath;
-            int num; // TODO: properties
-            //
-            // Lifecycle - Init
-            void build();
-            //
-            // Properties - Services: Built and retained dependencies
-            Passwords::Controller *passwordController;
-    };
+   class ServiceLocator
+   {
+       private:
+           ServiceLocator()
+           {
+               // initialize
+               num = -1;
+           }
+           static ServiceLocator* pInstance;
+       //
+       public:
+           static ServiceLocator& instance()
+           {
+               if (pInstance == nullptr) {
+                   pInstance = new ServiceLocator();
+               }
+               return *pInstance;
+           }
+       public:
+           //
+           // Properties - Initial: Required for build()
+           std::string documentsPath;
+           int num; // TODO: properties
+           //
+           // Lifecycle - Init
+           void build();
+           //
+           // Properties - Services: Built and retained dependencies
+           Passwords::Controller *passwordController;
+   };
 }
 App::ServiceLocator* App::ServiceLocator::pInstance = nullptr;
 

@@ -37,152 +37,152 @@
 
 namespace Passwords
 {
-    typedef std::string Password;
+   typedef std::string Password;
 }
 namespace Passwords
 {
-    enum Type
-    { // These are given specific values for the purpose of serialization through the app lib bridge
-        PIN = 0,
-        password = 1
-    };
-    //
-    static inline std::string new_humanReadableString(Type type)
-    {
-        return std::string(
-            type == PIN ? "PIN" : "password" // TODO: return localized
-        );
-    }
-    static inline std::string capitalized_humanReadableString(Type type)
-    {
-        std::string str = new_humanReadableString(type);
-        str[0] = (char)toupper(str[0]);
-        //
-        return str;
-    }
-    static inline std::string new_invalidEntry_humanReadableString(Type type) // TOOD: return localized
-    { // TODO: maybe just keep this function at the Android level so it can be localized .. or maybe better to ship localizations with app lib so they're not duplicated everywhere? haven't confirmed C++ lib best practice yet
-        return type == PIN ? "Incorrect PIN" : "Incorrect password";
-    }
-    static inline Type new_detectedFromPassword(Password &password)
-    {
-        std::string copyOf_password = password;
-        copyOf_password.erase(
-            std::remove_if(copyOf_password.begin(), copyOf_password.end(), &isdigit),
-            copyOf_password.end()
-        );
-        return copyOf_password.empty() ? Type::PIN : Type::password;
-    }
+   enum Type
+   { // These are given specific values for the purpose of serialization through the app lib bridge
+       PIN = 0,
+       password = 1
+   };
+   //
+   static inline std::string new_humanReadableString(Type type)
+   {
+       return std::string(
+           type == PIN ? "PIN" : "password" // TODO: return localized
+       );
+   }
+   static inline std::string capitalized_humanReadableString(Type type)
+   {
+       std::string str = new_humanReadableString(type);
+       str[0] = (char)toupper(str[0]);
+       //
+       return str;
+   }
+   static inline std::string new_invalidEntry_humanReadableString(Type type) // TOOD: return localized
+   { // TODO: maybe just keep this function at the Android level so it can be localized .. or maybe better to ship localizations with app lib so they're not duplicated everywhere? haven't confirmed C++ lib best practice yet
+       return type == PIN ? "Incorrect PIN" : "Incorrect password";
+   }
+   static inline Type new_detectedFromPassword(Password &password)
+   {
+       std::string copyOf_password = password;
+       copyOf_password.erase(
+           std::remove_if(copyOf_password.begin(), copyOf_password.end(), &isdigit),
+           copyOf_password.end()
+       );
+       return copyOf_password.empty() ? Type::PIN : Type::password;
+   }
 }
 namespace Passwords
 {
-    //
-    // Constants
-    static const uint32_t minPasswordLength = 6;
-    static const uint32_t maxLegal_numberOfTriesDuringThisTimePeriod = 5;
-    //
-    // Interfaces
-    class PasswordProvider
-    { // you can use this type for dependency-injecting a Passwords::Controller implementation; see PersistableObject
-    public:
-        virtual boost::optional<Password> getPassword() const = 0;
-    };
-    //
-    // Controllers
-    class Controller: public PasswordProvider
-    {
-    public:
-        //
-        // Lifecycle - Init
-        Controller(std::string documentsPath)
-        {
-            this->documentsPath = documentsPath;
-        }
-        //
-        // Constructor args
-        std::string documentsPath;
-        //
-        // Accessors - Interfaces - PasswordProvider
-        boost::optional<Password> getPassword() const;
-    private:
-        //
-        // Properties - Instance members
-        boost::optional<Password> m_password = boost::none;
-    };
+   //
+   // Constants
+   static const uint32_t minPasswordLength = 6;
+   static const uint32_t maxLegal_numberOfTriesDuringThisTimePeriod = 5;
+   //
+   // Interfaces
+   class PasswordProvider
+   { // you can use this type for dependency-injecting a Passwords::Controller implementation; see PersistableObject
+   public:
+       virtual boost::optional<Password> getPassword() const = 0;
+   };
+   //
+   // Controllers
+   class Controller: public PasswordProvider
+   {
+   public:
+       //
+       // Lifecycle - Init
+       Controller(std::string documentsPath)
+       {
+           this->documentsPath = documentsPath;
+       }
+       //
+       // Constructor args
+       std::string documentsPath;
+       //
+       // Accessors - Interfaces - PasswordProvider
+       boost::optional<Password> getPassword() const;
+   private:
+       //
+       // Properties - Instance members
+       boost::optional<Password> m_password = boost::none;
+   };
 }
 namespace Passwords
 {
-    class PasswordControllerEventParticipant
-    { // abstract interface - implement with another interface
-    public:
-        virtual std::string identifier() const = 0; // To support isEqual
-        //
-        bool operator==(PasswordControllerEventParticipant const &rhs) const
-        {
-            return identifier() == rhs.identifier();
-        }
-    };
+   class PasswordControllerEventParticipant
+   { // abstract interface - implement with another interface
+   public:
+       virtual std::string identifier() const = 0; // To support isEqual
+       //
+       bool operator==(PasswordControllerEventParticipant const &rhs) const
+       {
+           return identifier() == rhs.identifier();
+       }
+   };
 }
 namespace Passwords
 { // EventParticipants
-    class WeakRefTo_EventParticipant // TODO: a class is slightly heavyweight for this - anything more like a struct?
-    { // use this to construct arrays of event participants w/o having to hold strong references to them
-    public: // TODO: does this need to be optional?
-        boost::optional<std::weak_ptr<PasswordControllerEventParticipant>> value = boost::none;
-    };
-    static inline bool isEqual(
-        WeakRefTo_EventParticipant &l,
-        WeakRefTo_EventParticipant &r
-    ) {
-        if (!l.value && !r.value) {
-            return true; // none == none
-        } else if (!l.value || !r.value) {
-            return false; // none != !none
-        }
-        // obtain shared pointers (check weak ptr referent not expired)
-        auto l_value_spt = (*l.value).lock();
-        auto r_value_spt = (*r.value).lock();
-        if (!l_value_spt && !r_value_spt) {
-            return true; // null == null
-        } else if (!l_value_spt || !r_value_spt) {
-            return false; // null != !null
-        }
-        return (*l_value_spt).identifier() == (*r_value_spt).identifier();
-    }
+   class WeakRefTo_EventParticipant // TODO: a class is slightly heavyweight for this - anything more like a struct?
+   { // use this to construct arrays of event participants w/o having to hold strong references to them
+   public: // TODO: does this need to be optional?
+       boost::optional<std::weak_ptr<PasswordControllerEventParticipant>> value = boost::none;
+   };
+   static inline bool isEqual(
+       WeakRefTo_EventParticipant &l,
+       WeakRefTo_EventParticipant &r
+   ) {
+       if (!l.value && !r.value) {
+           return true; // none == none
+       } else if (!l.value || !r.value) {
+           return false; // none != !none
+       }
+       // obtain shared pointers (check weak ptr referent not expired)
+       auto l_value_spt = (*l.value).lock();
+       auto r_value_spt = (*r.value).lock();
+       if (!l_value_spt && !r_value_spt) {
+           return true; // null == null
+       } else if (!l_value_spt || !r_value_spt) {
+           return false; // null != !null
+       }
+       return (*l_value_spt).identifier() == (*r_value_spt).identifier();
+   }
 }
 namespace Passwords {
-    class PasswordEntryDelegate : PasswordControllerEventParticipant
-    {
-        virtual void getUserToEnterExistingPassword(
-                bool isForChangePassword,
-                bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
-                boost::optional<std::string> customNavigationBarTitle,
-                std::function<void( // TODO: maybe use a better way of returning two optl vals
-                    boost::optional<bool>didCancel,
-                    boost::optional<Password>obtainedPasswordString)
-                > enterExistingPassword_cb
-        ) = 0;
-        virtual void getUserToEnterNewPasswordAndType(
-                bool isForChangePassword,
-                std::function<void( // TODO: maybe use a better way of returning two optl vals
-                    boost::optional<bool> didCancel,
-                    boost::optional<Type> passwordType
-                )> enterNewPasswordAndType_cb
-        ) = 0;
-    };
+   class PasswordEntryDelegate : PasswordControllerEventParticipant
+   {
+       virtual void getUserToEnterExistingPassword(
+               bool isForChangePassword,
+               bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
+               boost::optional<std::string> customNavigationBarTitle,
+               std::function<void( // TODO: maybe use a better way of returning two optl vals
+                   boost::optional<bool>didCancel,
+                   boost::optional<Password>obtainedPasswordString)
+               > enterExistingPassword_cb
+       ) = 0;
+       virtual void getUserToEnterNewPasswordAndType(
+               bool isForChangePassword,
+               std::function<void( // TODO: maybe use a better way of returning two optl vals
+                   boost::optional<bool> didCancel,
+                   boost::optional<Type> passwordType
+               )> enterNewPasswordAndType_cb
+       ) = 0;
+   };
 }
 namespace Passwords
 {
-    class ChangePasswordRegistrant: PasswordControllerEventParticipant
-    { // Implement this function to support change-password events as well as revert-from-failed-change-password
-    public:
-        boost::optional<std::string> passwordController_ChangePassword(); // return err_str:String if error - it will abort and try to revert the changepassword process. at time of writing, this was able to be kept synchronous.
-        // TODO: ^-- maybe make this return a code instead of an error string
-    };
-    class DeleteEverythingRegistrant: PasswordControllerEventParticipant
-    {
-        boost::optional<std::string> passwordController_DeleteEverything(); // return err_str:String if error. at time of writing, this was able to be kept synchronous.
-        // TODO: ^-- maybe make this return a code instead of an error string
-    };
+   class ChangePasswordRegistrant: PasswordControllerEventParticipant
+   { // Implement this function to support change-password events as well as revert-from-failed-change-password
+   public:
+       boost::optional<std::string> passwordController_ChangePassword(); // return err_str:String if error - it will abort and try to revert the changepassword process. at time of writing, this was able to be kept synchronous.
+       // TODO: ^-- maybe make this return a code instead of an error string
+   };
+   class DeleteEverythingRegistrant: PasswordControllerEventParticipant
+   {
+       boost::optional<std::string> passwordController_DeleteEverything(); // return err_str:String if error. at time of writing, this was able to be kept synchronous.
+       // TODO: ^-- maybe make this return a code instead of an error string
+   };
 }
 

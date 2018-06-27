@@ -19,11 +19,8 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/*.cpp)
 set(
     SRC_FILES
     #
-    src/Passwords/PasswordController.hpp
     src/Passwords/PasswordController.cpp
-    src/Persistence/document_persister.hpp
     src/Persistence/document_persister.cpp
-    src/App/AppServiceLocator.hpp
     src/App/AppServiceLocator.cpp
 )
 
