@@ -31,9 +31,6 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-#ifndef __document_persister_hpp
-#define __document_persister_hpp
-
 #include <iostream>
 #include <fstream>
 #include <boost/atomic.hpp>
@@ -42,7 +39,6 @@
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
-#include <boost/tuple/tuple.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 
@@ -83,31 +79,36 @@ namespace document_persister
    }
    static inline std::string new_filename(const DocumentFileDescription &description)
    {
-       return (new_fileKey_ss(description) << filenameExt).str();
+       return (new_fileKey_ss(description) << "." << filenameExt).str();
    }
 }
 namespace document_persister
 {
-	typedef boost::tuple<
-		boost::optional<std::string>,
-		boost::optional<std::vector<DocumentFileDescription>>
-	> errOr_documentFileDescriptions;
-	typedef boost::tuple<
-		boost::optional<std::string>,
-		boost::optional<std::vector<DocumentId>>
-	> errOr_documentIds;
-	typedef boost::tuple<
-		boost::optional<std::string>,
-		boost::optional<std::string>
-	> errOr_contentString;
-	typedef boost::tuple<
-		boost::optional<std::string>,
-		boost::optional<std::vector<std::string>>
-	> errOr_contentStrings;
-	typedef boost::tuple<
-		boost::optional<std::string>,
-		boost::optional<uint32_t>
-	> errOr_numRemoved;
+	struct errOr_documentFileDescriptions
+	{
+		boost::optional<std::string> err_str;
+		boost::optional<std::vector<DocumentFileDescription>> descriptions;
+	};
+	struct errOr_documentIds
+	{
+		boost::optional<std::string> err_str;
+		boost::optional<std::vector<DocumentId>> ids;
+	};
+	struct errOr_contentString
+	{
+		boost::optional<std::string> err_str;
+		boost::optional<std::string> string;
+	};
+	struct errOr_contentStrings
+	{
+		boost::optional<std::string> err_str;
+		boost::optional<std::vector<std::string>> strings;
+	};
+	struct errOr_numRemoved
+	{
+		boost::optional<std::string> err_str;
+		boost::optional<uint32_t> numRemoved;
+	};
 	//
 	// Accessors - Internal
 	static inline const errOr_documentFileDescriptions __read_documentFileDescriptions(
@@ -115,10 +116,10 @@ namespace document_persister
 		const CollectionName *collectionName
 	) {
 		if (!boost::filesystem::exists(documentsPath)) {
-			return errOr_documentFileDescriptions(std::string("documentsPath doesn't exist"), boost::none);
+			return {std::string("documentsPath doesn't exist"), boost::none};
 		}
 		if (!boost::filesystem::is_directory(documentsPath)) {
-			return errOr_documentFileDescriptions(std::string("documentsPath isn't a directory"), boost::none);
+			return {std::string("documentsPath isn't a directory"), boost::none};
 		}
 	    std::vector<DocumentFileDescription> fileDescriptions;
 		//
@@ -150,33 +151,30 @@ namespace document_persister
 //			};
 //			fileDescriptions.push_back(fileDescription); // ought to be a JSON doc file
 		}
-		return errOr_documentFileDescriptions(boost::none, fileDescriptions);
+		return {boost::none, fileDescriptions};
 	}
 	static inline const errOr_contentString __read_existentDocumentContentString(
 		const std::string &documentsPath,
 		const DocumentFileDescription &fileDescription
 	) {
 		if (!boost::filesystem::exists(documentsPath)) {
-			return errOr_documentFileDescriptions(std::string("documentsPath doesn't exist"), boost::none);
+			return {std::string("documentsPath doesn't exist"), boost::none};
 		}
 		if (!boost::filesystem::is_directory(documentsPath)) {
-			return errOr_documentFileDescriptions(std::string("documentsPath isn't a directory"), boost::none);
+			return {std::string("documentsPath isn't a directory"), boost::none};
 		}
 		std::stringstream path_ss;
 		path_ss << documentsPath << "/" << new_filename(fileDescription);
 		std::ifstream ifs{path_ss.str()};
 		if (!ifs.is_open()) { // TODO: return err (as code is best)
-			return errOr_contentString(std::string("Couldn't open file"), boost::none);
+			return {std::string("Couldn't open file"), boost::none};
 		}
 		std::stringstream contents_ss;
 		std::string line;
 		while (std::getline(ifs, line)) {
 			contents_ss << line << std::endl;
 		}
-		return errOr_contentString(
-			boost::none,
-			contents_ss.str()
-		);
+		return {boost::none, contents_ss.str() };
 	}
 	static inline const errOr_contentStrings _read_existentDocumentContentStrings(
 		const std::string &documentsPath,
@@ -184,19 +182,18 @@ namespace document_persister
 	) {
 		std::vector<std::string> documentContentStrings;
 		if (documentFileDescriptions.size() == 0) {
-			return errOr_contentStrings(boost::none, documentContentStrings);
+			return { boost::none, documentContentStrings };
 		}
 		for (auto it = documentFileDescriptions.begin(); it != documentFileDescriptions.end(); it++) {
 			errOr_contentString result = __read_existentDocumentContentString(documentsPath, *it);
-			boost::optional<std::string> err_str = result.get<0>();
-			if (err_str) {
-				return errOr_contentStrings(std::move(err_str), boost::none);
+			if (result.err_str) {
+				return { std::move(*result.err_str), boost::none };
 			}
 			documentContentStrings.push_back(
-				std::move(*(result.get<1>()))
+				std::move(*result.string)
 			);
 		}
-		return errOr_contentStrings(boost::none, documentContentStrings);
+		return { boost::none, documentContentStrings };
 	}
 	//
 	// Imperatives - Internal
@@ -205,9 +202,10 @@ namespace document_persister
 		const DocumentFileDescription &fileDescription,
 		const std::string &contentString
 	) {
-		std::stringstream path_ss;
-		path_ss << documentsPath << "/" << new_filename(fileDescription);
-		std::ofstream ofs{path_ss.str()};
+		boost::filesystem::path dir(documentsPath);
+		boost::filesystem::path file(new_filename(fileDescription));
+	    boost::filesystem::path full_path = dir / file;
+		std::ofstream ofs{full_path.string()};
 		if(!ofs.is_open()) {
 			return std::string("Couldn't open file for writing."); // TODO: return error code instead
 		}
@@ -227,7 +225,7 @@ namespace document_persister {
 //		val (err_str, fileDescriptions) = _read_documentFileDescriptions(collectionName)
 //		if (err_str != null) {
 //			return errOr_documentIds(err_str, boost::none);
-		return errOr_documentIds(std::string("TODO"), boost::none);
+		return { std::string("TODO"), boost::none };
 //		}
 //		if (fileDescriptions == null) {
 //			throw AssertionError("nil fileDescriptions")
@@ -259,5 +257,3 @@ namespace document_persister {
 		);
 	}
 }
-
-#endif 

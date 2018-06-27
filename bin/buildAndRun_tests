@@ -5,4 +5,4 @@ mkdir build;
 cd build && 
 cmake  .. &&
 cmake --build . &&
-ctest
+CTEST_OUTPUT_ON_FAILURE=1 ctest -VV

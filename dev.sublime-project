@@ -3,6 +3,80 @@
 	[
 		{
 			"file_regex": "(.+[^:]):(\\d+):(\\d+): (?:fatal )?((?:error|warning): .+)$",
+			"name": "dev",
+			"shell_cmd": "make -j4",
+			"syntax": "Packages/CMakeBuilder/Syntax/Make.sublime-syntax",
+			"variants":
+			[
+				{
+					"name": "clean",
+					"shell_cmd": "make -j4 clean"
+				},
+				{
+					"name": "rebuild_cache",
+					"shell_cmd": "make -j4 rebuild_cache"
+				},
+				{
+					"name": "test",
+					"shell_cmd": "make -j4 test"
+				},
+				{
+					"name": "test_document_persister",
+					"shell_cmd": "make -j4 test_document_persister"
+				},
+				{
+					"name": "src/App/AppServiceLocator.o",
+					"shell_cmd": "make -j4 src/App/AppServiceLocator.o"
+				},
+				{
+					"name": "src/App/AppServiceLocator.i",
+					"shell_cmd": "make -j4 src/App/AppServiceLocator.i"
+				},
+				{
+					"name": "src/App/AppServiceLocator.s",
+					"shell_cmd": "make -j4 src/App/AppServiceLocator.s"
+				},
+				{
+					"name": "src/Passwords/PasswordController.o",
+					"shell_cmd": "make -j4 src/Passwords/PasswordController.o"
+				},
+				{
+					"name": "src/Passwords/PasswordController.i",
+					"shell_cmd": "make -j4 src/Passwords/PasswordController.i"
+				},
+				{
+					"name": "src/Passwords/PasswordController.s",
+					"shell_cmd": "make -j4 src/Passwords/PasswordController.s"
+				},
+				{
+					"name": "src/Persistence/document_persister.o",
+					"shell_cmd": "make -j4 src/Persistence/document_persister.o"
+				},
+				{
+					"name": "src/Persistence/document_persister.i",
+					"shell_cmd": "make -j4 src/Persistence/document_persister.i"
+				},
+				{
+					"name": "src/Persistence/document_persister.s",
+					"shell_cmd": "make -j4 src/Persistence/document_persister.s"
+				},
+				{
+					"name": "test/test_document_persister.o",
+					"shell_cmd": "make -j4 test/test_document_persister.o"
+				},
+				{
+					"name": "test/test_document_persister.i",
+					"shell_cmd": "make -j4 test/test_document_persister.i"
+				},
+				{
+					"name": "test/test_document_persister.s",
+					"shell_cmd": "make -j4 test/test_document_persister.s"
+				}
+			],
+			"working_dir": "${project_path}/build"
+		},
+		{
+			"file_regex": "(.+[^:]):(\\d+):(\\d+): (?:fatal )?((?:error|warning): .+)$",
 			"name": "dev (OSX)",
 			"shell_cmd": "make -j4",
 			"syntax": "Packages/CMakeBuilder/Syntax/Make.sublime-syntax",
