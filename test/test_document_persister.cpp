@@ -91,36 +91,41 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds)
 	}
 	BOOST_REQUIRE_MESSAGE(result.ids, "Expected non-nil ids with nil err_str");
 	string joinedIdsString = algorithm::join(*(result.ids), ", ");
-	cout << "ids: " << joinedIdsString << endl;
+	cout << "mockedPlainStringDoc_allIds: ids: " << joinedIdsString << endl;
 	BOOST_REQUIRE_MESSAGE((*(result.ids)).size() > 0, "Expected to find at least one id."); // from __insert
 }
-BOOST_AUTO_TEST_CASE(mockedPlainStringDoc__allDocuments)
+BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allDocuments)
 {
 	errOr_contentStrings result = allDocuments(
 		documentsPath(),
 		mockedPlainStringDocs__CollectionName
 	);
 	if (result.err_str) {
-		std::cout << *result.err_str << std::endl;
+		std::cout << *result.err_str << endl;
 		BOOST_REQUIRE(!result.err_str);
 	}
 	BOOST_REQUIRE_MESSAGE(result.strings, "Expected result.strings");
 	BOOST_REQUIRE_MESSAGE((*(result.strings)).size() > 0, "Expected result.string.count() > 0"); // from __insert
 	string joinedValuesString = algorithm::join(*(result.strings), ", ");
-	cout << "document content strings: " << joinedValuesString << endl;
+	cout << "mockedPlainStringDoc_allDocuments: document content strings: " << joinedValuesString << endl;
 }
-/*
-@Test fun mockedPlainStringDoc__removeAllDocuments()
+BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_removeAllDocuments)
 {
-	val applicationContext = MainApplication.instance.applicationContext
-	val documentPersister = DocumentPersister(applicationContext = applicationContext)
-	val (fetch__err_str, ids) = documentPersister.IdsOfAllDocuments(mockedPlainStringDocs__CollectionName)
-	assertEquals(null, fetch__err_str)
-	assertTrue(ids != null)
-	assertTrue(ids!!.count() > 0) // from __insert
+	string parentPath = documentsPath();
 	//
-	val (remove__err_str, numRemoved) = documentPersister.RemoveAllDocuments(mockedPlainStringDocs__CollectionName)
-	assertEquals(null, remove__err_str)
-	assertTrue(numRemoved!! == ids!!.count()) // from __insert
+	errOr_documentIds result_1 = idsOfAllDocuments(parentPath, mockedPlainStringDocs__CollectionName);
+	if (result_1.err_str) {
+		std::cout << *result_1.err_str << endl;
+		BOOST_REQUIRE(!result_1.err_str);
+	}
+	BOOST_REQUIRE(result_1.ids);
+	BOOST_REQUIRE((*(result_1.ids)).size() > 0); // from __insert
+	//
+	errOr_numRemoved result_2 = removeAllDocuments(parentPath, mockedPlainStringDocs__CollectionName);
+	if (result_2.err_str) {
+		std::cout << *result_2.err_str << endl;
+		BOOST_REQUIRE(!result_2.err_str);
+	}
+	BOOST_REQUIRE((*result_2.numRemoved) == (*(result_1.ids)).size()); // from __insert
+	cout << "mockedPlainStringDoc_removeAllDocuments: removed " << (*result_2.numRemoved) << " document(s)" << endl;
 }
-*/

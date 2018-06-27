@@ -213,9 +213,9 @@ namespace document_persister
 		const DocumentFileDescription &fileDescription,
 		const string &contentString
 	) {
-		boost::filesystem::path dir(documentsPath);
-		boost::filesystem::path file(new_filename(fileDescription));
-	    boost::filesystem::path full_path = dir / file;
+		fs::path dir(documentsPath);
+		fs::path file(new_filename(fileDescription));
+	    fs::path full_path = dir / file;
 		ofstream ofs{full_path.string()};
 		if(!ofs.is_open()) {
 			return string("Couldn't open file for writing."); // TODO: return error code instead
@@ -279,5 +279,37 @@ namespace document_persister {
 			fileDescription,
 			contentString
 		);
+	}
+	//
+	static inline errOr_numRemoved removeDocuments(
+		const string &documentsPath,
+		const CollectionName &collectionName,
+		const vector<DocumentId> &ids
+	) {
+		uint numRemoved = 0;
+		fs::path dir(documentsPath);
+		for (auto it = ids.begin(); it != ids.end(); it++) {
+			DocumentFileDescription fileDescription = {collectionName, *it/*id*/};
+			fs::path file(new_filename(fileDescription));
+			fs::path full_path = dir / file;
+			bool deleted = fs::remove(full_path);
+			if (deleted) {
+				numRemoved += 1;
+			}
+		}
+		if (numRemoved != ids.size()) {
+			BOOST_THROW_EXCEPTION(runtime_error("Expected numRemoved == ids.size()"));
+		}
+		return {none, numRemoved};
+	}
+	static inline errOr_numRemoved removeAllDocuments(
+		const string &documentsPath,
+		const CollectionName &collectionName
+	) {
+		errOr_documentIds result = idsOfAllDocuments(documentsPath, collectionName);
+		if (result.err_str) {
+			return { std::move(*result.err_str), none };
+		}
+		return removeDocuments(documentsPath, collectionName, *result.ids);
 	}
 }
