@@ -82,6 +82,9 @@
 		6E46D1D493D04F878DACE7B2 /* PasswordController.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = PasswordController.cpp; path = src/Passwords/PasswordController.cpp; sourceTree = SOURCE_ROOT; };
 		8F5ADBB2808E4C03B711BA70 /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
 		9559790B3C60403689A5B854 /* test_document_persister.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = test_document_persister.cpp; path = test/test_document_persister.cpp; sourceTree = SOURCE_ROOT; };
+		9FEE927B20E40D8600C8C53E /* AppServiceLocator.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = AppServiceLocator.hpp; path = src/App/AppServiceLocator.hpp; sourceTree = "<group>"; };
+		9FEE927C20E40D9100C8C53E /* PasswordController.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = PasswordController.hpp; path = src/Passwords/PasswordController.hpp; sourceTree = "<group>"; };
+		9FEE927D20E40D9600C8C53E /* document_persister.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = document_persister.hpp; path = src/Persistence/document_persister.hpp; sourceTree = "<group>"; };
 		ABBF694C51C4498DA6478FDF /* AppServiceLocator.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = AppServiceLocator.cpp; path = src/App/AppServiceLocator.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -132,7 +135,10 @@
 			isa = PBXGroup;
 			children = (
 				ABBF694C51C4498DA6478FDF /* AppServiceLocator.cpp */,
+				9FEE927B20E40D8600C8C53E /* AppServiceLocator.hpp */,
+				9FEE927C20E40D9100C8C53E /* PasswordController.hpp */,
 				6E46D1D493D04F878DACE7B2 /* PasswordController.cpp */,
+				9FEE927D20E40D9600C8C53E /* document_persister.hpp */,
 				2ABC4345ACAD46A9B224E068 /* document_persister.cpp */,
 				9559790B3C60403689A5B854 /* test_document_persister.cpp */,
 			);
