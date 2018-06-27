@@ -1,5 +1,6 @@
 .DS_Store
 build
+Debug
 cmake-build-debug/
 .idea
 CMakeFiles
