@@ -62,8 +62,8 @@ namespace document_persister
        CollectionName inCollectionName;
        DocumentId documentId;
    };
-   const std::string fileKeyComponentDelimiterString = "__";
-   const std::string filenameExt = std::string(".MMDBDoc"); // just trying to pick something fairly unique, and short
+   const string fileKeyComponentDelimiterString = "__";
+   const string filenameExt = string(".MMDBDoc"); // just trying to pick something fairly unique, and short
    //
    static inline DocumentId new_documentId()
    {
@@ -71,18 +71,18 @@ namespace document_persister
        //
        return boost::uuids::to_string(uuid);
    }
-   static inline std::stringstream new_fileKey_ss(const DocumentFileDescription &description)
+   static inline stringstream new_fileKey_ss(const DocumentFileDescription &description)
    {
-       std::stringstream ss;
+       stringstream ss;
        ss << description.inCollectionName << fileKeyComponentDelimiterString << description.documentId;
        //
        return ss;
    }
-   static inline std::string new_fileKey(const DocumentFileDescription &description)
+   static inline string new_fileKey(const DocumentFileDescription &description)
    {
        return new_fileKey_ss(description).str();
    }
-   static inline std::string new_filename(const DocumentFileDescription &description)
+   static inline string new_filename(const DocumentFileDescription &description)
    {
        return (new_fileKey_ss(description) << filenameExt).str();
    }
@@ -93,40 +93,40 @@ namespace document_persister
 	//
 	struct errOr_documentFileDescriptions
 	{
-		boost::optional<std::string> err_str;
-		boost::optional<std::vector<DocumentFileDescription>> descriptions;
+		boost::optional<string> err_str;
+		boost::optional<vector<DocumentFileDescription>> descriptions;
 	};
 	struct errOr_documentIds
 	{
-		boost::optional<std::string> err_str;
-		boost::optional<std::vector<DocumentId>> ids;
+		boost::optional<string> err_str;
+		boost::optional<vector<DocumentId>> ids;
 	};
 	struct errOr_contentString
 	{
-		boost::optional<std::string> err_str;
-		boost::optional<std::string> string;
+		boost::optional<string> err_str;
+		boost::optional<string> string;
 	};
 	struct errOr_contentStrings
 	{
-		boost::optional<std::string> err_str;
-		boost::optional<std::vector<std::string>> strings;
+		boost::optional<string> err_str;
+		boost::optional<vector<string>> strings;
 	};
 	struct errOr_numRemoved
 	{
-		boost::optional<std::string> err_str;
+		boost::optional<string> err_str;
 		boost::optional<uint32_t> numRemoved;
 	};
 	//
 	// Accessors - Internal
-	static inline const errOr_documentFileDescriptions __read_documentFileDescriptions(
+	static inline const errOr_documentFileDescriptions _read_documentFileDescriptions(
 		const string &documentsPath,
 		const CollectionName &collectionName
 	) {
 		if (!fs::exists(documentsPath)) {
-			return {std::string("documentsPath doesn't exist"), boost::none};
+			return {string("documentsPath doesn't exist"), boost::none};
 		}
 		if (!fs::is_directory(documentsPath)) {
-			return {std::string("documentsPath isn't a directory"), boost::none};
+			return {string("documentsPath isn't a directory"), boost::none};
 		}
 	    vector<DocumentFileDescription> fileDescriptions;
 		fs::directory_iterator end_itr; // "default construction yields past-the-end"
@@ -161,33 +161,39 @@ namespace document_persister
 		return {none, fileDescriptions};
 	}
 	static inline const errOr_contentString __read_existentDocumentContentString(
-		const std::string &documentsPath,
+		const string &documentsPath,
 		const DocumentFileDescription &fileDescription
 	) {
 		if (!boost::filesystem::exists(documentsPath)) {
-			return {std::string("documentsPath doesn't exist"), boost::none};
+			return {string("documentsPath doesn't exist"), boost::none};
 		}
 		if (!boost::filesystem::is_directory(documentsPath)) {
-			return {std::string("documentsPath isn't a directory"), boost::none};
+			return {string("documentsPath isn't a directory"), boost::none};
 		}
-		std::stringstream path_ss;
+		stringstream path_ss;
 		path_ss << documentsPath << "/" << new_filename(fileDescription);
-		std::ifstream ifs{path_ss.str()};
+		ifstream ifs{path_ss.str()};
 		if (!ifs.is_open()) { // TODO: return err (as code is best)
-			return {std::string("Couldn't open file"), boost::none};
+			return {string("Couldn't open file"), boost::none};
 		}
-		std::stringstream contents_ss;
-		std::string line;
-		while (std::getline(ifs, line)) {
-			contents_ss << line << std::endl;
+		stringstream contents_ss;
+		string line;
+		bool isFirstLine = true;
+		while (getline(ifs, line)) {
+			if (isFirstLine) {
+				isFirstLine = false;
+			} else {
+				contents_ss << endl;
+			}
+			contents_ss << line;
 		}
 		return {boost::none, contents_ss.str() };
 	}
 	static inline const errOr_contentStrings _read_existentDocumentContentStrings(
-		const std::string &documentsPath,
-		const std::vector<DocumentFileDescription> &documentFileDescriptions
+		const string &documentsPath,
+		const vector<DocumentFileDescription> &documentFileDescriptions
 	) {
-		std::vector<std::string> documentContentStrings;
+		vector<string> documentContentStrings;
 		if (documentFileDescriptions.size() == 0) {
 			return { boost::none, documentContentStrings };
 		}
@@ -196,25 +202,23 @@ namespace document_persister
 			if (result.err_str) {
 				return { std::move(*result.err_str), boost::none };
 			}
-			documentContentStrings.push_back(
-				std::move(*result.string)
-			);
+			documentContentStrings.push_back(std::move(*result.string));
 		}
 		return { boost::none, documentContentStrings };
 	}
 	//
 	// Imperatives - Internal
-	static inline boost::optional<std::string> _write_fileDescriptionDocumentString(
-		const std::string &documentsPath,
+	static inline boost::optional<string> _write_fileDescriptionDocumentString(
+		const string &documentsPath,
 		const DocumentFileDescription &fileDescription,
-		const std::string &contentString
+		const string &contentString
 	) {
 		boost::filesystem::path dir(documentsPath);
 		boost::filesystem::path file(new_filename(fileDescription));
 	    boost::filesystem::path full_path = dir / file;
-		std::ofstream ofs{full_path.string()};
+		ofstream ofs{full_path.string()};
 		if(!ofs.is_open()) {
-			return std::string("Couldn't open file for writing."); // TODO: return error code instead
+			return string("Couldn't open file for writing."); // TODO: return error code instead
 		}
 		ofs << contentString;
 		ofs.close();
@@ -226,25 +230,43 @@ namespace document_persister {
 	//
 	// Accessors
 	static inline const errOr_documentIds idsOfAllDocuments(
-		const std::string &documentsPath,
+		const string &documentsPath,
 		const CollectionName &collectionName
 	) {
-		errOr_documentFileDescriptions result = __read_documentFileDescriptions(documentsPath, collectionName);
+		errOr_documentFileDescriptions result = _read_documentFileDescriptions(documentsPath, collectionName);
 		if (result.err_str) {
-			return { std::move(*result.err_str), boost::none };
+			return { std::move(*result.err_str), none };
 		}
-		std::vector<DocumentId> ids;
+		if (!result.descriptions) {
+			BOOST_THROW_EXCEPTION(runtime_error("nil fileDescriptions"));
+		}
+		vector<DocumentId> ids;
 		for (auto it = (*result.descriptions).begin(); it != (*result.descriptions).end(); it++) {
 			ids.push_back((*it).documentId);
 		}
-		//
 		return { boost::none, ids };
+	}
+	static inline const errOr_contentStrings allDocuments(
+		const string &documentsPath,
+		const CollectionName &collectionName
+	) {
+		errOr_documentFileDescriptions result = _read_documentFileDescriptions(documentsPath, collectionName);
+		if (result.err_str) {
+			return { std::move(*result.err_str), none };
+		}
+		if (!result.descriptions) {
+			BOOST_THROW_EXCEPTION(runtime_error("nil fileDescriptions"));
+		}
+		return _read_existentDocumentContentStrings(
+			documentsPath,
+			*(result.descriptions)
+		);
 	}
 	//
 	// Imperatives - Interface
-	static inline const boost::optional<std::string> write( // returning optl err str
-		const std::string &documentsPath,
-		const std::string &contentString, // if you're using this for Documents, be sure to set field _id to id within your fileData
+	static inline const boost::optional<string> write( // returning optl err str
+		const string &documentsPath,
+		const string &contentString, // if you're using this for Documents, be sure to set field _id to id within your fileData
 		const DocumentId &id, // consumer must supply the document ID since we can't make assumptions about fileData
 		const CollectionName &collectionName
 	) {

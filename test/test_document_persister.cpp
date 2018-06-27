@@ -94,29 +94,33 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds)
 	cout << "ids: " << joinedIdsString << endl;
 	BOOST_REQUIRE_MESSAGE((*(result.ids)).size() > 0, "Expected to find at least one id."); // from __insert
 }
+BOOST_AUTO_TEST_CASE(mockedPlainStringDoc__allDocuments)
+{
+	errOr_contentStrings result = allDocuments(
+		documentsPath(),
+		mockedPlainStringDocs__CollectionName
+	);
+	if (result.err_str) {
+		std::cout << *result.err_str << std::endl;
+		BOOST_REQUIRE(!result.err_str);
+	}
+	BOOST_REQUIRE_MESSAGE(result.strings, "Expected result.strings");
+	BOOST_REQUIRE_MESSAGE((*(result.strings)).size() > 0, "Expected result.string.count() > 0"); // from __insert
+	string joinedValuesString = algorithm::join(*(result.strings), ", ");
+	cout << "document content strings: " << joinedValuesString << endl;
+}
 /*
-	@Test fun mockedPlainStringDoc__allDocuments()
-	{
-		val applicationContext = MainApplication.instance.applicationContext
-		val documentPersister = DocumentPersister(applicationContext = applicationContext)
-		val (err_str, strings) = documentPersister.AllDocuments(mockedPlainStringDocs__CollectionName)
-		assertEquals(null, err_str)
-		assertTrue(strings != null)
-		assertTrue(strings!!.count() > 0) // from __insert
-		Log.d(mockedPlainStringDocs__LogTag, "strings: " + strings)
-	}
-	@Test fun mockedPlainStringDoc__removeAllDocuments()
-	{
-		val applicationContext = MainApplication.instance.applicationContext
-		val documentPersister = DocumentPersister(applicationContext = applicationContext)
-		val (fetch__err_str, ids) = documentPersister.IdsOfAllDocuments(mockedPlainStringDocs__CollectionName)
-		assertEquals(null, fetch__err_str)
-		assertTrue(ids != null)
-		assertTrue(ids!!.count() > 0) // from __insert
-		//
-		val (remove__err_str, numRemoved) = documentPersister.RemoveAllDocuments(mockedPlainStringDocs__CollectionName)
-		assertEquals(null, remove__err_str)
-		assertTrue(numRemoved!! == ids!!.count()) // from __insert
-	}
-
+@Test fun mockedPlainStringDoc__removeAllDocuments()
+{
+	val applicationContext = MainApplication.instance.applicationContext
+	val documentPersister = DocumentPersister(applicationContext = applicationContext)
+	val (fetch__err_str, ids) = documentPersister.IdsOfAllDocuments(mockedPlainStringDocs__CollectionName)
+	assertEquals(null, fetch__err_str)
+	assertTrue(ids != null)
+	assertTrue(ids!!.count() > 0) // from __insert
+	//
+	val (remove__err_str, numRemoved) = documentPersister.RemoveAllDocuments(mockedPlainStringDocs__CollectionName)
+	assertEquals(null, remove__err_str)
+	assertTrue(numRemoved!! == ids!!.count()) // from __insert
+}
 */
