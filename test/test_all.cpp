@@ -1,5 +1,5 @@
 //
-//  test_document_persister.cpp
+//  test_all.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2018, MyMonero.com
@@ -30,12 +30,13 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-
-//Link to Boost
+//
+// Test module setup
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE "MockedPlainStringDocs"
-// IMPORTANT: include unit_test this last
-#include <boost/test/unit_test.hpp>
+#define BOOST_TEST_MODULE LibAppTests
+#include <boost/test/unit_test.hpp> // last
+//
+// Includes & namespaces
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -43,11 +44,8 @@
 using namespace std;
 using namespace boost;
 //
-#include "../src/Persistence/document_persister.hpp"
-using namespace document_persister;
-//
-const document_persister::CollectionName mockedPlainStringDocs__CollectionName = "TestDocuments";
-static inline const std::string documentsPath()
+// Shared code
+inline std::string documentsPath()
 {
 	std::string thisfile_path = std::string(__FILE__);
 	std::string tests_dir = thisfile_path.substr(0, thisfile_path.find_last_of("\\/"));
@@ -56,10 +54,15 @@ static inline const std::string documentsPath()
 	boost::filesystem::path file("build");
     boost::filesystem::path full_path = dir / file;
 	//
+	boost::filesystem::create_directory(full_path); // in case it doesn't exist
+	//
 	return full_path.string();
 }
 //
-// Tests
+// Test suites - document_persister
+#include "../src/Persistence/document_persister.hpp"
+using namespace document_persister;
+const CollectionName mockedPlainStringDocs__CollectionName = "TestDocuments";
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_insert)
 {
 	const DocumentId id = new_documentId();

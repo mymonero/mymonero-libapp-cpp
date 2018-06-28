@@ -42,7 +42,7 @@ include_directories("src")
 include_directories("test")
 
 # keeping test files in a separate source directory 
-file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/*.cpp)
+file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 
 set(
     SRC_FILES

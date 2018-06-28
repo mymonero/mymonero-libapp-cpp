@@ -45,10 +45,10 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		1E61704965A8480D82A79E64 /* AppServiceLocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ABBF694C51C4498DA6478FDF /* AppServiceLocator.cpp */; };
-		6B7AAEBF27D34C9FB80BF19F /* document_persister.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2ABC4345ACAD46A9B224E068 /* document_persister.cpp */; };
-		ADACBCDAD7D84F6C8400E765 /* test_document_persister.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9559790B3C60403689A5B854 /* test_document_persister.cpp */; };
-		D87CF3894AEE40AB9E220818 /* PasswordController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6E46D1D493D04F878DACE7B2 /* PasswordController.cpp */; };
+		9FCC338B20E569AB00F8CB9B /* test_all.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338020E569AB00F8CB9B /* test_all.cpp */; };
+		9FCC338C20E569AB00F8CB9B /* AppServiceLocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338420E569AB00F8CB9B /* AppServiceLocator.cpp */; };
+		9FCC338D20E569AB00F8CB9B /* PasswordController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338620E569AB00F8CB9B /* PasswordController.cpp */; };
+		9FCC338E20E569AB00F8CB9B /* document_persister.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338A20E569AB00F8CB9B /* document_persister.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,16 +76,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2ABC4345ACAD46A9B224E068 /* document_persister.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = document_persister.cpp; path = src/Persistence/document_persister.cpp; sourceTree = SOURCE_ROOT; };
 		2B4CDA8B7E0D452D83477073 /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		6C69C533F88B425084EDD995 /* test_document_persister */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = test_document_persister; sourceTree = BUILT_PRODUCTS_DIR; };
-		6E46D1D493D04F878DACE7B2 /* PasswordController.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = PasswordController.cpp; path = src/Passwords/PasswordController.cpp; sourceTree = SOURCE_ROOT; };
+		6C69C533F88B425084EDD995 /* test_all */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = test_all; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F5ADBB2808E4C03B711BA70 /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		9559790B3C60403689A5B854 /* test_document_persister.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = test_document_persister.cpp; path = test/test_document_persister.cpp; sourceTree = SOURCE_ROOT; };
-		9FEE927B20E40D8600C8C53E /* AppServiceLocator.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = AppServiceLocator.hpp; path = src/App/AppServiceLocator.hpp; sourceTree = "<group>"; };
-		9FEE927C20E40D9100C8C53E /* PasswordController.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = PasswordController.hpp; path = src/Passwords/PasswordController.hpp; sourceTree = "<group>"; };
-		9FEE927D20E40D9600C8C53E /* document_persister.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = document_persister.hpp; path = src/Persistence/document_persister.hpp; sourceTree = "<group>"; };
-		ABBF694C51C4498DA6478FDF /* AppServiceLocator.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = AppServiceLocator.cpp; path = src/App/AppServiceLocator.cpp; sourceTree = SOURCE_ROOT; };
+		9FCC338020E569AB00F8CB9B /* test_all.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = test_all.cpp; sourceTree = "<group>"; };
+		9FCC338320E569AB00F8CB9B /* AppServiceLocator.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = AppServiceLocator.hpp; sourceTree = "<group>"; };
+		9FCC338420E569AB00F8CB9B /* AppServiceLocator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AppServiceLocator.cpp; sourceTree = "<group>"; };
+		9FCC338620E569AB00F8CB9B /* PasswordController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PasswordController.cpp; sourceTree = "<group>"; };
+		9FCC338720E569AB00F8CB9B /* PasswordController.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = PasswordController.hpp; sourceTree = "<group>"; };
+		9FCC338920E569AB00F8CB9B /* document_persister.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = document_persister.hpp; sourceTree = "<group>"; };
+		9FCC338A20E569AB00F8CB9B /* document_persister.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = document_persister.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -101,8 +101,8 @@
 		974BA2D86FDC4F75BCDEDCAB /* test_document_persister */ = {
 			isa = PBXGroup;
 			children = (
-				9FFACA6D20E4390000166E72 /* Tests */,
-				F72FD85C1BE1439AB2789ADA /* Source Files */,
+				9FCC338120E569AB00F8CB9B /* src */,
+				9FCC337F20E569AB00F8CB9B /* test */,
 				2B4CDA8B7E0D452D83477073 /* CMakeLists.txt */,
 			);
 			name = test_document_persister;
@@ -111,44 +111,54 @@
 		991879736AD94F238B5AE091 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6C69C533F88B425084EDD995 /* test_document_persister */,
+				6C69C533F88B425084EDD995 /* test_all */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		9FFACA6D20E4390000166E72 /* Tests */ = {
+		9FCC337F20E569AB00F8CB9B /* test */ = {
 			isa = PBXGroup;
 			children = (
-				9559790B3C60403689A5B854 /* test_document_persister.cpp */,
+				9FCC338020E569AB00F8CB9B /* test_all.cpp */,
 			);
-			name = Tests;
+			path = test;
 			sourceTree = "<group>";
 		};
-		9FFACA6E20E444D200166E72 /* DocumentPersister */ = {
+		9FCC338120E569AB00F8CB9B /* src */ = {
 			isa = PBXGroup;
 			children = (
-				9FEE927D20E40D9600C8C53E /* document_persister.hpp */,
-				2ABC4345ACAD46A9B224E068 /* document_persister.cpp */,
+				9FCC338220E569AB00F8CB9B /* App */,
+				9FCC338520E569AB00F8CB9B /* Passwords */,
+				9FCC338820E569AB00F8CB9B /* Persistence */,
 			);
-			name = DocumentPersister;
+			path = src;
 			sourceTree = "<group>";
 		};
-		9FFACA6F20E444DB00166E72 /* App */ = {
+		9FCC338220E569AB00F8CB9B /* App */ = {
 			isa = PBXGroup;
 			children = (
-				ABBF694C51C4498DA6478FDF /* AppServiceLocator.cpp */,
-				9FEE927B20E40D8600C8C53E /* AppServiceLocator.hpp */,
+				9FCC338320E569AB00F8CB9B /* AppServiceLocator.hpp */,
+				9FCC338420E569AB00F8CB9B /* AppServiceLocator.cpp */,
 			);
-			name = App;
+			path = App;
 			sourceTree = "<group>";
 		};
-		9FFACA7020E444DE00166E72 /* Passwords */ = {
+		9FCC338520E569AB00F8CB9B /* Passwords */ = {
 			isa = PBXGroup;
 			children = (
-				9FEE927C20E40D9100C8C53E /* PasswordController.hpp */,
-				6E46D1D493D04F878DACE7B2 /* PasswordController.cpp */,
+				9FCC338620E569AB00F8CB9B /* PasswordController.cpp */,
+				9FCC338720E569AB00F8CB9B /* PasswordController.hpp */,
 			);
-			name = Passwords;
+			path = Passwords;
+			sourceTree = "<group>";
+		};
+		9FCC338820E569AB00F8CB9B /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				9FCC338920E569AB00F8CB9B /* document_persister.hpp */,
+				9FCC338A20E569AB00F8CB9B /* document_persister.cpp */,
+			);
+			path = Persistence;
 			sourceTree = "<group>";
 		};
 		D59F2D1D82964FF9920F0B08 = {
@@ -167,22 +177,12 @@
 			name = "CMake Rules";
 			sourceTree = "<group>";
 		};
-		F72FD85C1BE1439AB2789ADA /* Source Files */ = {
-			isa = PBXGroup;
-			children = (
-				9FFACA6F20E444DB00166E72 /* App */,
-				9FFACA6E20E444D200166E72 /* DocumentPersister */,
-				9FFACA7020E444DE00166E72 /* Passwords */,
-			);
-			name = "Source Files";
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		D8414121E55C47148161E971 /* test_document_persister */ = {
+		D8414121E55C47148161E971 /* test_all */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BE1A8AFDC8574E339A17D03F /* Build configuration list for PBXNativeTarget "test_document_persister" */;
+			buildConfigurationList = BE1A8AFDC8574E339A17D03F /* Build configuration list for PBXNativeTarget "test_all" */;
 			buildPhases = (
 				5C1625D3F1FF40DCA02F26F1 /* Sources */,
 			);
@@ -191,9 +191,9 @@
 			dependencies = (
 				A358130F2BA943228E36208A /* PBXTargetDependency */,
 			);
-			name = test_document_persister;
+			name = test_all;
 			productName = test_document_persister;
-			productReference = 6C69C533F88B425084EDD995 /* test_document_persister */;
+			productReference = 6C69C533F88B425084EDD995 /* test_all */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -219,7 +219,7 @@
 				321C701289B24933BA4A299A /* ALL_BUILD */,
 				B090AAAB0C474806ABC974DC /* RUN_TESTS */,
 				6E520274264141B5B7A287D7 /* ZERO_CHECK */,
-				D8414121E55C47148161E971 /* test_document_persister */,
+				D8414121E55C47148161E971 /* test_all */,
 			);
 		};
 /* End PBXProject section */
@@ -265,10 +265,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1E61704965A8480D82A79E64 /* AppServiceLocator.cpp in Sources */,
-				D87CF3894AEE40AB9E220818 /* PasswordController.cpp in Sources */,
-				6B7AAEBF27D34C9FB80BF19F /* document_persister.cpp in Sources */,
-				ADACBCDAD7D84F6C8400E765 /* test_document_persister.cpp in Sources */,
+				9FCC338D20E569AB00F8CB9B /* PasswordController.cpp in Sources */,
+				9FCC338C20E569AB00F8CB9B /* AppServiceLocator.cpp in Sources */,
+				9FCC338E20E569AB00F8CB9B /* document_persister.cpp in Sources */,
+				9FCC338B20E569AB00F8CB9B /* test_all.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -282,7 +282,7 @@
 		};
 		60F720BC80A54DC884E18C88 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = D8414121E55C47148161E971 /* test_document_persister */;
+			target = D8414121E55C47148161E971 /* test_all */;
 			targetProxy = BD51EB11D97C4C4FB015A920 /* PBXContainerItemProxy */;
 		};
 		A358130F2BA943228E36208A /* PBXTargetDependency */ = {
@@ -356,8 +356,8 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
-					"$(SRCROOT)/src",
-					"$(SRCROOT)/test",
+					"$(SRCROOT)/src/**",
+					"$(SRCROOT)/test/**",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_SEARCH_PATHS = "";
@@ -397,7 +397,7 @@
 					"/usr/local/lib/libboost_wserialization-mt.dylib",
 				);
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = test_document_persister;
+				PRODUCT_NAME = test_all;
 				SECTORDER_FLAGS = "";
 				SYMROOT = "$(SRCROOT)/xcode";
 				USE_HEADERMAP = NO;
@@ -423,8 +423,8 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
-					"$(SRCROOT)/src",
-					"$(SRCROOT)/test",
+					"$(SRCROOT)/src/**",
+					"$(SRCROOT)/test/**",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_SEARCH_PATHS = "";
@@ -464,7 +464,7 @@
 					"/usr/local/lib/libboost_wserialization-mt.dylib",
 				);
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = test_document_persister;
+				PRODUCT_NAME = test_all;
 				SECTORDER_FLAGS = "";
 				SYMROOT = "$(SRCROOT)/xcode";
 				USE_HEADERMAP = NO;
@@ -524,8 +524,8 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
-					"$(SRCROOT)/src",
-					"$(SRCROOT)/test",
+					"$(SRCROOT)/src/**",
+					"$(SRCROOT)/test/**",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_SEARCH_PATHS = "";
@@ -565,7 +565,7 @@
 					"/usr/local/lib/libboost_wserialization-mt.dylib",
 				);
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = test_document_persister;
+				PRODUCT_NAME = test_all;
 				SECTORDER_FLAGS = "";
 				SYMROOT = "$(SRCROOT)/xcode";
 				USE_HEADERMAP = NO;
@@ -818,8 +818,8 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
-					"$(SRCROOT)/src",
-					"$(SRCROOT)/test",
+					"$(SRCROOT)/src/**",
+					"$(SRCROOT)/test/**",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_SEARCH_PATHS = "";
@@ -856,7 +856,7 @@
 					"/usr/local/lib/libboost_wserialization-mt.dylib",
 				);
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = test_document_persister;
+				PRODUCT_NAME = test_all;
 				SECTORDER_FLAGS = "";
 				SYMROOT = "$(SRCROOT)/xcode";
 				USE_HEADERMAP = NO;
@@ -941,7 +941,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		BE1A8AFDC8574E339A17D03F /* Build configuration list for PBXNativeTarget "test_document_persister" */ = {
+		BE1A8AFDC8574E339A17D03F /* Build configuration list for PBXNativeTarget "test_all" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				FBDD4F2641E84BEC8807E133 /* Debug */,

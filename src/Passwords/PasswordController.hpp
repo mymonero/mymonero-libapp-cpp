@@ -31,6 +31,11 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
+
+#ifndef PasswordController_hpp
+#define PasswordController_hpp
+
+
 #include <string>
 #include <boost/optional/optional.hpp>
 #include <memory>
@@ -186,3 +191,5 @@ namespace Passwords
    };
 }
 
+
+#endif /* PasswordController_hpp */

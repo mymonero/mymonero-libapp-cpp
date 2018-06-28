@@ -31,6 +31,9 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
+#ifndef AppServiceLocator_hpp
+#define AppServiceLocator_hpp
+
 #include "AppServiceLocator.hpp"
 
 using namespace App;
@@ -44,3 +47,6 @@ void ServiceLocator::build()
        this->documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
    );
 }
+
+
+#endif /* AppServiceLocator_hpp */

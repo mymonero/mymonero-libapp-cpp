@@ -31,6 +31,10 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
+
+#ifndef document_persister_hpp
+#define document_persister_hpp
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -313,3 +317,5 @@ namespace document_persister {
 		return removeDocuments(documentsPath, collectionName, *result.ids);
 	}
 }
+
+#endif /* document_persister_hpp */
