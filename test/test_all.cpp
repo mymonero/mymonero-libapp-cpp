@@ -132,3 +132,79 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_removeAllDocuments)
 	BOOST_REQUIRE((*result_2.numRemoved) == (*(result_1.ids)).size()); // from __insert
 	cout << "mockedPlainStringDoc_removeAllDocuments: removed " << (*result_2.numRemoved) << " document(s)" << endl;
 }
+//
+// Test suites - PersistableObject
+#include "../src/Passwords/PasswordController.hpp"
+#include "../src/Persistence/PersistableObject.hpp"
+const CollectionName mockedSavedObjects__CollectionName = "MockedSavedObjects";
+const string mockedSavedObjects__addtlVal_ = "Some extra test data";
+class MockedPasswordProvider: public Passwords::PasswordProvider
+{
+	boost::optional<Passwords::Password> getPassword() const
+	{
+	   return std::string("a password");
+	}
+};
+class MockedSavedObject: public Persistable::Object
+{
+public:
+	boost::optional<std::string> addtlVal = none; // set this after init to avoid test fail
+	//
+	MockedSavedObject(
+		const std::string &documentsPath,
+		const Passwords::PasswordProvider &passwordProvider
+	): Persistable::Object(documentsPath, passwordProvider) {
+	}
+	MockedSavedObject(
+		const std::string &documentsPath,
+		const Passwords::PasswordProvider &passwordProvider,
+		const property_tree::ptree &plaintextData
+	): Persistable::Object(documentsPath, passwordProvider, plaintextData) {
+		BOOST_REQUIRE(this->_id != boost::none);
+		BOOST_REQUIRE(this->insertedAt_sSinceEpoch != boost::none);
+		//
+		this->addtlVal = plaintextData.get<std::string>("addtlVal");
+		BOOST_REQUIRE(this->addtlVal != boost::none);
+	}
+	property_tree::ptree new_dictRepresentation() const
+	{
+		property_tree::ptree dict = Persistable::Object::new_dictRepresentation();
+		dict.put("addtlVal", this->addtlVal);
+		//
+		return dict;
+	}
+	CollectionName collectionName() const { return mockedSavedObjects__CollectionName; }
+};
+BOOST_AUTO_TEST_CASE(mockedSavedObjects_insertNew)
+{
+	const MockedPasswordProvider passwordProvider;
+	MockedSavedObject obj(documentsPath(), passwordProvider);
+	obj.addtlVal = mockedSavedObjects__addtlVal_;
+	//
+	boost::optional<std::string> err_str = obj.saveToDisk();
+	BOOST_REQUIRE(err_str == none);
+	BOOST_REQUIRE(obj._id != none);
+
+//	const DocumentId id = new_documentId();
+//	std::stringstream jsonSS;
+//	jsonSS << "{\"a\":2,\"id\":\"" << id << "\"}";
+//	const std::string jsonString = jsonSS.str();
+//	//
+//	boost::optional<std::string> err_str = document_persister::write(
+//		documentsPath(),
+//		jsonString,
+//		id,
+//		mockedPlainStringDocs__CollectionName
+//	);
+//	if (err_str) {
+//		std::cout << *err_str << std::endl;
+//		BOOST_REQUIRE(!err_str);
+//	}
+//	std::cout << "Inserted " << id << std::endl;
+}
+BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting)
+{
+}
+BOOST_AUTO_TEST_CASE(mockedSavedObjects_deleteExisting)
+{
+}

@@ -45,6 +45,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		9F75C3DE20E56EA400911782 /* PersistableObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9F75C3DC20E56EA400911782 /* PersistableObject.cpp */; };
 		9FCC338B20E569AB00F8CB9B /* test_all.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338020E569AB00F8CB9B /* test_all.cpp */; };
 		9FCC338C20E569AB00F8CB9B /* AppServiceLocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338420E569AB00F8CB9B /* AppServiceLocator.cpp */; };
 		9FCC338D20E569AB00F8CB9B /* PasswordController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9FCC338620E569AB00F8CB9B /* PasswordController.cpp */; };
@@ -79,6 +80,8 @@
 		2B4CDA8B7E0D452D83477073 /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
 		6C69C533F88B425084EDD995 /* test_all */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = test_all; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F5ADBB2808E4C03B711BA70 /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		9F75C3DC20E56EA400911782 /* PersistableObject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PersistableObject.cpp; sourceTree = "<group>"; };
+		9F75C3DD20E56EA400911782 /* PersistableObject.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = PersistableObject.hpp; sourceTree = "<group>"; };
 		9FCC338020E569AB00F8CB9B /* test_all.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = test_all.cpp; sourceTree = "<group>"; };
 		9FCC338320E569AB00F8CB9B /* AppServiceLocator.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = AppServiceLocator.hpp; sourceTree = "<group>"; };
 		9FCC338420E569AB00F8CB9B /* AppServiceLocator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AppServiceLocator.cpp; sourceTree = "<group>"; };
@@ -146,8 +149,8 @@
 		9FCC338520E569AB00F8CB9B /* Passwords */ = {
 			isa = PBXGroup;
 			children = (
-				9FCC338620E569AB00F8CB9B /* PasswordController.cpp */,
 				9FCC338720E569AB00F8CB9B /* PasswordController.hpp */,
+				9FCC338620E569AB00F8CB9B /* PasswordController.cpp */,
 			);
 			path = Passwords;
 			sourceTree = "<group>";
@@ -157,6 +160,8 @@
 			children = (
 				9FCC338920E569AB00F8CB9B /* document_persister.hpp */,
 				9FCC338A20E569AB00F8CB9B /* document_persister.cpp */,
+				9F75C3DD20E56EA400911782 /* PersistableObject.hpp */,
+				9F75C3DC20E56EA400911782 /* PersistableObject.cpp */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -268,6 +273,7 @@
 				9FCC338D20E569AB00F8CB9B /* PasswordController.cpp in Sources */,
 				9FCC338C20E569AB00F8CB9B /* AppServiceLocator.cpp in Sources */,
 				9FCC338E20E569AB00F8CB9B /* document_persister.cpp in Sources */,
+				9F75C3DE20E56EA400911782 /* PersistableObject.cpp in Sources */,
 				9FCC338B20E569AB00F8CB9B /* test_all.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

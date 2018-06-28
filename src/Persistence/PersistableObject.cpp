@@ -1,5 +1,5 @@
 //
-//  PasswordController.cpp
+//  PersistableObject.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2018, MyMonero.com
@@ -31,29 +31,16 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-#include "PasswordController.hpp"
+#include "PersistableObject.hpp"
 //
-// Accessors - Interfaces - PasswordProvider
-boost::optional<Passwords::Password> Passwords::Controller::getPassword() const
+// Lifecycle
+Persistable::Object::~Object()
 {
-   return _password;
+	// TODO: call .willBeDeinitialized for observers
 }
 //
-// Constants - Persistence
-enum class DictKey
+// Imperatives
+boost::optional<std::string> Persistable::Object::saveToDisk()
 {
-   _id,
-   passwordType,
-   messageAsEncryptedDataForUnlockChallenge_base64String
-};
-std::string _dictKey(DictKey fromKey)
-{
-   switch (fromKey) {
-       case DictKey::_id:
-           return "_id";
-       case DictKey::passwordType:
-           return "passwordType";
-       case DictKey::messageAsEncryptedDataForUnlockChallenge_base64String:
-           return "messageAsEncryptedDataForUnlockChallenge_base64String";
-   }
+	return boost::none; // TODO
 }

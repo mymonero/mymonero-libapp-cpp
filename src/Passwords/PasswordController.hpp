@@ -37,8 +37,11 @@
 
 
 #include <string>
+#include <boost/range/algorithm.hpp>
 #include <boost/optional/optional.hpp>
 #include <memory>
+
+using namespace std;
 
 namespace Passwords
 {
@@ -72,10 +75,8 @@ namespace Passwords
    static inline Type new_detectedFromPassword(Password &password)
    {
        std::string copyOf_password = password;
-       copyOf_password.erase(
-           std::remove_if(copyOf_password.begin(), copyOf_password.end(), &isdigit),
-           copyOf_password.end()
-       );
+       copyOf_password.erase(boost::remove_if(copyOf_password, ::isdigit), copyOf_password.end());
+
        return copyOf_password.empty() ? Type::PIN : Type::password;
    }
 }
@@ -112,7 +113,7 @@ namespace Passwords
    private:
        //
        // Properties - Instance members
-       boost::optional<Password> m_password = boost::none;
+       boost::optional<Password> _password = boost::none;
    };
 }
 namespace Passwords
