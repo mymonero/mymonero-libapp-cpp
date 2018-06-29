@@ -26,3 +26,5 @@ This repository holds the C++ source code for the MyMonero business logic.
 ### Dependencies
 
 * Boost
+
+* OpenSSL
