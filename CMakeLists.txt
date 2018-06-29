@@ -61,6 +61,10 @@ set(
     src/Persistence/PersistableObject.cpp
     src/App/AppServiceLocator.hpp
     src/App/AppServiceLocator.cpp
+    src/RNCryptor-C/rncryptor_c.h
+    src/RNCryptor-C/rncryptor_c.c
+    src/RNCryptor-C/mutils.h
+    src/RNCryptor-C/mutils.c
 )
 
 #Run through each source
