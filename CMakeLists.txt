@@ -6,6 +6,12 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 project(TEST)
 enable_testing()
 
+#Find openSSL
+find_package(OpenSSL COMPONENTS
+	crypto REQUIRED
+	ssl REQUIRED
+)
+
 #Prep ourselves for compiling boost
 find_package(Boost COMPONENTS 
     unit_test_framework REQUIRED
@@ -47,8 +53,13 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 set(
     SRC_FILES
     #
+    src/Passwords/PasswordController.hpp
     src/Passwords/PasswordController.cpp
+    src/Persistence/document_persister.hpp
     src/Persistence/document_persister.cpp
+    src/Persistence/PersistableObject.hpp
+    src/Persistence/PersistableObject.cpp
+    src/App/AppServiceLocator.hpp
     src/App/AppServiceLocator.cpp
 )
 
@@ -64,8 +75,8 @@ foreach(testSrc ${TEST_SRCS})
     target_link_libraries(
         ${testName}
         #
+        OpenSSL::SSL
         ${Boost_LIBRARIES} 
-        # TODO: additional libraries if necessary...
     )
     set_target_properties(
         ${testName} PROPERTIES 
