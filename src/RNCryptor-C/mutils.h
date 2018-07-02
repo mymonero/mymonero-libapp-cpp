@@ -1,3 +1,8 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef MUTILS_H
 #define MUTILS_H
 
@@ -182,3 +187,8 @@ unsigned char mutils_hex_char_to_bin(char x);
 unsigned char *mutils_hex_to_bin(const char *hex_string,int len,int *olen);
 
 #endif /* MUTILS_H */
+
+
+#ifdef __cplusplus
+}
+#endif

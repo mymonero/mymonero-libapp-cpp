@@ -45,7 +45,7 @@ using namespace std;
 using namespace boost;
 //
 // Shared code
-inline std::string documentsPath()
+inline std::string _new_documentsPathString()
 {
 	std::string thisfile_path = std::string(__FILE__);
 	std::string tests_dir = thisfile_path.substr(0, thisfile_path.find_last_of("\\/"));
@@ -57,6 +57,12 @@ inline std::string documentsPath()
 	boost::filesystem::create_directory(full_path); // in case it doesn't exist
 	//
 	return full_path.string();
+}
+inline std::shared_ptr<string> new_documentsPath()
+{
+	return std::make_shared<string>(
+		_new_documentsPathString()
+	);
 }
 //
 // Test suites - document_persister
@@ -71,7 +77,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_insert)
 	const std::string jsonString = jsonSS.str();
 	//
 	boost::optional<std::string> err_str = document_persister::write(
-		documentsPath(),
+		*new_documentsPath(),
 		jsonString,
 		id,
 		mockedPlainStringDocs__CollectionName
@@ -85,7 +91,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_insert)
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds)
 {
 	errOr_documentIds result  = idsOfAllDocuments(
-		documentsPath(),
+		*(new_documentsPath().get()),
 		mockedPlainStringDocs__CollectionName
 	);
 	if (result.err_str) {
@@ -100,7 +106,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds)
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allDocuments)
 {
 	errOr_contentStrings result = allDocuments(
-		documentsPath(),
+		*new_documentsPath(),
 		mockedPlainStringDocs__CollectionName
 	);
 	if (result.err_str) {
@@ -114,7 +120,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allDocuments)
 }
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_removeAllDocuments)
 {
-	string parentPath = documentsPath();
+	string parentPath = std::move(*new_documentsPath()); // is this move right to avoid a copy?
 	//
 	errOr_documentIds result_1 = idsOfAllDocuments(parentPath, mockedPlainStringDocs__CollectionName);
 	if (result_1.err_str) {
@@ -140,9 +146,10 @@ const CollectionName mockedSavedObjects__CollectionName = "MockedSavedObjects";
 const string mockedSavedObjects__addtlVal_ = "Some extra test data";
 class MockedPasswordProvider: public Passwords::PasswordProvider
 {
+public:
 	boost::optional<Passwords::Password> getPassword() const
 	{
-	   return std::string("a password");
+	   return std::string("123123");
 	}
 };
 class MockedSavedObject: public Persistable::Object
@@ -151,60 +158,144 @@ public:
 	boost::optional<std::string> addtlVal = none; // set this after init to avoid test fail
 	//
 	MockedSavedObject(
-		const std::string &documentsPath,
+		std::shared_ptr<std::string> documentsPath,
 		const Passwords::PasswordProvider &passwordProvider
-	): Persistable::Object(documentsPath, passwordProvider) {
+	): Persistable::Object(
+		std::move(documentsPath),
+		passwordProvider
+	) {
 	}
 	MockedSavedObject(
-		const std::string &documentsPath,
+		std::shared_ptr<std::string> documentsPath,
 		const Passwords::PasswordProvider &passwordProvider,
 		const property_tree::ptree &plaintextData
-	): Persistable::Object(documentsPath, passwordProvider, plaintextData) {
+	): Persistable::Object(
+		std::move(documentsPath),
+		passwordProvider,
+		plaintextData
+	) {
 		BOOST_REQUIRE(this->_id != boost::none);
 		BOOST_REQUIRE(this->insertedAt_sSinceEpoch != boost::none);
 		//
 		this->addtlVal = plaintextData.get<std::string>("addtlVal");
 		BOOST_REQUIRE(this->addtlVal != boost::none);
 	}
-	property_tree::ptree new_dictRepresentation() const
+	virtual property_tree::ptree new_dictRepresentation() const
 	{
 		property_tree::ptree dict = Persistable::Object::new_dictRepresentation();
-		dict.put("addtlVal", this->addtlVal);
+		if (this->addtlVal) {
+			dict.put("addtlVal", *(this->addtlVal));
+		}
 		//
 		return dict;
 	}
 	CollectionName collectionName() const { return mockedSavedObjects__CollectionName; }
 };
+//
+//
+const std::string _persistableObject_encryptedBase64String = "AwGNOxB4XmBTWlinIWg0sCPrfjwKGxwtshvmN4jMi3YBXYp6SAzx4WWMe0gNTV6vBT4iROJXMwpKyW6n+uzc2/nTrOPaLh0Dk8obNjeN1S2Rz7fMuiil2JHerFj2YM2vYpOPsaUg92mUojN8s1wNcfkpWtCF7oFD/VCKV3QYfRnFJyvmqD4LjFXg+ENB5um1bFdrk+36LbV9TGhVqjttYUMQtSUWOKtR+VqpuoEuRAVK4zxVSfzjAF3yHi85UaJLEi8=";
+const std::string _persistableObject_decryptedString = "this is just a string that we'll use for checking whether a given password can unlock an encrypted version of this very message";
+BOOST_AUTO_TEST_CASE(persistableObject_decryptBase64)
+{
+	const Passwords::Password password = "123123";
+	const std::string decryptedString = Persistable::new_plaintextStringFrom(_persistableObject_encryptedBase64String, password);
+	
+	cout << "decryptedString: " << decryptedString << endl;	
+	BOOST_REQUIRE(decryptedString == _persistableObject_decryptedString);
+}
+//
 BOOST_AUTO_TEST_CASE(mockedSavedObjects_insertNew)
 {
 	const MockedPasswordProvider passwordProvider;
-	MockedSavedObject obj(documentsPath(), passwordProvider);
+	MockedSavedObject obj(
+		new_documentsPath(),
+		passwordProvider
+	);
 	obj.addtlVal = mockedSavedObjects__addtlVal_;
 	//
 	boost::optional<std::string> err_str = obj.saveToDisk();
 	BOOST_REQUIRE(err_str == none);
 	BOOST_REQUIRE(obj._id != none);
-
-//	const DocumentId id = new_documentId();
-//	std::stringstream jsonSS;
-//	jsonSS << "{\"a\":2,\"id\":\"" << id << "\"}";
-//	const std::string jsonString = jsonSS.str();
-//	//
-//	boost::optional<std::string> err_str = document_persister::write(
-//		documentsPath(),
-//		jsonString,
-//		id,
-//		mockedPlainStringDocs__CollectionName
-//	);
-//	if (err_str) {
-//		std::cout << *err_str << std::endl;
-//		BOOST_REQUIRE(!err_str);
-//	}
-//	std::cout << "Inserted " << id << std::endl;
 }
 BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting)
 {
+	std::shared_ptr<string> documentsPath_ptr = new_documentsPath();
+	errOr_documentIds result = document_persister::idsOfAllDocuments(
+		*documentsPath_ptr,
+		mockedSavedObjects__CollectionName
+	);
+	if (result.err_str) {
+		std::cout << *result.err_str << endl;
+		BOOST_REQUIRE(!result.err_str);
+	}
+	BOOST_REQUIRE(result.ids != none);
+	BOOST_REQUIRE((*(result.ids)).size() > 0); // from __insertNew
+	//
+	errOr_contentStrings load__result = document_persister::documentsWith(
+		*documentsPath_ptr,
+		mockedSavedObjects__CollectionName,
+		(*(result.ids))
+	);
+	if (load__result.err_str) {
+		std::cout << *load__result.err_str << endl;
+		BOOST_REQUIRE(!load__result.err_str);
+	}
+	BOOST_REQUIRE(load__result.strings != none);
+	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
+	MockedPasswordProvider passwordProvider;
+	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
+		string plaintext_documentContentString = Persistable::new_plaintextStringFrom(
+			*it,
+			*(passwordProvider.getPassword())
+		);
+		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
+			plaintext_documentContentString
+		);
+		MockedSavedObject listedObjectInstance{
+			documentsPath_ptr,
+			passwordProvider,
+			plaintext_documentJSON
+		};
+		BOOST_REQUIRE(listedObjectInstance._id != none);
+		BOOST_REQUIRE(listedObjectInstance.insertedAt_sSinceEpoch != none);
+		BOOST_REQUIRE(listedObjectInstance.addtlVal == mockedSavedObjects__addtlVal_);
+	}
 }
 BOOST_AUTO_TEST_CASE(mockedSavedObjects_deleteExisting)
 {
+	std::shared_ptr<string> documentsPath_ptr = new_documentsPath();
+	errOr_documentIds result = document_persister::idsOfAllDocuments(
+		*documentsPath_ptr, mockedSavedObjects__CollectionName);
+	BOOST_REQUIRE(result.err_str == none);
+	BOOST_REQUIRE(result.ids != none);
+	BOOST_REQUIRE((*(result.ids)).size() > 0); // from __insertNew
+	//
+	errOr_contentStrings load__result = document_persister::documentsWith(
+		*documentsPath_ptr,
+		mockedSavedObjects__CollectionName,
+		*(result.ids)
+	);
+	BOOST_REQUIRE(load__result.err_str == none);
+	BOOST_REQUIRE(load__result.strings != none);
+	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
+	MockedPasswordProvider passwordProvider;
+	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
+		string plaintext_documentContentString = Persistable::new_plaintextStringFrom(
+			*it,
+			*(passwordProvider.getPassword())
+		);
+		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
+			plaintext_documentContentString
+		);
+		MockedSavedObject listedObjectInstance{
+			documentsPath_ptr,
+			passwordProvider,
+			plaintext_documentJSON
+		};
+		BOOST_REQUIRE(listedObjectInstance._id != none);
+		BOOST_REQUIRE(listedObjectInstance.insertedAt_sSinceEpoch != none);
+		//
+		boost::optional<string> delete__errStr = listedObjectInstance.deleteFromDisk();
+		BOOST_REQUIRE(delete__errStr == none);
+	}
 }

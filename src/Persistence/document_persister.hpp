@@ -67,7 +67,7 @@ namespace document_persister
        DocumentId documentId;
    };
    const string fileKeyComponentDelimiterString = "__";
-   const string filenameExt = string(".MMDBDoc"); // just trying to pick something fairly unique, and short
+   const string filenameExt = string(".mmdbdoc_v1"); // just trying to pick something fairly unique, and short
    //
    static inline DocumentId new_documentId()
    {
@@ -222,7 +222,9 @@ namespace document_persister
 	    fs::path full_path = dir / file;
 		ofstream ofs{full_path.string()};
 		if(!ofs.is_open()) {
-			return string("Couldn't open file for writing."); // TODO: return error code instead
+			stringstream err_ss;
+			err_ss << "Couldn't open file for writing at " << full_path.string();
+			return err_ss.str(); // TODO: return error code instead
 		}
 		ofs << contentString;
 		ofs.close();
@@ -249,6 +251,17 @@ namespace document_persister {
 			ids.push_back((*it).documentId);
 		}
 		return { boost::none, ids };
+	}
+	static inline const errOr_contentStrings documentsWith(
+		const string &documentsPath,
+		const CollectionName &collectionName,
+		const vector<DocumentId> ids
+	) {
+		vector<DocumentFileDescription> descriptions;
+		for (auto it = ids.begin(); it != ids.end(); it++) {
+			descriptions.push_back({collectionName, *it/*id*/});
+		}
+		return _read_existentDocumentContentStrings(documentsPath, descriptions);
 	}
 	static inline const errOr_contentStrings allDocuments(
 		const string &documentsPath,

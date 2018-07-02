@@ -65,6 +65,7 @@ set(
     src/RNCryptor-C/rncryptor_c.c
     src/RNCryptor-C/mutils.h
     src/RNCryptor-C/mutils.c
+    src/base64/base64.hpp
 )
 
 #Run through each source

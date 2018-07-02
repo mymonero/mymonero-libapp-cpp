@@ -1,3 +1,7 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef RNCRYPTOR_C_H
 #define RNCRYPTOR_C_H 1
 
@@ -408,3 +412,7 @@ void show_example_usage_with_key(const char *prog,const char *arg1,const char *a
 int verify_rncryptor_format(unsigned char version,unsigned char options);
 
 #endif /* RNCRYPTOR_C_H */
+
+#ifdef __cplusplus
+}
+#endif

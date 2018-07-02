@@ -35,10 +35,12 @@
 #ifndef PersistableObject_hpp
 #define PersistableObject_hpp
 
+#include <memory>
 #include <vector>
 #include <string>
 #include <sstream>
 #include <cstdlib>
+#include <iostream>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/optional/optional.hpp>
@@ -46,14 +48,22 @@
 #include <boost/uuid/uuid_generators.hpp> // generators
 #include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
 #include <boost/throw_exception.hpp>
-//#include <boost/algorithm/string.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/archive/iterators/base64_from_binary.hpp>
+#include <boost/archive/iterators/insert_linebreaks.hpp>
+#include <boost/archive/iterators/transform_width.hpp>
+#include <boost/archive/iterators/ostream_iterator.hpp>
 using namespace std;
 using namespace boost;
-
+//
+#include "../RNCryptor-C/rncryptor_c.h"
+#include "../RNCryptor-C/mutils.h"
+#include "../base64/base64.hpp"
+//
 #include "document_persister.hpp"
 using namespace document_persister;
 #include "../Passwords/PasswordController.hpp"
-
+//
 namespace Persistable
 {
 	class Object
@@ -61,39 +71,46 @@ namespace Persistable
 		public:
 			//
 			// Lifecycle - Init
-			Object(
-				const string &documentsPath,
+			explicit Object(
+				std::shared_ptr<const string> documentsPath,
 				const Passwords::PasswordProvider &passwordProvider
-			): documentsPath(documentsPath),
+			): documentsPath(std::move(documentsPath)),
 				passwordProvider(passwordProvider)
 			{}
-			Object(
-				const string &documentsPath,
+			explicit Object(
+				std::shared_ptr<const string> documentsPath,
 				const Passwords::PasswordProvider &passwordProvider,
 				const property_tree::ptree &plaintextData
-			): documentsPath(documentsPath),
+			): documentsPath(std::move(documentsPath)),
 				passwordProvider(passwordProvider)
 			{
 				this->_id = plaintextData.get<DocumentId>("_id");
 				boost::optional<std::string> insertedAt_sSinceEpoch_string = plaintextData.get_optional<std::string>("insertedAt_sSinceEpoch");
 				if (insertedAt_sSinceEpoch_string) {
-					this->insertedAt_sSinceEpoch = strtoul((*insertedAt_sSinceEpoch_string).c_str(), NULL, 0); // must parse from string to u long
+					this->insertedAt_sSinceEpoch = strtoul( // must parse from string to u long
+						(*insertedAt_sSinceEpoch_string).c_str(),
+						NULL,
+						0
+					);
 				}
+				//
 				// Subclassers: Override and extract data but call on super
+				//
 			}
 			// Lifecycle - Teardown
 			~Object();
 			//
 			// Properties - Dependencies
-			const string &documentsPath;
+			std::shared_ptr<const string> documentsPath;
 			const Passwords::PasswordProvider &passwordProvider;
 			//
 			// Properties - State
 			boost::optional<std::string> _id;
-			boost::optional<unsigned long> insertedAt_sSinceEpoch;
+			boost::optional<long> insertedAt_sSinceEpoch;
 			//
 			// Accessors - Overridable - Required
-			property_tree::ptree new_dictRepresentation() const
+			virtual CollectionName collectionName() const = 0;
+			virtual property_tree::ptree new_dictRepresentation() const
 			{ // override and implement but call on Persistable::Object
 				property_tree::ptree dict;
 				dict.put("_id", *(this->_id));
@@ -105,13 +122,23 @@ namespace Persistable
 				//
 				return dict;
 			}
-			virtual CollectionName collectionName() const = 0;
 			//
 			// Imperatives
 			boost::optional<std::string> saveToDisk();
+			boost::optional<std::string> deleteFromDisk();
 		private:
+			//
+			// Accessors
+			std::string new_encrypted_serializedFileRepresentation() const;
+			bool _shouldInsertNotUpdate() const;
+			//
+			// Imperatives
+			boost::optional<std::string> _saveToDisk_insert();
+			boost::optional<std::string> _saveToDisk_update();
+			boost::optional<std::string> __write();
 	};
 }
+
 namespace Persistable
 { // Serialization
 	static inline property_tree::ptree new_plaintextDocumentDictFromJSONString(const string &plaintextJSONString)
@@ -126,24 +153,65 @@ namespace Persistable
 	static inline string new_plaintextJSONStringFromDocumentDict(const property_tree::ptree &dict)
 	{
 	    std::stringstream ss;
-    	boost::property_tree::json_parser::write_json(ss, dict);
+    	boost::property_tree::json_parser::write_json(ss, dict, false/*pretty*/);
 		//
 		return ss.str();
 	}
 	//
 	static inline string new_plaintextStringFrom(
-		const string &encryptedString,
+		const string &encryptedBase64String,
 		const Passwords::Password &password
 	) {
-//		return RNCryptorNative().decrypt(encryptedString, password)
+		std::string encryptedString = base64::decodedFromBase64(encryptedBase64String);
+		int plaintextBytes_len = 0;
+		char errbuf[BUFSIZ];
+		memset(errbuf, 0, sizeof(errbuf));
+		//
+//		rncryptorc_set_debug(1);
+		//
+		unsigned char *plaintextBytes = rncryptorc_decrypt_data_with_password(
+			(unsigned char *)encryptedString.c_str(), // TODO: can this merely be cast?
+			encryptedString.size(),
+			RNCRYPTOR3_KDF_ITER,
+			password.c_str(),
+			password.size(),
+			&plaintextBytes_len,
+			errbuf,
+			sizeof(errbuf)-1
+		);
+		std::string plaintextString(
+			reinterpret_cast<const char *>(plaintextBytes), // unsigned char -> char
+			plaintextBytes_len
+		);
+		//
+		return plaintextString;
 	}
-	static inline string new_encryptedStringFrom(
+	static inline string new_encryptedBase64StringFrom(
 		const string &plaintextString,
 		const Passwords::Password &password
 	) {
-//		val encryptedString = RNCryptorNative().encrypt(plaintextString, password).toString(Charset.forName("UTF-8"))
-//
-//		return encryptedString
+		char errbuf[BUFSIZ];
+		//
+//		rncryptorc_set_debug(1);
+		//
+		int encryptedBytes_len = 0;
+		unsigned char *encryptedBytes = rncryptorc_encrypt_data_with_password(
+			(unsigned char *)plaintextString.c_str(), // TODO: can this merely be cast?
+			plaintextString.size(),
+			RNCRYPTOR3_KDF_ITER,
+			password.c_str(),
+			password.size(),
+			&encryptedBytes_len,
+			errbuf,
+			sizeof(errbuf)-1
+		);
+		std::string encryptedString(
+			reinterpret_cast<const char *>(encryptedBytes), // unsigned char -> char
+			encryptedBytes_len
+		);
+		std::string encryptedBase64String = base64::encodedToBase64(encryptedString);
+		//
+		return encryptedBase64String;
 	}
 }
 #endif /* PersistableObject_hpp */
