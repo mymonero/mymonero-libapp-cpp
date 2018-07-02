@@ -69,7 +69,7 @@ namespace App
            void build();
            //
            // Properties - Services: Built and retained dependencies
-           Passwords::Controller *passwordController;
+		   std::shared_ptr<const Passwords::Controller> passwordController;
    };
 }
 App::ServiceLocator* App::ServiceLocator::pInstance = nullptr;

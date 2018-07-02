@@ -40,12 +40,13 @@ using namespace App;
 
 void ServiceLocator::build()
 {
-   //
-   // TODO: assert existence of deps here -- documentsPath etc
-   //
-   this->passwordController = new Passwords::Controller(
-       this->documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
-   );
+	//
+	// TODO: assert existence of deps here -- documentsPath etc
+	//
+	Passwords::Controller passwordController_itself{
+		this->documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
+	};
+	this->passwordController = std::make_shared<Passwords::Controller>(passwordController_itself);
 }
 
 

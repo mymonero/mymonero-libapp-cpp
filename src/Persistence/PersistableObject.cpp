@@ -42,7 +42,7 @@ Persistable::Object::~Object()
 // Private - Accessors
 std::string Persistable::Object::new_encrypted_serializedFileRepresentation() const
 {
-	if (this->passwordProvider.getPassword() == none) {
+	if ((*this->passwordProvider.get()).getPassword() == none) {
 		BOOST_THROW_EXCEPTION(logic_error("new_encrypted_serializedFileRepresentation called with nil password"));
 		// nothing more should be executed... is there any need to ensure that?
 	}
@@ -51,7 +51,7 @@ std::string Persistable::Object::new_encrypted_serializedFileRepresentation() co
 	//
 	return Persistable::new_encryptedBase64StringFrom(
 		plaintextString,
-		*(this->passwordProvider.getPassword()) // we assume password exists here
+		*((*this->passwordProvider.get()).getPassword()) // we assume password exists here
 	);
 }
 bool Persistable::Object::_shouldInsertNotUpdate() const
@@ -70,7 +70,7 @@ optional<std::string> Persistable::Object::saveToDisk()
 }
 optional<std::string> Persistable::Object::deleteFromDisk()
 {
-	if (this->passwordProvider.getPassword() == none) {
+	if ((*this->passwordProvider.get()).getPassword() == none) {
 		BOOST_THROW_EXCEPTION(logic_error("deleteFromDisk called without password having been entered"));
 		return none; // Asked to delete when no password exists. Unexpected.
 	}
@@ -115,7 +115,7 @@ optional<std::string> Persistable::Object::_saveToDisk_insert()
 	if (this->_id != none) {
 		BOOST_THROW_EXCEPTION(logic_error("_saveToDisk_insert called with non-nil _id"));
 	}
-	if (this->passwordProvider.getPassword() == none) {
+	if ((*this->passwordProvider.get()).getPassword() == none) {
 		BOOST_THROW_EXCEPTION(logic_error("_saveToDisk_insert called without password"));
 		return none; // Asked to insert new when no password exists. Probably ok if currently tearing down logged-in runtime. Ensure self is not being prevented from being freed.
 	}
@@ -141,7 +141,7 @@ optional<std::string> Persistable::Object::_saveToDisk_update()
 	if (this->_id == none) {
 		BOOST_THROW_EXCEPTION(logic_error("_saveToDisk_update called with nil _id"));
 	}
-	if (this->passwordProvider.getPassword() == none) {
+	if ((*this->passwordProvider.get()).getPassword() == none) {
 		BOOST_THROW_EXCEPTION(logic_error("_saveToDisk_update called without password"));
 		return none; // Asked to update new when no password exists. Probably ok if currently tearing down logged-in runtime. Ensure self is not being prevented from being freed.
 	}

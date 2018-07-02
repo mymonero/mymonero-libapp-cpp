@@ -159,19 +159,19 @@ public:
 	//
 	MockedSavedObject(
 		std::shared_ptr<std::string> documentsPath,
-		const Passwords::PasswordProvider &passwordProvider
+		std::shared_ptr<const Passwords::PasswordProvider> passwordProvider
 	): Persistable::Object(
 		std::move(documentsPath),
-		passwordProvider
+		std::move(passwordProvider)
 	) {
 	}
 	MockedSavedObject(
 		std::shared_ptr<std::string> documentsPath,
-		const Passwords::PasswordProvider &passwordProvider,
+		std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
 		const property_tree::ptree &plaintextData
 	): Persistable::Object(
 		std::move(documentsPath),
-		passwordProvider,
+		std::move(passwordProvider),
 		plaintextData
 	) {
 		BOOST_REQUIRE(this->_id != boost::none);
@@ -206,11 +206,12 @@ BOOST_AUTO_TEST_CASE(persistableObject_decryptBase64)
 //
 BOOST_AUTO_TEST_CASE(mockedSavedObjects_insertNew)
 {
-	const MockedPasswordProvider passwordProvider;
-	MockedSavedObject obj(
+	MockedPasswordProvider passwordProvider_itself;
+	auto passwordProvider = std::make_shared<MockedPasswordProvider>(passwordProvider_itself);
+	MockedSavedObject obj{
 		new_documentsPath(),
 		passwordProvider
-	);
+	};
 	obj.addtlVal = mockedSavedObjects__addtlVal_;
 	//
 	boost::optional<std::string> err_str = obj.saveToDisk();
@@ -242,11 +243,12 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting)
 	}
 	BOOST_REQUIRE(load__result.strings != none);
 	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
-	MockedPasswordProvider passwordProvider;
+	MockedPasswordProvider passwordProvider_itself;
+	auto passwordProvider = std::make_shared<MockedPasswordProvider>(passwordProvider_itself);
 	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
 		string plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 			*it,
-			*(passwordProvider.getPassword())
+			*(passwordProvider_itself.getPassword())
 		);
 		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
 			plaintext_documentContentString
@@ -278,11 +280,12 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_deleteExisting)
 	BOOST_REQUIRE(load__result.err_str == none);
 	BOOST_REQUIRE(load__result.strings != none);
 	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
-	MockedPasswordProvider passwordProvider;
+	MockedPasswordProvider passwordProvider_itself;
+	auto passwordProvider = std::make_shared<MockedPasswordProvider>(passwordProvider_itself);
 	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
 		string plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 			*it,
-			*(passwordProvider.getPassword())
+			*(passwordProvider_itself.getPassword())
 		);
 		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
 			plaintext_documentContentString

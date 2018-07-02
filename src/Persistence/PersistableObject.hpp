@@ -73,16 +73,16 @@ namespace Persistable
 			// Lifecycle - Init
 			explicit Object(
 				std::shared_ptr<const string> documentsPath,
-				const Passwords::PasswordProvider &passwordProvider
+				std::shared_ptr<const Passwords::PasswordProvider> passwordProvider
 			): documentsPath(std::move(documentsPath)),
-				passwordProvider(passwordProvider)
+				passwordProvider(std::move(passwordProvider))
 			{}
 			explicit Object(
 				std::shared_ptr<const string> documentsPath,
-				const Passwords::PasswordProvider &passwordProvider,
+				std::shared_ptr<const Passwords::PasswordProvider> passwordProvider,
 				const property_tree::ptree &plaintextData
 			): documentsPath(std::move(documentsPath)),
-				passwordProvider(passwordProvider)
+				passwordProvider(std::move(passwordProvider))
 			{
 				this->_id = plaintextData.get<DocumentId>("_id");
 				boost::optional<std::string> insertedAt_sSinceEpoch_string = plaintextData.get_optional<std::string>("insertedAt_sSinceEpoch");
@@ -102,7 +102,7 @@ namespace Persistable
 			//
 			// Properties - Dependencies
 			std::shared_ptr<const string> documentsPath;
-			const Passwords::PasswordProvider &passwordProvider;
+			std::shared_ptr<const Passwords::PasswordProvider> passwordProvider;
 			//
 			// Properties - State
 			boost::optional<std::string> _id;
