@@ -7,10 +7,7 @@ project(TEST)
 enable_testing()
 
 #Find openSSL
-find_package(OpenSSL COMPONENTS
-	crypto REQUIRED
-	ssl REQUIRED
-)
+find_package(OpenSSL REQUIRED)
 
 #Prep ourselves for compiling boost
 find_package(Boost COMPONENTS 
