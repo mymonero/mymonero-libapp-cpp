@@ -124,7 +124,7 @@ namespace SendFunds
 		//
 		bool hasPickedAContact;
 		optional<string> contact_payment_id;
-		optional<bool> contact_hasOpenAliasAddress;
+		bool contact_hasOpenAliasAddress;
 		optional<string> cached_OAResolved_address; // this may be an XMR address or a BTC address or … etc
 		optional<string> contact_address; // instead of the OAResolved_address
 		//
