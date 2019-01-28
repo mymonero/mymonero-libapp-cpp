@@ -353,12 +353,10 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID)
 		boost::none,
 		false,
 		//
-		[] ( // preSuccess_nonTerminal_validationMessageUpdate_fn
-			SendFunds::ProcessStep step
-		) -> void {
+		[] (SendFunds::ProcessStep step) -> void { // preSuccess_nonTerminal_validationMessageUpdate_fn
 			cout << "Send funds process step: " << step << endl;
 		},
-		[] ( // preSuccess_terminal_validationMessage_fn
+		[] ( // failure_fn
 			SendFunds::PreSuccessTerminalCode code,
 			optional<string> msg,
 			optional<CreateTransactionErrorCode> createTx_errCode,
@@ -367,15 +365,14 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID)
 		) -> void {
 			cout << "PreSuccessTerminalCode: " << code << " ... msg? " << msg << "createTx_errCode: " << createTx_errCode << " spendable_balance: " << spendable_balance << " required_balance: " << required_balance << endl;
 		},
-		[] () -> void { // authenticate_fn
-			
+		[] () -> void { // preSuccess_passedValidation_willBeginSending
+			cout << "Will begin sending" << endl;
 		},
 		//
 		[] () -> void { // canceled_fn
 			BOOST_REQUIRE(false);
 		},
-		[] (SendFunds::Success_RetVals retVals) -> void // success_fn
-		{
+		[] (SendFunds::Success_RetVals retVals) -> void { // success_fn
 			BOOST_REQUIRE(retVals.target_address == string("4L6Gcy9TAHqPVPMnqa5cPtJK25tr7maE7LrJe67vzumiCtWwjDBvYnHZr18wFexJpih71Mxsjv8b7EpQftpB9NjPaRYYBm62jmF59EWcj6"));
 		}
 	};
