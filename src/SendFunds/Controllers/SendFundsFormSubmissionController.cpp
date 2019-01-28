@@ -57,6 +57,10 @@ void FormSubmissionController::set__submit_raw_tx_fn(std::function<void(Lightwal
 {
 	this->submit_raw_tx = fn;
 }
+void FormSubmissionController::set__authenticate_fn(std::function<void(void)> fn)
+{
+	this->authenticate_fn = fn;
+}
 //
 // Imperatives - Controller
 void FormSubmissionController::handle()
@@ -122,7 +126,8 @@ void FormSubmissionController::handle()
 		if (this->parameters.contact_payment_id != boost::none) {
 			paymentID_toUseOrToNilIfIntegrated = this->parameters.contact_payment_id.get();
 		}
-		if (this->parameters.contact_hasOpenAliasAddress) {
+		THROW_WALLET_EXCEPTION_IF(this->parameters.contact_hasOpenAliasAddress == boost::none, error::wallet_internal_error, "Expected non-none parameters.contact_hasOpenAliasAddress");
+		if (*(this->parameters.contact_hasOpenAliasAddress) == true) {
 			if (this->parameters.cached_OAResolved_address == boost::none || this->parameters.cached_OAResolved_address->empty()) { // ensure address indeed was able to be resolved - but UI should preclude it not having been by here
 				cerr << "Code fault? Unable to find a recipient address for this transfer." << endl;
 				this->parameters.failure_fn(codeFault_unableToFindResolvedAddrOnOAContact, boost::none, boost::none, boost::none, boost::none);
@@ -175,12 +180,11 @@ void FormSubmissionController::handle()
 		return;
 	}
 	if (decode_retVals.paymentID_string != boost::none) { // is integrated address!
-		this->_proceedTo_generateSendTransaction(
-			*xmrAddress_toDecode, // for integrated addrs, we don't want to extract the payment id and then use the integrated addr as well (TODO: unless we use fluffy's patch?)
-			boost::none,
-			true,
-			*decode_retVals.paymentID_string
-		);
+		this->to_address_string = *xmrAddress_toDecode; // for integrated addrs, we don't want to extract the payment id and then use the integrated addr as well (TODO: unless we use fluffy's patch?)
+		this->payment_id_string = boost::none;
+		this->isXMRAddressIntegrated = true;
+		this->integratedAddressPIDForDisplay = *decode_retVals.paymentID_string;
+		this->_proceedTo_authOrSendTransaction();
 		return;
 	}
 	// since we may have a payment ID here (which may also have been entered manually), validate
@@ -201,33 +205,33 @@ void FormSubmissionController::handle()
 					this->parameters.failure_fn(couldntConstructIntAddrWithShortPid, boost::none, boost::none, boost::none, boost::none);
 					return;
 				}
-				this->_proceedTo_generateSendTransaction(
-					*fabricated_integratedAddress_orNone,
-					boost::none, // must now zero this or Send will throw a "pid must be blank with integrated addr"
-					true,
-					*paymentID_toUseOrToNilIfIntegrated // a short pid
-				);
+				this->to_address_string = *fabricated_integratedAddress_orNone;
+				this->payment_id_string = boost::none; // must now zero this or Send will throw a "pid must be blank with integrated addr"
+				this->isXMRAddressIntegrated = true;
+				this->integratedAddressPIDForDisplay = *paymentID_toUseOrToNilIfIntegrated; // a short pid
+				this->_proceedTo_authOrSendTransaction();
 				return; // return early to prevent fall-through to non-short or zero pid case
 			}
 		}
 	}
-	this->_proceedTo_generateSendTransaction(
-		*xmrAddress_toDecode, // therefore, non-integrated normal XMR address
-		paymentID_toUseOrToNilIfIntegrated, // may still be nil
-		false,
-		boost::none
-	);
+	this->to_address_string = *xmrAddress_toDecode; // therefore, non-integrated normal XMR address
+	this->payment_id_string = paymentID_toUseOrToNilIfIntegrated; // may still be nil
+	this->isXMRAddressIntegrated = false;
+	this->integratedAddressPIDForDisplay = boost::none;
+	this->_proceedTo_authOrSendTransaction();
 }
-void FormSubmissionController::_proceedTo_generateSendTransaction(
-	const string &to_address_string,
-	const optional<string> &payment_id,
-	bool isXMRAddressIntegrated,
-	const optional<string> &integratedAddressPIDForDisplay_orNone
-) {
-	this->to_address_string = to_address_string;
-	this->payment_id_string = payment_id;
-	this->isXMRAddressIntegrated = isXMRAddressIntegrated;
-	this->integratedAddressPIDForDisplay = integratedAddressPIDForDisplay_orNone;
+void FormSubmissionController::_proceedTo_authOrSendTransaction()
+{
+	if (this->parameters.requireAuthentication) {
+		this->authenticate_fn(); // this will wait for authentication
+	} else {
+		this->_proceedTo_generateSendTransaction();
+	}
+}
+void FormSubmissionController::_proceedTo_generateSendTransaction()
+{
+	// verify we were left with a good state
+	THROW_WALLET_EXCEPTION_IF(this->to_address_string.size() == 0, error::wallet_internal_error, "Expected non-zero this->to_address_string");
 	//
 	this->parameters.preSuccess_passedValidation_willBeginSending();
 	this->parameters.preSuccess_nonTerminal_validationMessageUpdate_fn(initiatingSend); // start with just prefix
@@ -238,6 +242,14 @@ void FormSubmissionController::_proceedTo_generateSendTransaction(
 		this->parameters.sec_viewKey_string
 	);
 	this->get_unspent_outs(req_params); // wait for cb I
+}
+void FormSubmissionController::cb__authentication(bool did_pass)
+{
+	if (did_pass == false) {
+		this->parameters.canceled_fn();
+		return;
+	}
+	this->_proceedTo_generateSendTransaction();
 }
 void FormSubmissionController::cb_I__got_unspent_outs(optional<string> err_msg, const optional<property_tree::ptree> &res)
 {

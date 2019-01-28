@@ -118,13 +118,15 @@ namespace SendFunds
 		bool fromWallet_didFailToBoot;
 		bool fromWallet_needsImport;
 		//
+		bool requireAuthentication;
+		//
 		optional<string> send_amount_double_string; // this can be "none", "0", "" if is_sweeping
 		bool is_sweeping;
 		uint32_t priority;
 		//
 		bool hasPickedAContact;
 		optional<string> contact_payment_id;
-		bool contact_hasOpenAliasAddress;
+		optional<bool> contact_hasOpenAliasAddress;
 		optional<string> cached_OAResolved_address; // this may be an XMR address or a BTC address or … etc
 		optional<string> contact_address; // instead of the OAResolved_address
 		//
@@ -179,14 +181,17 @@ namespace SendFunds
 		std::function<void(LightwalletAPI_Req_GetUnspentOuts req_params)> get_unspent_outs;
 		std::function<void(LightwalletAPI_Req_GetRandomOuts req_params)> get_random_outs;
 		std::function<void(LightwalletAPI_Req_SubmitRawTx req_params)> submit_raw_tx;
+		std::function<void(void)> authenticate_fn;
 		//
 		// Imperatives - Initialization
 		void set__get_unspent_outs_fn(std::function<void(LightwalletAPI_Req_GetUnspentOuts req_params)> fn);
 		void set__get_random_outs_fn(std::function<void(LightwalletAPI_Req_GetRandomOuts req_params)> fn);
 		void set__submit_raw_tx_fn(std::function<void(LightwalletAPI_Req_SubmitRawTx req_params)> fn);
+		void set__authenticate_fn(std::function<void(void)> fn);
 		//
 		// Imperatives - Runtime
 		void handle();
+		void cb__authentication(bool did_pass/*false means canceled*/);
 		void cb_I__got_unspent_outs(optional<string> err_msg, const optional<property_tree::ptree> &res);
 		void cb_II__got_random_outs(optional<string> err_msg, const optional<property_tree::ptree> &res);
 		void cb_III__submitted_tx(optional<string> err_msg);
@@ -221,12 +226,8 @@ namespace SendFunds
 		optional<string> step2_retVals__tx_pub_key_string;
 		//
 		// Imperatives
-		void _proceedTo_generateSendTransaction(
-			const string &to_address_string,
-			const optional<string> &payment_id,
-			bool isXMRAddressIntegrated,
-			const optional<string> &integratedAddressPIDForDisplay_orNone
-		);
+		void _proceedTo_authOrSendTransaction();
+		void _proceedTo_generateSendTransaction();
 		void _reenterable_construct_and_send_tx();
 	};
 }

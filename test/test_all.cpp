@@ -324,6 +324,8 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID)
 		false,
 		false,
 		//
+		true, // requireAuthentication
+		//
 		string("0"),
 		true,
 		1,
@@ -365,7 +367,7 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID)
 		) -> void {
 			cout << "PreSuccessTerminalCode: " << code << " ... msg? " << msg << "createTx_errCode: " << createTx_errCode << " spendable_balance: " << spendable_balance << " required_balance: " << required_balance << endl;
 		},
-		[] () -> void { // preSuccess_passedValidation_willBeginSending
+		[] () -> void { // authenticate_fn
 			
 		},
 		//
@@ -381,6 +383,14 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID)
 		parameters
 	};
 	FormSubmissionController *controller_ptr = &controller;
+	controller.set__authenticate_fn(
+		[controller_ptr] () -> void
+		{ // authenticate_fn
+			cout << "Proceeding, having authenticated" << endl;
+			// proceed, having authenticated
+			(*controller_ptr).cb__authentication(true);
+		}
+	);
 	controller.set__get_unspent_outs_fn(
 		[controller_ptr] (LightwalletAPI_Req_GetUnspentOuts req_params) -> void
 		{ // get_unspent_outs
