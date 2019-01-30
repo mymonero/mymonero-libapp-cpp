@@ -463,20 +463,3 @@ void FormSubmissionController::cb_III__submitted_tx(optional<string> err_msg)
 	//
 	this->parameters.success_fn(success_retVals);
 }
-
-// TODO: add another callback for this: there should be a way to cancel authorization as well from JS -> C++ ... that shoul cause the form submission controller mgr to release the form submission ctrlr
-//
-//	if SettingsController.shared.authentication__requireWhenSending == false {
-//		__really_proceed()
-//	} else {
-//		PasswordController.shared.initiate_verifyUserAuthenticationForAction(
-//																			 customNavigationBarTitle: NSLocalizedString("Authenticate", comment: ""),
-//																			 canceled_fn: {
-//																				 canceled_fn()
-//																			 },
-//																			 // all failures show in entry UI
-//																			 entryAttempt_succeeded_fn: {
-//																				 __really_proceed()
-//																			 }
-//																			 )
-//	}
