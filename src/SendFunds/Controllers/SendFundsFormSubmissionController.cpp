@@ -254,7 +254,7 @@ void FormSubmissionController::cb__authentication(bool did_pass)
 void FormSubmissionController::cb_I__got_unspent_outs(optional<string> err_msg, const optional<property_tree::ptree> &res)
 {
 	if (err_msg != boost::none && err_msg->empty() == false) {
-		this->parameters.failure_fn(errGettingUnspentOuts_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
+		this->parameters.failure_fn(errInServerResponse_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
 		return;
 	}
 	crypto::secret_key sec_viewKey{};
@@ -344,7 +344,7 @@ void FormSubmissionController::cb_II__got_random_outs(
 	const optional<property_tree::ptree> &res
 ) {
 	if (err_msg != boost::none && err_msg->empty() == false) {
-		this->parameters.failure_fn(errGettingUnspentOuts_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
+		this->parameters.failure_fn(errInServerResponse_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
 		return;
 	}
 	auto parsed_res = new__parsed_res__get_random_outs(res.get());
@@ -428,7 +428,7 @@ void FormSubmissionController::cb_II__got_random_outs(
 void FormSubmissionController::cb_III__submitted_tx(optional<string> err_msg)
 {
 	if (err_msg != boost::none && err_msg->empty() == false) {
-		this->parameters.failure_fn(errGettingUnspentOuts_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
+		this->parameters.failure_fn(errInServerResponse_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
 		return;
 	}
 	THROW_WALLET_EXCEPTION_IF(this->valsState != WAIT_FOR_FINISH, error::wallet_internal_error, "Expected valsState of WAIT_FOR_FINISH"); // just for addtl safety

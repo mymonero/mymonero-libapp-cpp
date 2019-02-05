@@ -42,6 +42,7 @@
 #include "cryptonote_config.h"
 #include "monero_send_routine.hpp"
 
+
 namespace SendFunds
 {
 	using namespace std;
@@ -75,7 +76,7 @@ namespace SendFunds
 		couldntConstructIntAddrWithShortPid = 8,
 		amountTooLow = 9,
 		cannotParseAmount = 10,
-		errGettingUnspentOuts_withMsg = 11,
+		errInServerResponse_withMsg = 11,
 		createTransactionCode_balancesProvided = 12,
 		createTranasctionCode_noBalances = 13,
 		exceededConstructionAttempts = 14, // unable to construct for unknown reason
