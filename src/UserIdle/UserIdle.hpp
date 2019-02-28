@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  UserIdle.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -31,28 +31,20 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-#ifndef AppServiceLocator_hpp
-#define AppServiceLocator_hpp
 
-#include "AppServiceLocator.hpp"
+#ifndef UserIdle_hpp
+#define UserIdle_hpp
 
-using namespace App;
+#include <iostream>
 
-ServiceLocator &ServiceLocator::build(
-	const string &documentsPath
-) {
-	_documentsPath = documentsPath;
+namespace UserIdle
+{
+	using namespace std;
 	//
-	// TODO: assert existence of deps here -- documentsPath etc
-	//
-	passwordController = std::make_shared<Passwords::Controller>(Passwords::Controller{
-		documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
-	});
-	//
-	built = true;
-	//
-	return *this;
+	namespace NotificationName
+	{
+		static string userDidBecomeIdle = "UserIdle_NotificationName_userDidBecomeIdle";
+	}
 }
 
-
-#endif /* AppServiceLocator_hpp */
+#endif /* UserIdle_hpp */

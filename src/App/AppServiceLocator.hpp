@@ -41,37 +41,36 @@
 //
 namespace App
 {
-   class ServiceLocator
-   {
-       private:
-           ServiceLocator()
-           {
-               // initialize
-               num = -1;
-           }
-           static ServiceLocator* pInstance;
-       //
-       public:
-           static ServiceLocator& instance()
-           {
-               if (pInstance == nullptr) {
-                   pInstance = new ServiceLocator();
-               }
-               return *pInstance;
-           }
-       public:
-           //
-           // Properties - Initial: Required for build()
-           std::string documentsPath;
-           int num; // TODO: properties
-           //
-           // Lifecycle - Init
-           void build();
-           //
-           // Properties - Services: Built and retained dependencies
-		   std::shared_ptr<const Passwords::Controller> passwordController;
+	using namespace std;
+	//
+	class ServiceLocator
+	{
+		private:
+			ServiceLocator() {}
+			ServiceLocator(const ServiceLocator&) = delete;
+			ServiceLocator& operator=(const ServiceLocator&) = delete;
+		public:
+			static ServiceLocator& instance()
+			{
+				static ServiceLocator pInstance;
+				return pInstance;
+			}
+		public:
+			bool uniqueFlag = false;
+			//
+			// Properties - Initial: Status
+			bool built = false;
+			// Properties - Initial: Required for build()
+			string _documentsPath;
+			//
+			// Lifecycle - Init
+			ServiceLocator &build(
+				const string &documentsPath
+			); // simply returns the singleton for convenience
+			//
+			// Properties - Services: Built and retained dependencies
+			std::shared_ptr<Passwords::Controller> passwordController;
    };
 }
-App::ServiceLocator* App::ServiceLocator::pInstance = nullptr;
 
 #endif /* AppServiceLocator_HPP_ */

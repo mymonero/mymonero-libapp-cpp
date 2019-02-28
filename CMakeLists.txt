@@ -72,6 +72,8 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 set(
     SRC_FILES
     #
+	src/UserIdle/UserIdle.hpp
+	src/UserIdle/UserIdle.cpp
     src/Passwords/PasswordController.hpp
     src/Passwords/PasswordController.cpp
     src/Persistence/document_persister.hpp

@@ -158,7 +158,7 @@ namespace Persistable
 		return ss.str();
 	}
 	//
-	static inline string new_plaintextStringFrom(
+	static inline optional<string> new_plaintextStringFrom(
 		const string &encryptedBase64String,
 		const Passwords::Password &password
 	) {
@@ -168,7 +168,6 @@ namespace Persistable
 		memset(errbuf, 0, sizeof(errbuf));
 		//
 //		rncryptorc_set_debug(1);
-		//
 		unsigned char *plaintextBytes = rncryptorc_decrypt_data_with_password(
 			(unsigned char *)encryptedString.c_str(), // TODO: can this merely be cast?
 			encryptedString.size(),
@@ -179,12 +178,13 @@ namespace Persistable
 			errbuf,
 			sizeof(errbuf)-1
 		);
-		std::string plaintextString(
+		if (plaintextBytes == NULL) {
+			return boost::none;
+		}
+		return std::string(
 			reinterpret_cast<const char *>(plaintextBytes), // unsigned char -> char
 			plaintextBytes_len
 		);
-		//
-		return plaintextString;
 	}
 	static inline string new_encryptedBase64StringFrom(
 		const string &plaintextString,
