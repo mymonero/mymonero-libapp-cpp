@@ -72,6 +72,10 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 set(
     SRC_FILES
     #
+	src/Dispatch/Dispatch_Interface.hpp
+	src/Dispatch/Dispatch_Interface.cpp
+	src/Dispatch/Dispatch.asio.hpp
+	src/Dispatch/Dispatch.asio.cpp
 	src/UserIdle/UserIdle.hpp
 	src/UserIdle/UserIdle.cpp
     src/Passwords/PasswordController.hpp
