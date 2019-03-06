@@ -95,6 +95,7 @@ void FormSubmissionController::handle()
 		bool ok = cryptonote::parse_amount(this->sending_amount, this->parameters.send_amount_double_string.get());
 		if (!ok) {
 			this->parameters.failure_fn(cannotParseAmount, boost::none, boost::none, boost::none, boost::none);
+			return;
 		}
 		if (this->sending_amount <= 0) {
 			this->parameters.failure_fn(amountTooLow, boost::none, boost::none, boost::none, boost::none);
