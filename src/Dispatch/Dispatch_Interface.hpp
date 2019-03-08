@@ -37,12 +37,11 @@
 
 namespace Dispatch
 {
-	class Timers
+	struct Timers
 	{
-	public:
 		virtual ~Timers() {}
 		//
-		virtual void after(uint32_t ms, std::function<void()> fn) = 0;
+		virtual void after(uint32_t ms, std::function<void()> &&fn) = 0;
 	};
 }
 

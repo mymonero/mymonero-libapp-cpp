@@ -39,32 +39,43 @@
 namespace Dispatch
 {
 	using namespace std;
+	using namespace boost::asio;
 	//
-	class Timers_asio: public Timers
+	struct Timers_asio: public Timers
 	{
-		
-	public:
-		void after(uint32_t ms, std::function<void()> fn)
+		Timers_asio(io_context& ctx):
+			_ctx(ctx)
 		{
-			// TODO: store fn the unordered_map (move?)
-			boost::asio::steady_timer t(io, boost::asio::chrono::milliseconds(ms));
-			t.async_wait([&fn](const boost::system::error_code &)
+		}
+		~Timers_asio() {}
+		void schedule_timer(uint32_t ms, std::function<void()>&& fn)
+		{
+			auto t = new steady_timer(_ctx, boost::asio::chrono::milliseconds(ms));
+			t->async_wait([fn = std::move(fn), t](const boost::system::error_code &)
 			{
 				fn();
+				delete t;
 			});
-			
-			//
-			//
-			// TODO: is this necessary?
-//			io.run();
 		}
 	private:
-		boost::asio::io_context io;
-		boost::asio::executor_work_guard<boost::asio::io_context::executor_type> guard = boost::asio::make_work_guard(io);
-//		std::thread thread([&io](){ io.run(); });
-//		thread.join();
-
-
+		io_context &_ctx;
+		executor_work_guard<io_context::executor_type> _guard = make_work_guard(_ctx);
+	};
+	//
+	struct io_ctx_thread_holder
+	{
+		io_ctx_thread_holder(io_context& ctx):
+			_ctx(ctx),
+			_thread([this]() { _ctx.run(); })
+		{
+		}
+		~io_ctx_thread_holder()
+		{
+			_thread.join();
+		}
+	private:
+		io_context &_ctx;
+		std::thread _thread;
 	};
 }
 

@@ -31,28 +31,28 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-#ifndef AppServiceLocator_hpp
-#define AppServiceLocator_hpp
 
 #include "AppServiceLocator.hpp"
-
 using namespace App;
 
+class App::ServiceLocator_SpecificImpl
+{
+public:
+	ServiceLocator_SpecificImpl() {}
+	~ServiceLocator_SpecificImpl() {}
+};
+//
+ServiceLocator::~ServiceLocator()
+{
+	delete _pImpl; // must free
+}
+//
 ServiceLocator &ServiceLocator::build(
 	const string &documentsPath
 ) {
-	_documentsPath = documentsPath;
+	_pImpl = new ServiceLocator_SpecificImpl();
 	//
-	// TODO: assert existence of deps here -- documentsPath etc
-	//
-	passwordController = std::make_shared<Passwords::Controller>(Passwords::Controller{
-		documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
-	});
-	//
-	built = true;
-	//
-	return *this;
+	return _shared_build(documentsPath);
 }
 
 
-#endif /* AppServiceLocator_hpp */
