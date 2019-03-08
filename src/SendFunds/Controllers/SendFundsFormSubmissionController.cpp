@@ -292,6 +292,7 @@ void FormSubmissionController::cb_I__got_unspent_outs(optional<string> err_msg, 
 	this->unspent_outs = std::move(*(parsed_res.unspent_outs));
 	this->fee_per_b = *(parsed_res.per_byte_fee);
 	this->fee_mask = *(parsed_res.fee_mask);
+	this->use_fork_rules = monero_fork_rules::make_use_fork_rules_fn(parsed_res.fork_version);
 	//
 	this->passedIn_attemptAt_fee = boost::none;
 	this->constructionAttempt = 0;
@@ -310,10 +311,7 @@ void FormSubmissionController::_reenterable_construct_and_send_tx()
 		this->sending_amount,
 		this->parameters.is_sweeping,
 		this->parameters.priority,
-		[] (uint8_t version, int64_t early_blocks) -> bool
-		{
-			return lightwallet_hardcoded__use_fork_rules(version, early_blocks);
-		},
+		this->use_fork_rules,
 		this->unspent_outs,
 		this->fee_per_b,
 		this->fee_mask,
@@ -372,10 +370,7 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->fee_per_b,
 		this->fee_mask,
 		*(parsed_res.mix_outs),
-		[] (uint8_t version, int64_t early_blocks) -> bool
-		{
-		return lightwallet_hardcoded__use_fork_rules(version, early_blocks);
-		},
+		this->use_fork_rules,
 		unlock_time,
 		this->parameters.nettype
 	);
