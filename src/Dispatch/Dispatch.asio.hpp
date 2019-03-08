@@ -1,7 +1,5 @@
 //
-//  AppServiceLocator.cpp
-//  MyMonero
-//
+//  Dispatch.asio.hpp
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -30,29 +28,55 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-//
 
-#include "AppServiceLocator.hpp"
-using namespace App;
+#ifndef Dispatch_asio_hpp
+#define Dispatch_asio_hpp
 
-class App::ServiceLocator_SpecificImpl
+#include <string>
+#include "./Dispatch_Interface.hpp"
+#include <boost/asio.hpp>
+
+namespace Dispatch
 {
-public:
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	const string &documentsPath
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
+	using namespace std;
+	using namespace boost::asio;
 	//
-	return _shared_build(documentsPath);
+	struct Timers_asio: public Timers
+	{
+		Timers_asio(io_context& ctx):
+			_ctx(ctx)
+		{
+		}
+		~Timers_asio() {}
+		void schedule_timer(uint32_t ms, std::function<void()>&& fn)
+		{
+			auto t = new steady_timer(_ctx, boost::asio::chrono::milliseconds(ms));
+			t->async_wait([fn = std::move(fn), t](const boost::system::error_code &)
+			{
+				fn();
+				delete t;
+			});
+		}
+	private:
+		io_context &_ctx;
+		executor_work_guard<io_context::executor_type> _guard = make_work_guard(_ctx);
+	};
+	//
+	struct io_ctx_thread_holder
+	{
+		io_ctx_thread_holder(io_context& ctx):
+			_ctx(ctx),
+			_thread([this]() { _ctx.run(); })
+		{
+		}
+		~io_ctx_thread_holder()
+		{
+			_thread.join();
+		}
+	private:
+		io_context &_ctx;
+		std::thread _thread;
+	};
 }
 
-
+#endif /* Dispatch_asio_hpp */

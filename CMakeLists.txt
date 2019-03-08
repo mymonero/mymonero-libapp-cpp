@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.4.1)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
 project(TEST)
@@ -72,6 +72,10 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 set(
     SRC_FILES
     #
+	src/Dispatch/Dispatch_Interface.hpp
+	src/Dispatch/Dispatch_Interface.cpp
+	src/Dispatch/Dispatch.asio.hpp
+	src/Dispatch/Dispatch.asio.cpp
 	src/UserIdle/UserIdle.hpp
 	src/UserIdle/UserIdle.cpp
     src/Passwords/PasswordController.hpp

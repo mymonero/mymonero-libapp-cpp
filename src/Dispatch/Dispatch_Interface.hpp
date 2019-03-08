@@ -1,7 +1,5 @@
 //
-//  AppServiceLocator.cpp
-//  MyMonero
-//
+//  Dispatch_Interface.hpp
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -30,29 +28,21 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-//
 
-#include "AppServiceLocator.hpp"
-using namespace App;
+#ifndef Dispatch_Interface_hpp
+#define Dispatch_Interface_hpp
 
-class App::ServiceLocator_SpecificImpl
+#include <string>
+#include <functional>
+
+namespace Dispatch
 {
-public:
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	const string &documentsPath
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	//
-	return _shared_build(documentsPath);
+	struct Timers
+	{
+		virtual ~Timers() {}
+		//
+		virtual void after(uint32_t ms, std::function<void()> &&fn) = 0;
+	};
 }
 
-
+#endif /* Dispatch_Interface_hpp */

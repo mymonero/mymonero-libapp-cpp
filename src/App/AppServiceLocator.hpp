@@ -43,33 +43,53 @@ namespace App
 {
 	using namespace std;
 	//
+	class ServiceLocator_SpecificImpl;
+	//
 	class ServiceLocator
 	{
 		private:
 			ServiceLocator() {}
 			ServiceLocator(const ServiceLocator&) = delete;
 			ServiceLocator& operator=(const ServiceLocator&) = delete;
+			//
+			ServiceLocator_SpecificImpl *_pImpl;
+			//
+			ServiceLocator &_shared_build( // use this for platform-specific implementations of ServiceLocator::build
+				const string &documentsPath
+			) {
+				_documentsPath = documentsPath;
+				// TODO: assert existence of deps here? -- documentsPath etc
+				//
+				passwordController = std::make_shared<Passwords::Controller>(Passwords::Controller{
+					documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
+				});
+				//
+				built = true;
+				//
+				return *this;
+			}
+		//
 		public:
+			~ServiceLocator();
+			//
 			static ServiceLocator& instance()
 			{
 				static ServiceLocator pInstance;
 				return pInstance;
 			}
-		public:
 			bool uniqueFlag = false;
 			//
 			// Properties - Initial: Status
 			bool built = false;
 			// Properties - Initial: Required for build()
 			string _documentsPath;
+			// Properties - Services: Built and retained dependencies
+			std::shared_ptr<Passwords::Controller> passwordController;
 			//
 			// Lifecycle - Init
 			ServiceLocator &build(
 				const string &documentsPath
 			); // simply returns the singleton for convenience
-			//
-			// Properties - Services: Built and retained dependencies
-			std::shared_ptr<Passwords::Controller> passwordController;
    };
 }
 
