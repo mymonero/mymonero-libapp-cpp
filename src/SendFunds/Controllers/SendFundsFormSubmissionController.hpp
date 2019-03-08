@@ -41,7 +41,7 @@
 #include <boost/locale.hpp>
 #include "cryptonote_config.h"
 #include "monero_send_routine.hpp"
-
+#include "monero_fork_rules.hpp"
 
 namespace SendFunds
 {
@@ -210,6 +210,7 @@ namespace SendFunds
 		vector<SpendableOutput> unspent_outs;
 		uint64_t fee_per_b;
 		uint64_t fee_mask;
+		monero_fork_rules::use_fork_rules_fn_type use_fork_rules;
 		// - re-entry params
 		optional<uint64_t> passedIn_attemptAt_fee;
 		size_t constructionAttempt;
