@@ -85,7 +85,7 @@ set(
     src/Persistence/PersistableObject.hpp
     src/Persistence/PersistableObject.cpp
     src/App/AppServiceLocator.hpp
-    src/App/AppServiceLocator.cpp
+    src/App/AppServiceLocator.asio.cpp
     src/SendFunds/Controllers/SendFundsFormSubmissionController.hpp
     src/SendFunds/Controllers/SendFundsFormSubmissionController.cpp
 	src/OpenAlias/OpenAlias.hpp

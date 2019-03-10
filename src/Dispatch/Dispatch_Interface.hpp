@@ -37,9 +37,9 @@
 
 namespace Dispatch
 {
-	struct Timers
+	struct Dispatch
 	{
-		virtual ~Timers() {}
+		virtual ~Dispatch() {}
 		//
 		virtual void after(uint32_t ms, std::function<void()> &&fn) = 0;
 	};

@@ -41,14 +41,14 @@ namespace Dispatch
 	using namespace std;
 	using namespace boost::asio;
 	//
-	struct Timers_asio: public Timers
+	struct Dispatch_asio: public Dispatch
 	{
-		Timers_asio(io_context& ctx):
+		Dispatch_asio(io_context& ctx):
 			_ctx(ctx)
 		{
 		}
-		~Timers_asio() {}
-		void schedule_timer(uint32_t ms, std::function<void()>&& fn)
+		~Dispatch_asio() {}
+		void after(uint32_t ms, std::function<void()>&& fn)
 		{
 			auto t = new steady_timer(_ctx, boost::asio::chrono::milliseconds(ms));
 			t->async_wait([fn = std::move(fn), t](const boost::system::error_code &)

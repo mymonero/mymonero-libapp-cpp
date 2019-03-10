@@ -41,6 +41,7 @@
 #include <boost/signals2.hpp>
 #include <memory>
 #include "../Persistence/document_persister.hpp"
+#include "../Dispatch/Dispatch_Interface.hpp"
 
 namespace Passwords
 {
@@ -185,15 +186,19 @@ namespace Passwords
 	public:
 		//
 		// Lifecycle - Init
-		Controller(string documentsPath)
-		{
+		Controller(
+			string documentsPath,
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+		) {
 			this->documentsPath = documentsPath;
+			this->dispatch_ptr = dispatch_ptr;
 			//
 			this->setup();
 		}
 		//
 		// Constructor args
 		string documentsPath;
+		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 		//
 		// Signals
 		boost::signals2::signal<void()> obtainedNewPassword_signal;

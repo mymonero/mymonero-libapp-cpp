@@ -38,6 +38,7 @@
 #include <iostream> // TODO: this is to obtain stdlib.. what should be imported instead of this?
 
 #include "../Passwords/PasswordController.hpp"
+#include "../Dispatch/Dispatch_Interface.hpp"
 //
 namespace App
 {
@@ -55,13 +56,16 @@ namespace App
 			ServiceLocator_SpecificImpl *_pImpl;
 			//
 			ServiceLocator &_shared_build( // use this for platform-specific implementations of ServiceLocator::build
-				const string &documentsPath
+				const string &documentsPath,
+				std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
 			) {
 				_documentsPath = documentsPath;
 				// TODO: assert existence of deps here? -- documentsPath etc
 				//
+				dispatch_ptr = dispatch_ptr; // store - it got std::moved
 				passwordController = std::make_shared<Passwords::Controller>(Passwords::Controller{
-					documentsPath // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
+					documentsPath, // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
+					dispatch_ptr
 				});
 				//
 				built = true;
@@ -85,6 +89,7 @@ namespace App
 			string _documentsPath;
 			// Properties - Services: Built and retained dependencies
 			std::shared_ptr<Passwords::Controller> passwordController;
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 			//
 			// Lifecycle - Init
 			ServiceLocator &build(

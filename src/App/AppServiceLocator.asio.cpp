@@ -34,10 +34,17 @@
 
 #include "AppServiceLocator.hpp"
 using namespace App;
+#include <boost/asio.hpp>
+using namespace boost::asio;
+#include "../Dispatch/Dispatch.asio.hpp"
+using namespace Dispatch;
 
 class App::ServiceLocator_SpecificImpl
 {
 public:
+	io_context io_ctx;
+	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	//
 	ServiceLocator_SpecificImpl() {}
 	~ServiceLocator_SpecificImpl() {}
 };
@@ -51,8 +58,9 @@ ServiceLocator &ServiceLocator::build(
 	const string &documentsPath
 ) {
 	_pImpl = new ServiceLocator_SpecificImpl();
+	auto dispatch_ptr = std::make_shared<Dispatch_asio>(Dispatch_asio{_pImpl->io_ctx});
 	//
-	return _shared_build(documentsPath);
+	return _shared_build(documentsPath, std::move(dispatch_ptr));
 }
 
 
