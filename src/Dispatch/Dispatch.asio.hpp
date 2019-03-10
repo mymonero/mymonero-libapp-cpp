@@ -51,9 +51,11 @@ namespace Dispatch
 		void after(uint32_t ms, std::function<void()>&& fn)
 		{
 			auto t = new steady_timer(_ctx, boost::asio::chrono::milliseconds(ms));
-			t->async_wait([fn = std::move(fn), t](const boost::system::error_code &)
+			t->async_wait([fn = std::move(fn), t](const boost::system::error_code &e)
 			{
-				fn();
+				if (e != boost::asio::error::operation_aborted) { // timer not canceled
+					fn();
+				}
 				delete t;
 			});
 		}
