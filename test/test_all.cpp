@@ -444,6 +444,7 @@ BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submissio
 	builtSingleton();
 	
 	BOOST_REQUIRE(ServiceLocator::instance().built == true);
+	BOOST_REQUIRE(App::ServiceLocator::instance().dispatch_ptr != nullptr);
 	ServiceLocator::instance().uniqueFlag = true;
 	BOOST_REQUIRE(ServiceLocator::instance().uniqueFlag == true);
 }
@@ -887,108 +888,120 @@ BOOST_AUTO_TEST_CASE(passwords_controller_biometric_authentication, *utf::depend
 }
 //
 //
-//
-// TODO: uncomment the 'utf::depends_on' line for the subsequent test
-//
-//uint32_t spamTryInterval_ms = 1000;
-//boost::asio::io_context spamming__io;
-//boost::asio::steady_timer spamming__t(
-//	spamming__io,
-//	boost::asio::chrono::milliseconds(spamTryInterval_ms)
-//);
-//class Mocked_SpammingIncorrect_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
-//{
-//public:
-//	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
-//	//
-//	std::string identifier() const
-//	{
-//		return uuid_string;
-//	}
-//	void getUserToEnterExistingPassword(
-//		bool isForChangePassword,
-//		bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
-//		boost::optional<std::string> customNavigationBarTitle
-//	) {
-//		BOOST_REQUIRE(isForChangePassword == false);
-//		BOOST_REQUIRE(isForAuthorizingAppActionOnly == false);
-//		BOOST_REQUIRE(customNavigationBarTitle == none);
-//		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
-//		//
-//		size_t i = 0;
-//		std::function<void(const boost::system::error_code &)> wait_handler;
-//		wait_handler = [&i, &wait_handler] (const boost::system::error_code &)
-//		{
-//			cout << "Test: Doing " << i << "th bad pw entry" << endl;
-//			//
-//			App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, string("an incorrect pw"));
-//			//
-//			i += 1;
-//			if (i == Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 1) {
-//				cout << "Test: Done with timer… waiting for test to finish…" << endl;
-//			} else { // reschedule timer:
-//				cout << "TEST: reschedule timer here..." << endl;
-//				spamming__t.expires_at(
-//					spamming__t.expires_at() + boost::asio::chrono::milliseconds(spamTryInterval_ms)
-//				);
-//				spamming__t.async_wait(wait_handler);
-//			}
-//		};
-//		spamming__t.async_wait(wait_handler);
-//		spamming__io.run();
-//	}
-//	void getUserToEnterNewPasswordAndType(
-//		bool isForChangePassword
-//	) {
-//		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
-//	}
-//};
-//BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_on("passwords_controller_biometric_authentication"))
-//{
-//	cout << "passwords_controller_spammingIncorrectEntry" << endl;
-//	using namespace App;
-//	//
-//	ServiceLocator::instance().passwordController->TEST_resetPasswordControllerInitAndObservers();
-//	//
-//	Mocked_SpammingIncorrect_PasswordEntryDelegate entryDelegate{};
-//	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
-//	//
-//	ServiceLocator::instance().passwordController->erroredWhileSettingNewPassword_signal.connect([](Passwords::EnterPW_Fn_ValidationErr_Code code) {
-//		BOOST_REQUIRE_MESSAGE(false, "Unexpected code " << code);
-//	});
-//	bool didSeeLockOutAfterMaxTries = false;
-//	size_t numTriesFailed = 0;
-//	ServiceLocator::instance().passwordController->erroredWhileGettingExistingPassword_signal.connect(
-//		[&numTriesFailed, &didSeeLockOutAfterMaxTries](Passwords::EnterPW_Fn_ValidationErr_Code code)
-//	{
-//		numTriesFailed += 1;
-//		if (numTriesFailed >= Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 1) {
-//			didSeeLockOutAfterMaxTries = true;
-//			BOOST_REQUIRE_MESSAGE(code == Passwords::EnterPW_Fn_ValidationErr_Code::pleaseWaitBeforeTryingAgain, "Unexpected code " << code);
-//		} else {
-//			BOOST_REQUIRE_MESSAGE(code == Passwords::EnterPW_Fn_ValidationErr_Code::incorrectPassword, "Unexpected code " << code);
-//		}
-//	});
-//	ServiceLocator::instance().passwordController->canceledWhileEnteringNewPassword_signal.connect([]() {
-//		BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
-//	});
-//	ServiceLocator::instance().passwordController->canceledWhileEnteringExistingPassword_signal.connect([]() {
-//		BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
-//	});
-//	//
-//	auto passwordObtained_fn = [](Passwords::Password password, Passwords::Type type)
-//	{
-//		BOOST_REQUIRE(false);
-//	};
-//	std::function<void()> userCanceled_fn = [](void)
-//	{
-//		BOOST_REQUIRE(false);
-//	};
-//	ServiceLocator::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
-//	//
-//	auto sleep_s = (Passwords::maxLegal_numberOfTriesDuringThisTimePeriod+1+2) * spamTryInterval_ms;
-//	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_s));
-//}
+uint32_t spamTryInterval_ms = 1000;
+class Mocked_SpammingIncorrect_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
+{
+private:
+	int _number_of_tries = 0;
+	//
+	void _enter_pw_after_delay()
+	{
+		auto cancelable_timer_handle = App::ServiceLocator::instance().dispatch_ptr->after(spamTryInterval_ms, [this]()
+		{
+			cout << "Test: Doing " << _number_of_tries << "th bad pw entry" << endl;
+			//
+			App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, string("an incorrect pw"));
+			//
+			_number_of_tries += 1;
+			if (_number_of_tries == Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 1) {
+				cout << "Test: Done with entry attempts… waiting for unlock…" << endl;
+			} else if (_number_of_tries >= Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 2) {
+				BOOST_REQUIRE_MESSAGE(false, "Expected _number_of_tries <= Passwords::maxLegal_numberOfTriesDuringThisTimePeriod");
+			} else { // reschedule timer:
+				cout << "TEST: reschedule timer here..." << endl;
+				_enter_pw_after_delay();
+			}
+		});
+	}
+	//
+public:
+	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
+	//
+	std::string identifier() const
+	{
+		return uuid_string;
+	}
+	//
+	void getUserToEnterExistingPassword(
+		bool isForChangePassword,
+		bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
+		boost::optional<std::string> customNavigationBarTitle
+	) {
+		BOOST_REQUIRE(isForChangePassword == false);
+		BOOST_REQUIRE(isForAuthorizingAppActionOnly == false);
+		BOOST_REQUIRE(customNavigationBarTitle == none);
+		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
+		//
+		_enter_pw_after_delay();
+	}
+	void getUserToEnterNewPasswordAndType(
+		bool isForChangePassword
+	) {
+		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
+	}
+};
+BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_on("passwords_controller_biometric_authentication"))
+{
+	cout << "passwords_controller_spammingIncorrectEntry" << endl;
+	using namespace App;
+	using namespace Passwords;
+	//
+	ServiceLocator::instance().passwordController->TEST_resetPasswordControllerInitAndObservers();
+	//
+	Mocked_SpammingIncorrect_PasswordEntryDelegate entryDelegate{};
+	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
+	//
+	ServiceLocator::instance().passwordController->erroredWhileSettingNewPassword_signal.connect(
+		[](EnterPW_Fn_ValidationErr_Code code)
+	{
+		BOOST_REQUIRE_MESSAGE(false, "Unexpected code " << code);
+	});
+	bool didSeeLockOutAfterMaxTries = false;
+	bool didSeeUnlockAfterLockOut = false;
+	size_t numTriesFailed = 0;
+	ServiceLocator::instance().passwordController->erroredWhileGettingExistingPassword_signal.connect(
+		[&numTriesFailed, &didSeeLockOutAfterMaxTries, &didSeeUnlockAfterLockOut]
+		(EnterPW_Fn_ValidationErr_Code code)
+	{
+		numTriesFailed += 1;
+		if (numTriesFailed == Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 1) {
+			didSeeLockOutAfterMaxTries = true;
+			BOOST_REQUIRE_MESSAGE(code == EnterPW_Fn_ValidationErr_Code::pleaseWaitBeforeTryingAgain, "Unexpected pleaseWaitBeforeTryingAgain");
+		} else if (numTriesFailed == Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 2) {
+			didSeeUnlockAfterLockOut = true;
+			cout << "Test: Saw unlock" << endl;
+			BOOST_REQUIRE_MESSAGE(didSeeLockOutAfterMaxTries, "Expected to have true didSeeLockOutAfterMaxTries");
+			BOOST_REQUIRE_MESSAGE(code == EnterPW_Fn_ValidationErr_Code::clearValidationErrorAndAllowRetry, "Expected clearValidationErrorAndAllowRetry");
+		} else {
+			BOOST_REQUIRE_MESSAGE(didSeeUnlockAfterLockOut == false, "Expected didSeeUnlockAfterLockOut=false");
+			BOOST_REQUIRE_MESSAGE(code == EnterPW_Fn_ValidationErr_Code::incorrectPassword, "Unexpected code " << code);
+		}
+	});
+	ServiceLocator::instance().passwordController->canceledWhileEnteringNewPassword_signal.connect([]() {
+		BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
+	});
+	ServiceLocator::instance().passwordController->canceledWhileEnteringExistingPassword_signal.connect([]() {
+		BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
+	});
+	//
+	auto passwordObtained_fn = [](Passwords::Password password, Passwords::Type type)
+	{
+		BOOST_REQUIRE(false);
+	};
+	std::function<void()> userCanceled_fn = [](void)
+	{
+		BOOST_REQUIRE(false);
+	};
+	ServiceLocator::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
+	//
+	auto sleep_ms = (Passwords::maxLegal_numberOfTriesDuringThisTimePeriod+1+2/*enough time to wait*/) * spamTryInterval_ms + pwEntrySpamming_unlockInT_ms/*wait for unlock too */;
+	cout << "Test: Sleeping for " << sleep_ms << "ms" << endl;
+	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
+	//
+	BOOST_REQUIRE_MESSAGE(didSeeLockOutAfterMaxTries, "Expected didSeeLockOutAfterMaxTries after finish");
+	BOOST_REQUIRE_MESSAGE(didSeeUnlockAfterLockOut, "Expected didSeeUnlockAfterLockOut after finish");
+	cout << "Test: Finished sleeping" << endl;
+}
 //
 class Mocked_ChangePassword_Incorrect_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -1019,12 +1032,9 @@ public:
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
 	}
 };
-
-// TODO: uncomment this
-
-//BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_incorrect, *utf::depends_on("passwords_controller_spammingIncorrectEntry"))
-
-BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_incorrect, *utf::depends_on("passwords_controller_biometric_authentication"))
+//
+//
+BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_incorrect, *utf::depends_on("passwords_controller_spammingIncorrectEntry"))
 {
 	cout << "passwords_controller_changePassword_incorrect" << endl;
 	using namespace App;

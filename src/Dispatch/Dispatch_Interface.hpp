@@ -37,11 +37,18 @@
 
 namespace Dispatch
 {
+	struct CancelableTimerHandle
+	{
+		virtual ~CancelableTimerHandle() {}
+		//
+		virtual void cancel() = 0;
+	};
+	//
 	struct Dispatch
 	{
 		virtual ~Dispatch() {}
 		//
-		virtual void after(uint32_t ms, std::function<void()> &&fn) = 0;
+		virtual std::unique_ptr<CancelableTimerHandle> after(uint32_t ms, std::function<void()>&& fn) = 0;
 	};
 }
 

@@ -57,12 +57,12 @@ namespace App
 			//
 			ServiceLocator &_shared_build( // use this for platform-specific implementations of ServiceLocator::build
 				const string &documentsPath,
-				std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+				std::shared_ptr<Dispatch::Dispatch> this_dispatch_ptr
 			) {
 				_documentsPath = documentsPath;
 				// TODO: assert existence of deps here? -- documentsPath etc
 				//
-				dispatch_ptr = dispatch_ptr; // store - it got std::moved
+				dispatch_ptr = this_dispatch_ptr; // store - it got std::moved
 				passwordController = std::make_shared<Passwords::Controller>(Passwords::Controller{
 					documentsPath, // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
 					dispatch_ptr

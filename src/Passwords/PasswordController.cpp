@@ -137,6 +137,13 @@ void Controller::TEST_bypassCheckAndClear_passwordEntryDelegate()
 {
 	_passwordEntryDelegate = nullptr; // bypass identity check here since it went out of scope and therefore can't be used to check identifier()
 }
+void Controller::TEST_clearUnlockTimer()
+{
+	if (_pw_entry_unlock_timer_handle != nullptr) {
+		_pw_entry_unlock_timer_handle->cancel(); // invalidate timer
+		_pw_entry_unlock_timer_handle = nullptr; // release / free
+	}
+}
 void Controller::TEST_resetPasswordControllerInitAndObservers()
 {
 	TEST_bypassCheckAndClear_passwordEntryDelegate();
@@ -169,6 +176,7 @@ void Controller::TEST_resetPasswordControllerInitAndObservers()
 		//
 		isWaitingFor_enterNewPassword_cb = false;
 	}
+	TEST_clearUnlockTimer();
 	lockDownAppAndRequirePassword();
 }
 //
@@ -547,36 +555,9 @@ void Controller::_getUserToEnterTheirExistingPassword(
 		BOOST_THROW_EXCEPTION(logic_error("_getUserToEnterTheirExistingPassword: expected enterExistingPassword_final_fn = none"));
 		return;
 	}
-	
-	
-//	_isCurrentlyLockedOutFromPWEntryAttempts = false;
-//	_numberOfTriesDuringThisTimePeriod = 0;
-//	//
-//	boost::asio::io_context unlock__io;
-//	optional<boost::asio::steady_timer> unlock_t = none; // allows them to try again every T sec, but resets timer if they submit w/o waiting
-//	auto _dateOf_firstPWTryDuringThisTimePeriod = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()); // initialized to current time
-//	auto __cancelAnyAndRebuildUnlockTimer = [&unlock_t]()
-//	{
-//		bool wasAlreadyLockedOut = unlock_t != none;
-//		if (unlock_t != none) {
-//			// DDLog.Info("Passwords", "clearing existing unlock timer")
-//			(*unlock_t).cancel(); // invalidate timer
-//			unlock_t = none; // not strictly necessary
-//		}
-//		MDEBUG("Passwords: Too many password entry attempts within " << pwEntrySpamming_unlockInT_s << "s. " << (!wasAlreadyLockedOut ? "Locking out" : "Extending lockout.") << ".");
-//		_unlockTimer = Timer.scheduledTimer(
-//											withTimeInterval: pwEntrySpamming_unlockInT_s,
-//											repeats: false,
-//											block:
-//											{ timer in
-//												DDLog.Info("Passwords", "⭕️  Unlocking password entry.")
-//												_isCurrentlyLockedOut = false
-//												fn(nil, "", nil) // this is _sort_ of a hack and should be made more explicit in API but I'm sending an empty string, and not even an err_str, to clear the validation error so the user knows to try again
-//											}
-//											)
-//	};
-	
-	
+	_isCurrentlyLockedOutFromPWEntryAttempts = false;
+	_numberOfTriesDuringThisTimePeriod = 0;
+	//
 	if (isForChangePassword && isForAuthorizingAppActionOnly) { // both shouldn't be true
 		BOOST_THROW_EXCEPTION(logic_error("Expected isForChangePassword == false || isForAuthorizingAppActionOnly == false"));
 		return;
@@ -585,6 +566,8 @@ void Controller::_getUserToEnterTheirExistingPassword(
 		BOOST_THROW_EXCEPTION(logic_error("Expected non-null _passwordEntryDelegate in _getUserToEnterTheirExistingPassword"));
 		return;
 	}
+	_dateOf_firstPWTryDuringThisTimePeriod = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()); // initialized to current time
+	//
 	isWaitingFor_enterExistingPassword_cb = true;
 	enterExistingPassword_final_fn = std::move(fn);
 	// Now put request out
@@ -593,6 +576,22 @@ void Controller::_getUserToEnterTheirExistingPassword(
 		isForAuthorizingAppActionOnly,
 		customNavigationBarTitle
 	);
+}
+void Controller::__cancelAnyAndRebuildUnlockTimer()
+{ // allows them to try again every T sec, but resets timer if they submit w/o waiting
+	bool wasAlreadyLockedOut = _pw_entry_unlock_timer_handle != nullptr;
+	if (_pw_entry_unlock_timer_handle != nullptr) {
+		// DDLog.Info("Passwords", "clearing existing unlock timer")
+		_pw_entry_unlock_timer_handle->cancel(); // invalidate timer
+		_pw_entry_unlock_timer_handle = nullptr; // release / free
+	}
+	MDEBUG("Passwords: Too many password entry attempts within " << pwEntrySpamming_unlockInT_s << "s. " << (!wasAlreadyLockedOut ? "Locking out" : "Extending lockout.") << ".");
+	_pw_entry_unlock_timer_handle = this->dispatch_ptr->after(pwEntrySpamming_unlockInT_ms, [this]()
+	{
+		MDEBUG("Passwords:  Unlocking password entry.");
+		_isCurrentlyLockedOutFromPWEntryAttempts = false;
+		(*enterExistingPassword_final_fn)(none, clearValidationErrorAndAllowRetry, none); 
+	});
 }
 void Controller::enterExistingPassword_cb(boost::optional<bool> didCancel_orNone, boost::optional<Password> obtainedPasswordString)
 {
@@ -609,42 +608,39 @@ void Controller::enterExistingPassword_cb(boost::optional<bool> didCancel_orNone
 		return;
 	}
 	optional<EnterPW_Fn_ValidationErr_Code> validationErrCode_orNone = none; // so far…
-	
-	
-	
-	// TODO:
-	
-	
-//	if (didCancel_orNone == none || *didCancel_orNone == false) { // so user did NOT cancel
-//		// user did not cancel… let's check if we need to send back a pre-emptive validation err (such as because they're trying too much)
-//		if (_isCurrentlyLockedOutFromPWEntryAttempts == false) {
-//			if (_numberOfTriesDuringThisTimePeriod == 0) {
-//				_dateOf_firstPWTryDuringThisTimePeriod = Date();
-//			}
-//			_numberOfTriesDuringThisTimePeriod += 1;
-//			let maxLegal_numberOfTriesDuringThisTimePeriod = 5;
-//			if (_numberOfTriesDuringThisTimePeriod > maxLegal_numberOfTriesDuringThisTimePeriod) { // rhs must be > 0
-//				_numberOfTriesDuringThisTimePeriod = 0;
-//				// ^- no matter what, we're going to need to reset the above state for the next 'time period'
-//				//
-//				let s_since_firstPWTryDuringThisTimePeriod = Date().timeIntervalSince(_dateOf_firstPWTryDuringThisTimePeriod!);
-//				let noMoreThanNTriesWithin_s = TimeInterval(30)
-//				if (s_since_firstPWTryDuringThisTimePeriod > noMoreThanNTriesWithin_s) { // enough time has passed since this group began - only reset the "time period" with tries->0 and let this pass through as valid check
-//					_dateOf_firstPWTryDuringThisTimePeriod = nil; // not strictly necessary to do here as we reset the number of tries during this time period to zero just above
-//					MDEBUG("There were more than " << maxLegal_numberOfTriesDuringThisTimePeriod << " password entry attempts during this time period but the last attempt was more than " << noMoreThanNTriesWithin_s << "s ago, so letting this go.");
-//				} else { // simply too many tries!…
-//					// lock it out for the next time (supposing this try does not pass)
-//					_isCurrentlyLockedOutFromPWEntryAttempts = true;
-//				}
-//			}
-//		}
-//		if (_isCurrentlyLockedOutFromPWEntryAttempts == true) { // do not try to check pw - return as validation err
-//			MDEBUG("Passwords: Received password entry attempt but currently locked out.");
-//			validationErrCode_orNone = pleaseWaitBeforeTryingAgain;
-//			// setup or extend unlock timer - NOTE: this is pretty strict - we don't strictly need to extend the timer each time to prevent spam unlocks
-//			__cancelAnyAndRebuildUnlockTimer();
-//		}
-//	}
+	if (didCancel_orNone == none || *didCancel_orNone == false) { // so user did NOT cancel
+		// user did not cancel… let's check if we need to send back a pre-emptive validation err (such as because they're trying too much)
+		if (_isCurrentlyLockedOutFromPWEntryAttempts == false) {
+			if (_numberOfTriesDuringThisTimePeriod == 0) {
+				_dateOf_firstPWTryDuringThisTimePeriod = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+			}
+			_numberOfTriesDuringThisTimePeriod += 1;
+			size_t maxLegal_numberOfTriesDuringThisTimePeriod = 5;
+			if (_numberOfTriesDuringThisTimePeriod > maxLegal_numberOfTriesDuringThisTimePeriod) { // rhs must be > 0
+				_numberOfTriesDuringThisTimePeriod = 0;
+				// ^- no matter what, we're going to need to reset the above state for the next 'time period'
+				//
+				time_t now;
+				time(&now); // get current time; same as: now = time(NULL)
+				double s_since_firstPWTryDuringThisTimePeriod = difftime(now, *_dateOf_firstPWTryDuringThisTimePeriod);
+				double noMoreThanNTriesWithin_s = 30;
+				if (s_since_firstPWTryDuringThisTimePeriod > noMoreThanNTriesWithin_s) { // enough time has passed since this group began - only reset the "time period" with tries->0 and let this pass through as valid check
+					_dateOf_firstPWTryDuringThisTimePeriod = none; // not strictly necessary to do here as we reset the number of tries during this time period to zero just above
+					MDEBUG("There were more than " << maxLegal_numberOfTriesDuringThisTimePeriod << " password entry attempts during this time period but the last attempt was more than " << noMoreThanNTriesWithin_s << "s ago, so letting this go.");
+				} else { // simply too many tries!…
+					// lock it out for the next time (supposing this try does not pass)
+					MDEBUG("Locking user out from PW entry attempts for " << pwEntrySpamming_unlockInT_s << "s");
+					_isCurrentlyLockedOutFromPWEntryAttempts = true;
+				}
+			}
+		}
+		if (_isCurrentlyLockedOutFromPWEntryAttempts == true) { // do not try to check pw - return as validation err
+			MDEBUG("Passwords: Received password entry attempt but currently locked out.");
+			validationErrCode_orNone = pleaseWaitBeforeTryingAgain;
+			// setup or extend unlock timer - NOTE: this is pretty strict - we don't strictly need to extend the timer each time to prevent spam unlocks
+			__cancelAnyAndRebuildUnlockTimer();
+		}
+	}
 	// then regardless of whether user canceled…
 	(*enterExistingPassword_final_fn)(
 		didCancel_orNone,

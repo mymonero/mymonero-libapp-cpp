@@ -134,6 +134,7 @@ namespace Passwords
 	static const uint32_t minPasswordLength = 6;
 	static const uint32_t maxLegal_numberOfTriesDuringThisTimePeriod = 5;
 	static const size_t pwEntrySpamming_unlockInT_s = 10;
+	static const size_t pwEntrySpamming_unlockInT_ms = pwEntrySpamming_unlockInT_s * 1000;
 	//
 	enum EnterPW_Fn_ValidationErr_Code
 	{
@@ -145,7 +146,8 @@ namespace Passwords
 		enterFreshPIN = 5,
 		enterFreshPassword = 6,
 		saveError = 7,
-		changePasswordError = 8
+		changePasswordError = 8,
+		clearValidationErrorAndAllowRetry = 9
 	};
 }
 namespace Passwords
@@ -239,6 +241,7 @@ namespace Passwords
 		void clearPasswordEntryDelegate(PasswordEntryDelegate &from_existing_delegate);
 		//
 		void TEST_resetPasswordControllerInitAndObservers();
+		void TEST_clearUnlockTimer();
 		void TEST_bypassCheckAndClear_passwordEntryDelegate();
 		//
 		// Imperatives - Execution Deferment
@@ -310,6 +313,8 @@ namespace Passwords
 		)>> enterExistingPassword_final_fn = none;
 		bool _isCurrentlyLockedOutFromPWEntryAttempts = false;
 		size_t _numberOfTriesDuringThisTimePeriod = 0;
+		optional<time_t> _dateOf_firstPWTryDuringThisTimePeriod;
+		std::unique_ptr<Dispatch::CancelableTimerHandle> _pw_entry_unlock_timer_handle; // initialized to nullptr
 		bool isWaitingFor_enterNewPassword_cb = false;
 		//
 		// Authentication
@@ -344,6 +349,7 @@ namespace Passwords
 				optional<Password> obtainedPasswordString
 			)> fn
 		);
+		void __cancelAnyAndRebuildUnlockTimer();
 		//
 		void obtainNewPasswordFromUser(bool isForChangePassword);
 		//

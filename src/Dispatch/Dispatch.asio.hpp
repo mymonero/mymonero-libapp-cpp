@@ -41,6 +41,22 @@ namespace Dispatch
 	using namespace std;
 	using namespace boost::asio;
 	//
+	struct CancelableTimerHandle_asio: public CancelableTimerHandle
+	{
+		CancelableTimerHandle_asio(steady_timer *t):
+			_t(t)
+		{
+		}
+		~CancelableTimerHandle_asio() {}
+		//
+		void cancel()
+		{ // don't need to worry about lifecycle of _t since it's only deleted upon async_wait call
+			_t->cancel();
+		}
+	private:
+		steady_timer *_t;
+	};
+	//
 	struct Dispatch_asio: public Dispatch
 	{
 		Dispatch_asio(io_context& ctx):
@@ -48,7 +64,8 @@ namespace Dispatch
 		{
 		}
 		~Dispatch_asio() {}
-		void after(uint32_t ms, std::function<void()>&& fn)
+		//
+		std::unique_ptr<CancelableTimerHandle> after(uint32_t ms, std::function<void()>&& fn)
 		{
 			auto t = new steady_timer(_ctx, boost::asio::chrono::milliseconds(ms));
 			t->async_wait([fn = std::move(fn), t](const boost::system::error_code &e)
@@ -58,6 +75,7 @@ namespace Dispatch
 				}
 				delete t;
 			});
+			return std::make_unique<CancelableTimerHandle_asio>(t);
 		}
 	private:
 		io_context &_ctx;
