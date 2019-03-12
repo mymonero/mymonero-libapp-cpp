@@ -894,7 +894,7 @@ class Mocked_SpammingIncorrect_PasswordEntryDelegate: public Passwords::Password
 private:
 	int _number_of_tries = 0;
 	//
-	void _enter_pw_after_delay()
+	void _enter_pw_after_delay_then_conditional_reenter()
 	{
 		auto cancelable_timer_handle = App::ServiceLocator::instance().dispatch_ptr->after(spamTryInterval_ms, [this]()
 		{
@@ -909,7 +909,7 @@ private:
 				BOOST_REQUIRE_MESSAGE(false, "Expected _number_of_tries <= Passwords::maxLegal_numberOfTriesDuringThisTimePeriod");
 			} else { // reschedule timer:
 				cout << "TEST: reschedule timer here..." << endl;
-				_enter_pw_after_delay();
+				_enter_pw_after_delay_then_conditional_reenter();
 			}
 		});
 	}
@@ -932,7 +932,7 @@ public:
 		BOOST_REQUIRE(customNavigationBarTitle == none);
 		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
 		//
-		_enter_pw_after_delay();
+		_enter_pw_after_delay_then_conditional_reenter();
 	}
 	void getUserToEnterNewPasswordAndType(
 		bool isForChangePassword
@@ -958,6 +958,7 @@ BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_
 	});
 	bool didSeeLockOutAfterMaxTries = false;
 	bool didSeeUnlockAfterLockOut = false;
+	bool didSeeSuccessfulPWEntryAfterLockOut = false;
 	size_t numTriesFailed = 0;
 	ServiceLocator::instance().passwordController->erroredWhileGettingExistingPassword_signal.connect(
 		[&numTriesFailed, &didSeeLockOutAfterMaxTries, &didSeeUnlockAfterLockOut]
@@ -969,9 +970,12 @@ BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_
 			BOOST_REQUIRE_MESSAGE(code == EnterPW_Fn_ValidationErr_Code::pleaseWaitBeforeTryingAgain, "Unexpected pleaseWaitBeforeTryingAgain");
 		} else if (numTriesFailed == Passwords::maxLegal_numberOfTriesDuringThisTimePeriod + 2) {
 			didSeeUnlockAfterLockOut = true;
-			cout << "Test: Saw unlock" << endl;
+			cout << "Test: Saw unlock… trying correct pw entry" << endl;
 			BOOST_REQUIRE_MESSAGE(didSeeLockOutAfterMaxTries, "Expected to have true didSeeLockOutAfterMaxTries");
 			BOOST_REQUIRE_MESSAGE(code == EnterPW_Fn_ValidationErr_Code::clearValidationErrorAndAllowRetry, "Expected clearValidationErrorAndAllowRetry");
+			//
+			// now test correct entry
+			App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, mock_password_string);
 		} else {
 			BOOST_REQUIRE_MESSAGE(didSeeUnlockAfterLockOut == false, "Expected didSeeUnlockAfterLockOut=false");
 			BOOST_REQUIRE_MESSAGE(code == EnterPW_Fn_ValidationErr_Code::incorrectPassword, "Unexpected code " << code);
@@ -984,9 +988,12 @@ BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_
 		BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
 	});
 	//
-	auto passwordObtained_fn = [](Passwords::Password password, Passwords::Type type)
-	{
-		BOOST_REQUIRE(false);
+	auto passwordObtained_fn = [
+		&didSeeLockOutAfterMaxTries, &didSeeUnlockAfterLockOut, &didSeeSuccessfulPWEntryAfterLockOut
+	] (Passwords::Password password, Passwords::Type type) {
+		cout << "Test: Successful pw entry" << endl;
+		BOOST_REQUIRE_MESSAGE(didSeeLockOutAfterMaxTries && didSeeUnlockAfterLockOut, "Expected didSeeLockOutAfterMaxTries && didSeeUnlockAfterLockOut upon successful pw entry after lock-out");
+		didSeeSuccessfulPWEntryAfterLockOut = true;
 	};
 	std::function<void()> userCanceled_fn = [](void)
 	{
@@ -1000,6 +1007,7 @@ BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_
 	//
 	BOOST_REQUIRE_MESSAGE(didSeeLockOutAfterMaxTries, "Expected didSeeLockOutAfterMaxTries after finish");
 	BOOST_REQUIRE_MESSAGE(didSeeUnlockAfterLockOut, "Expected didSeeUnlockAfterLockOut after finish");
+	BOOST_REQUIRE_MESSAGE(didSeeSuccessfulPWEntryAfterLockOut, "Expected didSeeSuccessfulPWEntryAfterLockOut after finish");
 	cout << "Test: Finished sleeping" << endl;
 }
 //
