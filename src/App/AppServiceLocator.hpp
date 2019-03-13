@@ -36,9 +36,11 @@
 #define AppServiceLocator_HPP_
 //
 #include <iostream> // TODO: this is to obtain stdlib.. what should be imported instead of this?
-
-#include "../Passwords/PasswordController.hpp"
+//
 #include "../Dispatch/Dispatch_Interface.hpp"
+#include "../Passwords/PasswordController.hpp"
+#include "../Settings/SettingsController.hpp"
+#include "../UserIdle/UserIdle.hpp"
 //
 namespace App
 {
@@ -63,10 +65,19 @@ namespace App
 				// TODO: assert existence of deps here? -- documentsPath etc
 				//
 				dispatch_ptr = this_dispatch_ptr; // store - it got std::moved
-				passwordController = std::make_shared<Passwords::Controller>(Passwords::Controller{
+				passwordController = std::make_shared<Passwords::Controller>(
 					documentsPath, // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
 					dispatch_ptr
-				});
+				);
+				settingsController = std::make_shared<Settings::Controller>(
+					documentsPath,
+					dispatch_ptr
+				);
+				userIdleController = std::make_shared<UserIdle::Controller>(
+					documentsPath,
+					dispatch_ptr,
+					settingsController
+				);
 				//
 				built = true;
 				//
@@ -88,8 +99,10 @@ namespace App
 			// Properties - Initial: Required for build()
 			string _documentsPath;
 			// Properties - Services: Built and retained dependencies
-			std::shared_ptr<Passwords::Controller> passwordController;
 			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
+			std::shared_ptr<Passwords::Controller> passwordController;
+			std::shared_ptr<Settings::Controller> settingsController;
+			std::shared_ptr<UserIdle::Controller> userIdleController;
 			//
 			// Lifecycle - Init
 			ServiceLocator &build(

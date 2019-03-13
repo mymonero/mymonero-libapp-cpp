@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  SettingsController.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -31,36 +31,18 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
-
-class App::ServiceLocator_SpecificImpl
-{
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
-	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
+#include "SettingsController.hpp"
+#include "../Persistence/PersistableObject.hpp"
+#include "misc_log_ex.h"
+using namespace std;
+using namespace boost;
+using namespace document_persister;
+using namespace Settings;
 //
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
+// Constants - Persistence
+static string collectionName = string("Settings");
 //
-ServiceLocator &ServiceLocator::build(
-	const string &documentsPath
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->io_ctx);
-	//
-	return _shared_build(documentsPath, std::move(dispatch_ptr));
+// Imperatives - Lifecycle
+void Controller::setup()
+{
 }
-
-

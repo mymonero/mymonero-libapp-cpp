@@ -219,8 +219,7 @@ BOOST_AUTO_TEST_CASE(persistableObject_decryptBase64, *utf::depends_on("mockedPl
 //
 BOOST_AUTO_TEST_CASE(mockedSavedObjects_insertNew, *utf::depends_on("persistableObject_decryptBase64"))
 {
-	MockedPasswordProvider passwordProvider_itself;
-	auto passwordProvider = std::make_shared<MockedPasswordProvider>(passwordProvider_itself);
+	auto passwordProvider = std::make_shared<MockedPasswordProvider>();
 	MockedSavedObject obj{
 		new_documentsPath(),
 		passwordProvider
@@ -256,12 +255,11 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting, *utf::depends_on("mockedSa
 	}
 	BOOST_REQUIRE(load__result.strings != none);
 	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
-	MockedPasswordProvider passwordProvider_itself;
-	auto passwordProvider = std::make_shared<MockedPasswordProvider>(passwordProvider_itself);
+	auto passwordProvider = std::make_shared<MockedPasswordProvider>();
 	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
 		optional<string> plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 			*it,
-			*(passwordProvider_itself.getPassword())
+			*(passwordProvider->getPassword())
 		);
 		BOOST_REQUIRE(plaintext_documentContentString != none);
 		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
@@ -294,12 +292,11 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_deleteExisting, *utf::depends_on("mocked
 	BOOST_REQUIRE(load__result.err_str == none);
 	BOOST_REQUIRE(load__result.strings != none);
 	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
-	MockedPasswordProvider passwordProvider_itself;
-	auto passwordProvider = std::make_shared<MockedPasswordProvider>(passwordProvider_itself);
+	auto passwordProvider = std::make_shared<MockedPasswordProvider>();
 	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
 		optional<string> plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 			*it,
-			*(passwordProvider_itself.getPassword())
+			*(passwordProvider->getPassword())
 		);
 		BOOST_REQUIRE(plaintext_documentContentString != none);
 		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(

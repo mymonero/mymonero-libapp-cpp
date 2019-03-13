@@ -78,6 +78,8 @@ set(
 	src/UserIdle/UserIdle.cpp
     src/Passwords/PasswordController.hpp
     src/Passwords/PasswordController.cpp
+    src/Settings/SettingsController.hpp
+    src/Settings/SettingsController.cpp
     src/Persistence/document_persister.hpp
     src/Persistence/document_persister.cpp
     src/Persistence/PersistableObject.hpp

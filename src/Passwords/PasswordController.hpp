@@ -197,6 +197,9 @@ namespace Passwords
 			//
 			this->setup();
 		}
+		~Controller() {
+			cout << "Destructed Passwords" << endl;
+		}
 		//
 		// Constructor args
 		string documentsPath;

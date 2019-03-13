@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  SettingsController.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -32,35 +32,59 @@
 //
 //
 
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
+#ifndef SettingsController_hpp
+#define SettingsController_hpp
 
-class App::ServiceLocator_SpecificImpl
-{
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
-	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
+#include <string>
+#include <boost/range/algorithm.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/signals2.hpp>
+#include <memory>
+#include "../Persistence/document_persister.hpp"
+#include "../Dispatch/Dispatch_Interface.hpp"
+
+namespace Settings
+{ // Constants
+	static const double appTimeoutAfterS_neverValue = -1;
 }
-//
-ServiceLocator &ServiceLocator::build(
-	const string &documentsPath
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->io_ctx);
+namespace Settings
+{
+	using namespace std;
+	using namespace boost;
+	using namespace document_persister;
 	//
-	return _shared_build(documentsPath, std::move(dispatch_ptr));
+	// Controllers
+	class Controller
+	{
+	public:
+		//
+		// Lifecycle - Init
+		Controller(
+			string documentsPath,
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+		) {
+			this->documentsPath = documentsPath;
+			this->dispatch_ptr = dispatch_ptr;
+			//
+			this->setup();
+		}
+		~Controller() {
+			cout << "Destructed Settings" << endl;
+		}
+		//
+		// Constructor args
+		string documentsPath;
+		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
+		//
+		// Signals
+		//
+		// Properties
+		optional<double> appTimeoutAfterS_noneForDefault_orNeverValue;
+	private:
+		//
+		// Imperatives
+		void setup();
+	};
 }
 
-
+#endif /* SettingsController_hpp */

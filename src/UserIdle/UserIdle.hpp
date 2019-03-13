@@ -36,15 +36,72 @@
 #define UserIdle_hpp
 
 #include <iostream>
+#include <boost/signals2.hpp>
+#include "../Dispatch/Dispatch_Interface.hpp"
+#include "../Settings/SettingsController.hpp"
 
 namespace UserIdle
 {
 	using namespace std;
+	using namespace boost;
 	//
-	namespace NotificationName
+	// Controllers
+	class Controller
 	{
-		static string userDidBecomeIdle = "UserIdle_NotificationName_userDidBecomeIdle";
-	}
+	public:
+		//
+		// Lifecycle - Init
+		Controller(
+			string documentsPath,
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
+			std::shared_ptr<Settings::Controller> settingsController
+		) {
+			this->documentsPath = documentsPath;
+			this->dispatch_ptr = dispatch_ptr;
+			this->settingsController = settingsController;
+			//
+			this->setup();
+		}
+		~Controller() {
+			cout << "Destructed user idle" << endl;
+		}
+		//
+		// Constructor args
+		string documentsPath;
+		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
+		std::shared_ptr<Settings::Controller> settingsController;
+		//
+		// Properties
+		bool isUserIdle = false;
+		//
+		// Signals
+		boost::signals2::signal<void()> userDidComeBackFromIdle_signal;
+		boost::signals2::signal<void()> userDidBecomeIdle_signal;
+		//
+		// Imperatives
+		void temporarilyDisable_userIdle();
+		void reEnable_userIdle();
+		void checkIdleTimeout();
+	private:
+		//
+		// Properties
+		time_t _dateOfLastUserInteraction = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+		uint32_t _numberOfRequestsToLockUserIdleAsDisabled = 0;
+		std::unique_ptr<Dispatch::CancelableTimerHandle> _userIdle_intervalTimer; // initialized to nullptr
+		//
+		// Imperatives
+		void setup();
+		//
+		void __disable_userIdle();
+		void __reEnable_userIdle();
+		void _initiate_userIdle_intervalTimer();
+		void __create_repeating_timer();
+		//
+		void _idleBreakingActionOccurred();
+		void _userDidInteract();
+		void _userDidComeBackFromIdle();
+		void _userDidBecomeIdle();
+	};
 }
 
 #endif /* UserIdle_hpp */
