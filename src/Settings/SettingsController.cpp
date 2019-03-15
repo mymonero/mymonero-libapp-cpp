@@ -46,3 +46,14 @@ static string collectionName = string("Settings");
 void Controller::setup()
 {
 }
+//
+// Accessors - IdleTimeoutAfterS_SettingsProvider
+double Controller::get_default_appTimeoutAfterS() const
+{
+	return 90; // s …… 30 was a bit short for new users
+}
+optional<double> Controller::get_appTimeoutAfterS_noneForDefault_orNeverValue() const
+{
+	return _appTimeoutAfterS_noneForDefault_orNeverValue;
+}
+

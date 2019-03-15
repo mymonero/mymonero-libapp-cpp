@@ -44,9 +44,23 @@
 #include "../Dispatch/Dispatch_Interface.hpp"
 
 namespace Settings
-{ // Constants
+{ // IdleTimeoutAfterS
+	//
+	// Constants - Special states
 	static const double appTimeoutAfterS_neverValue = -1;
+	//
+	class IdleTimeoutAfterS_SettingsProvider
+	{
+	public:
+		virtual ~IdleTimeoutAfterS_SettingsProvider() {}
+		//
+		// Constants - Default values
+		virtual double get_default_appTimeoutAfterS() const = 0;
+		// Properties
+		virtual optional<double> get_appTimeoutAfterS_noneForDefault_orNeverValue() const = 0;
+	};
 }
+//
 namespace Settings
 {
 	using namespace std;
@@ -54,7 +68,7 @@ namespace Settings
 	using namespace document_persister;
 	//
 	// Controllers
-	class Controller
+	class Controller: public IdleTimeoutAfterS_SettingsProvider
 	{
 	public:
 		//
@@ -78,12 +92,16 @@ namespace Settings
 		//
 		// Signals
 		//
-		// Properties
-		optional<double> appTimeoutAfterS_noneForDefault_orNeverValue;
+		// Accessors - IdleTimeoutAfterS_SettingsProvider
+		double get_default_appTimeoutAfterS() const;
+		optional<double> get_appTimeoutAfterS_noneForDefault_orNeverValue() const;
 	private:
 		//
 		// Imperatives
 		void setup();
+		//
+		// Properties
+		optional<double> _appTimeoutAfterS_noneForDefault_orNeverValue;
 	};
 }
 

@@ -188,11 +188,9 @@ void Controller::setup()
 }
 void Controller::startObserving()
 {
-	// TODO: inject userIdle and observe
-//	NotificationCenter::defaultNotificationCenter()->addObserver(
-//		std::bind(&Controller::UserIdle_userDidBecomeIdle, *this),
-//		UserIdle::NotificationName::userDidBecomeIdle
-//	);
+	userIdleController->userDidBecomeIdle_signal.connect(
+		std::bind(&Controller::UserIdle_userDidBecomeIdle, this)
+	);
 }
 void Controller::initializeRuntimeAndBoot()
 {
@@ -588,6 +586,8 @@ void Controller::__cancelAnyAndRebuildUnlockTimer()
 	MDEBUG("Passwords: Too many password entry attempts within " << pwEntrySpamming_unlockInT_s << "s. " << (!wasAlreadyLockedOut ? "Locking out" : "Extending lockout.") << ".");
 	_pw_entry_unlock_timer_handle = this->dispatch_ptr->after(pwEntrySpamming_unlockInT_ms, [this]()
 	{
+		_pw_entry_unlock_timer_handle = nullptr; // clear ... TODO: do we need a mutex around this to prevent race condition?
+		//
 		MDEBUG("Passwords:  Unlocking password entry.");
 		_isCurrentlyLockedOutFromPWEntryAttempts = false;
 		(*enterExistingPassword_final_fn)(none, clearValidationErrorAndAllowRetry, none); 
@@ -1041,5 +1041,24 @@ void Controller::_didObtainPassword(Password password)
 // Delegation - User Idle
 void Controller::UserIdle_userDidBecomeIdle()
 {
-	
+	if (hasUserSavedAPassword() == false) {
+		// nothing to do here because the app is not unlocked and/or has no data which would be locked
+		MDEBUG("Passwords: User became idle but no password has ever been entered/no saved data should exist.");
+		return;
+	} else if (hasUserEnteredValidPasswordYet() == false) {
+		// user has saved data but hasn't unlocked the app yet
+		MDEBUG("Passwords: User became idle and saved data/pw exists, but user hasn't unlocked app yet.");
+		return;
+	}
+	_didBecomeIdleAfterHavingPreviouslyEnteredPassword();
+}
+//
+// Delegation - User having become idle -> teardown booted state and require pw
+void Controller::_didBecomeIdleAfterHavingPreviouslyEnteredPassword()
+{
+	_deconstructBootedStateAndClearPassword(
+		false, // not for a delete-everything
+		{},
+		{}
+	);
 }

@@ -43,6 +43,10 @@ void Controller::setup()
 }
 //
 // Imperatives - Interface
+void Controller::breakIdle()
+{
+	_idleBreakingActionOccurred();
+}
 void Controller::temporarilyDisable_userIdle()
 {
 	_numberOfRequestsToLockUserIdleAsDisabled += 1;
@@ -116,7 +120,7 @@ void Controller::__create_repeating_timer()
 // Imperatives - Publicly callable
 void Controller::checkIdleTimeout()
 {
-	optional<double> appTimeoutAfterS_orNone_orNeverValue = settingsController->appTimeoutAfterS_noneForDefault_orNeverValue;
+	optional<double> appTimeoutAfterS_orNone_orNeverValue = idleTimeoutAfterS_SettingsProvider->get_appTimeoutAfterS_noneForDefault_orNeverValue();
 	double appTimeoutAfterS = appTimeoutAfterS_orNone_orNeverValue != none ? *appTimeoutAfterS_orNone_orNeverValue : 20.0; // use default on no pw entered / no settings info yet
 	if (appTimeoutAfterS == Settings::appTimeoutAfterS_neverValue) { // then idle timer is specifically disabled
 		return; // do nothing

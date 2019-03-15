@@ -54,22 +54,26 @@ namespace UserIdle
 		Controller(
 			string documentsPath,
 			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
-			std::shared_ptr<Settings::Controller> settingsController
+			std::shared_ptr<Settings::IdleTimeoutAfterS_SettingsProvider> idleTimeoutAfterS_SettingsProvider
 		) {
 			this->documentsPath = documentsPath;
 			this->dispatch_ptr = dispatch_ptr;
-			this->settingsController = settingsController;
+			this->idleTimeoutAfterS_SettingsProvider = idleTimeoutAfterS_SettingsProvider;
 			//
 			this->setup();
 		}
 		~Controller() {
+			if (_userIdle_intervalTimer != nullptr) {
+				_userIdle_intervalTimer->cancel();
+				_userIdle_intervalTimer = nullptr;
+			}
 			cout << "Destructed user idle" << endl;
 		}
 		//
 		// Constructor args
 		string documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
-		std::shared_ptr<Settings::Controller> settingsController;
+		std::shared_ptr<Settings::IdleTimeoutAfterS_SettingsProvider> idleTimeoutAfterS_SettingsProvider;
 		//
 		// Properties
 		bool isUserIdle = false;
@@ -82,6 +86,7 @@ namespace UserIdle
 		void temporarilyDisable_userIdle();
 		void reEnable_userIdle();
 		void checkIdleTimeout();
+		void breakIdle();
 	private:
 		//
 		// Properties

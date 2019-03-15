@@ -1197,3 +1197,148 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterCorrectChanged, *utf::depends_on(
 		[](void) {}
 	);
 }
+//
+#include "../src/Dispatch/Dispatch.asio.hpp"
+#include "../src/Settings/SettingsController.hpp"
+std::shared_ptr<Passwords::Controller> mockedUserIdle_passwordController;
+class MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider: public Settings::IdleTimeoutAfterS_SettingsProvider
+{
+public:
+	double get_default_appTimeoutAfterS() const
+	{
+		return 5;
+	}
+	optional<double> get_appTimeoutAfterS_noneForDefault_orNeverValue() const
+	{
+		return boost::none; // unused
+	}
+};
+class MockedUserIdle_CorrectChangedPasswordEntryDelegate: public Passwords::PasswordEntryDelegate
+{
+public:
+	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
+	//
+	std::string identifier() const
+	{
+		return uuid_string;
+	}
+	void getUserToEnterExistingPassword(
+		bool isForChangePassword,
+		bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
+		boost::optional<std::string> customNavigationBarTitle
+	) {
+		BOOST_REQUIRE(isForChangePassword == false);
+		//
+		mockedUserIdle_passwordController->enterExistingPassword_cb(false, changed_mock_password_string);
+	}
+	void getUserToEnterNewPasswordAndType(
+		bool isForChangePassword
+	) {
+		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
+	}
+};
+BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on("passwords_controller_enterCorrectChanged"))
+{
+	using namespace App;
+	using namespace Dispatch;
+	using namespace Settings;
+	//
+	auto idleTimeoutAfterS_settingsProvider = std::make_shared<MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider>();
+	auto userIdleController = std::make_shared<UserIdle::Controller>(
+		ServiceLocator::instance().documentsPath,
+		ServiceLocator::instance().dispatch_ptr,
+		idleTimeoutAfterS_settingsProvider
+	);
+	mockedUserIdle_passwordController = std::make_shared<Passwords::Controller>(
+		ServiceLocator::instance().documentsPath,
+		ServiceLocator::instance().dispatch_ptr,
+		userIdleController
+	);
+	auto passwordController = mockedUserIdle_passwordController;
+	MockedUserIdle_CorrectChangedPasswordEntryDelegate entryDelegate_enterPW{};
+	passwordController->setPasswordEntryDelegate(entryDelegate_enterPW);
+	//
+	BOOST_REQUIRE_MESSAGE(
+		passwordController->hasUserSavedAPassword(),
+		"Expected a password to have already been saved for this test"
+	);
+	BOOST_REQUIRE_MESSAGE(
+		passwordController->hasUserEnteredValidPasswordYet() == false,
+		"Expected a password not to have been entered at the beginning of this test"
+	);
+	bool sawTestCompletion = false;
+	passwordController->onceBootedAndPasswordObtained(
+		[&passwordController, &idleTimeoutAfterS_settingsProvider, &userIdleController, &sawTestCompletion]
+		(Passwords::Password password, Passwords::Type type)
+		{
+			BOOST_REQUIRE(idleTimeoutAfterS_settingsProvider->get_appTimeoutAfterS_noneForDefault_orNeverValue() == none);
+			BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to have been entered by now");
+			double checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+			cout << "Test: Now waiting " << checkNotYetLockedAfter_s << " sec" << endl;
+			ServiceLocator::instance().dispatch_ptr->after(
+				1000*checkNotYetLockedAfter_s,
+				[&userIdleController, &passwordController, &idleTimeoutAfterS_settingsProvider, &sawTestCompletion]()
+				{
+					cout << "userIdleController->isUserIdle: " << userIdleController->isUserIdle << endl;
+					
+					BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true after only 'checkNotYetLockedAfter_s' sec");
+					BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to still have been entered here");
+					userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
+					
+					uint32_t checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+					cout << "Test: Now waiting " << checkStillNotYetLockedAfter_s << " sec" << endl;
+					ServiceLocator::instance().dispatch_ptr->after(
+						1000*checkStillNotYetLockedAfter_s,
+						[&userIdleController, &passwordController, &sawTestCompletion]()
+						{
+							BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true ${checkNotYetLockedAfter_s}s after breaking user idle");
+							BOOST_REQUIRE_MESSAGE(passwordController->getPassword() != none, "Password not expected to be null after unlock when user not idle");
+							BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Password expected to be entered after an unlock when user not idle");
+							uint32_t checkIsLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
+							cout << "Test: Now waiting " << checkIsLockedAfter_s << " sec" << endl;
+							ServiceLocator::instance().dispatch_ptr->after(
+								1000*checkIsLockedAfter_s,
+								[&passwordController, &userIdleController, &sawTestCompletion]()
+								{
+									cout << "userIdleController->isUserIdle: " << userIdleController->isUserIdle << endl;
+									
+									BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true checkIsLockedAfter_s sec after checkNotYetLockedAfter_s sec after breaking user idle");
+									BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet() == false, "Password expected to no longer be after idle");
+									BOOST_REQUIRE_MESSAGE(passwordController->getPassword() == none, "Password expected to be null after user idle");
+									//
+									passwordController->onceBootedAndPasswordObtained(
+										[&userIdleController, &passwordController, &sawTestCompletion]
+										(Passwords::Password inner_password, Passwords::Type inner_type)
+										{
+											userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
+											// ^-- as if the user entered their password - this would actually be best done in the password entry delegate
+											//
+											BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to have been entered after idle lockdown -> password re-entry");
+											
+											sawTestCompletion = true;
+										},
+										[](void) {
+											BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
+										}
+									);
+								}
+							);
+						}
+					);
+				}
+			 );
+		},
+		[](void) {
+			BOOST_REQUIRE_MESSAGE(false, "Unexpected cancel");
+		}
+	);
+	long numberOfTimerDelaysToWaitFor = 3;
+	long effective_numberOfTimerDelaysToWaitFor = numberOfTimerDelaysToWaitFor + 1; // just for extra padding
+	long sleep_ms = effective_numberOfTimerDelaysToWaitFor * ceil(idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS()) * 1000;
+	cout << "Test: Sleeping for " << sleep_ms << "ms" << endl;
+	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms)); // just wait a longish time for the timers above
+	//
+	// no failure seen by now
+	cout << "Test: Finished sleeping" << endl;
+	BOOST_REQUIRE_MESSAGE(sawTestCompletion, "Expected true sawTestCompletion");
+}

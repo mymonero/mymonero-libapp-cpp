@@ -42,6 +42,7 @@
 #include <memory>
 #include "../Persistence/document_persister.hpp"
 #include "../Dispatch/Dispatch_Interface.hpp"
+#include "../UserIdle/UserIdle.hpp"
 
 namespace Passwords
 {
@@ -190,20 +191,27 @@ namespace Passwords
 		// Lifecycle - Init
 		Controller(
 			string documentsPath,
-			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
+			std::shared_ptr<UserIdle::Controller> userIdleController
 		) {
 			this->documentsPath = documentsPath;
 			this->dispatch_ptr = dispatch_ptr;
+			this->userIdleController = userIdleController;
 			//
 			this->setup();
 		}
 		~Controller() {
+			if (_pw_entry_unlock_timer_handle != nullptr) {
+				_pw_entry_unlock_timer_handle->cancel();
+				_pw_entry_unlock_timer_handle = nullptr;
+			}
 			cout << "Destructed Passwords" << endl;
 		}
 		//
 		// Constructor args
 		string documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
+		std::shared_ptr<UserIdle::Controller> userIdleController;
 		//
 		// Signals
 		boost::signals2::signal<void()> obtainedNewPassword_signal;
@@ -371,6 +379,7 @@ namespace Passwords
 		//
 		// Delegation - Events
 		void UserIdle_userDidBecomeIdle();
+		void _didBecomeIdleAfterHavingPreviouslyEnteredPassword();
 	};
 }
 
