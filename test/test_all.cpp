@@ -1239,6 +1239,7 @@ public:
 };
 BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on("passwords_controller_enterCorrectChanged"))
 {
+	cout << "userIdle_controller__idleBeakThenLockDown" << endl;
 	using namespace App;
 	using namespace Dispatch;
 	using namespace Settings;
@@ -1342,50 +1343,71 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 }
 BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::depends_on("userIdle_controller__idleBeakThenLockDown"))
 {
+	cout << "userIdle_controller_verifyUserIdleDisableReEnable" << endl;
 	using namespace App;
 	using namespace Dispatch;
 	using namespace Settings;
 	//
-//	val idleTimeoutAfterS_settingsProvider = MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider // pretending to be the SettingsController
-//	assertTrue(idleTimeoutAfterS_settingsProvider.appTimeoutAfterS_nullForDefault_orNeverValue == null)
-//	//
-//	val userIdleController = UserIdleController()
-//	userIdleController.init_idleTimeoutAfterS_settingsProvider(idleTimeoutAfterS_settingsProvider)
-//	userIdleController.setup()
-//	//
-//	val checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider.default_appTimeoutAfterS - 1 // 1s before idle kicks in
-//	delay(checkNotYetLockedAfter_s, TimeUnit.SECONDS)
-//	//
-//	assertFalse("isUserIdle should NOT be true after only ${checkNotYetLockedAfter_s}s", userIdleController.isUserIdle)
-//	val checkIsLockedAfter_s: Long = 1 + 1 // at default_appTimeoutAfterS + 1
-//	delay(checkIsLockedAfter_s, TimeUnit.SECONDS)
-//	//
-//	assertTrue("isUserIdle SHOULD be true ${checkIsLockedAfter_s}s after ${checkNotYetLockedAfter_s}s after breaking user idle", userIdleController.isUserIdle)
-//	userIdleController.breakIdle() // simulate an Activity reporting a touch on the screen
-//	assertFalse("isUserIdle should now NOT be true after breaking user idle", userIdleController.isUserIdle)
-//	val checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider.default_appTimeoutAfterS - 1 // 1s before idle kicks in
-//	delay(checkStillNotYetLockedAfter_s, TimeUnit.SECONDS)
-//	//
-//	assertFalse("isUserIdle should NOT be true ${checkNotYetLockedAfter_s}s after breaking user idle", userIdleController.isUserIdle)
-//	userIdleController.temporarilyDisable_userIdle()
-//	val checkIsStillNotLockedAfter_s: Long = 1 + 1 // at default_appTimeoutAfterS + 1
-//	delay(checkIsStillNotLockedAfter_s, TimeUnit.SECONDS)
-//	//
-//	assertFalse("isUserIdle should still NOT be true after temporarily disabling user idle", userIdleController.isUserIdle)
-//	userIdleController.reEnable_userIdle()
-//	val checkStillNotYetLockedAfterReEnable_s = idleTimeoutAfterS_settingsProvider.default_appTimeoutAfterS - 1 // 1s before idle kicks in
-//	delay(checkStillNotYetLockedAfterReEnable_s, TimeUnit.SECONDS)
-//	//
-//	assertFalse("isUserIdle should still NOT be true after re-enabling user idle", userIdleController.isUserIdle)
-//	val checkIsFinallyLockedAfter_s: Long = 1 + 1 // at default_appTimeoutAfterS + 1
-//	delay(checkIsFinallyLockedAfter_s, TimeUnit.SECONDS)
-//	//
-//	assertTrue("isUserIdle SHOULD be true ${checkIsFinallyLockedAfter_s}s after ${checkStillNotYetLockedAfterReEnable_s}s after re-enabling user idle", userIdleController.isUserIdle)
+	auto idleTimeoutAfterS_settingsProvider = std::make_shared<MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider>();
+	auto userIdleController = std::make_shared<UserIdle::Controller>(
+		ServiceLocator::instance().documentsPath,
+		ServiceLocator::instance().dispatch_ptr,
+		idleTimeoutAfterS_settingsProvider
+	);
+	mockedUserIdle_passwordController = std::make_shared<Passwords::Controller>(
+		ServiceLocator::instance().documentsPath,
+		ServiceLocator::instance().dispatch_ptr,
+		userIdleController
+	);
+	auto passwordController = mockedUserIdle_passwordController;
+	MockedUserIdle_CorrectChangedPasswordEntryDelegate entryDelegate_enterPW{};
+	passwordController->setPasswordEntryDelegate(entryDelegate_enterPW);
+	//
+	BOOST_REQUIRE_MESSAGE(
+		passwordController->hasUserSavedAPassword(),
+		"Expected a password to have already been saved for this test"
+	);
+	BOOST_REQUIRE_MESSAGE(
+		passwordController->hasUserEnteredValidPasswordYet() == false,
+		"Expected a password not to have been entered at the beginning of this test"
+	);
+	//
+	long checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+	std::this_thread::sleep_for(std::chrono::seconds(checkNotYetLockedAfter_s));
+	//
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true after only checkNotYetLockedAfter_s sec");
+	long checkIsLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
+	std::this_thread::sleep_for(std::chrono::seconds(checkIsLockedAfter_s));
+	//
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true ${checkIsLockedAfter_s}s after checkNotYetLockedAfter_s sec after breaking user idle");
+	userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should now NOT be true after breaking user idle");
+	long checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+	std::this_thread::sleep_for(std::chrono::seconds(checkStillNotYetLockedAfter_s));
+	//
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true checkNotYetLockedAfter_s sec after breaking user idle");
+	userIdleController->temporarilyDisable_userIdle();
+	long checkIsStillNotLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
+	std::this_thread::sleep_for(std::chrono::seconds(checkIsStillNotLockedAfter_s));
+	//
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should still NOT be true after temporarily disabling user idle");
+	userIdleController->reEnable_userIdle();
+	long checkStillNotYetLockedAfterReEnable_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+	std::this_thread::sleep_for(std::chrono::seconds(checkStillNotYetLockedAfterReEnable_s));
+	//
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should still NOT be true after re-enabling user idle");
+	long checkIsFinallyLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
+	std::this_thread::sleep_for(std::chrono::seconds(checkIsFinallyLockedAfter_s));
+	//
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true ${checkIsFinallyLockedAfter_s}s after checkStillNotYetLockedAfterReEnable_s sec after re-enabling user idle");
+	//
+	mockedUserIdle_passwordController = nullptr;
 }
 //
 //
 BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("userIdle_controller_verifyUserIdleDisableReEnable"))
 {
+	cout << "teardownRuntime" << endl;
 	using namespace App;
 	//
 	ServiceLocator::instance().teardown();
