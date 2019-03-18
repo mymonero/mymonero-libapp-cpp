@@ -39,7 +39,17 @@ using namespace UserIdle;
 // Imperatives - Lifecycle
 void Controller::setup()
 {
-	_initiate_userIdle_intervalTimer();
+	_lockMutexAnd_initiate_userIdle_intervalTimer();
+}
+void Controller::teardown()
+{
+	timer_mutex.lock();
+	if (_userIdle_intervalTimer != nullptr) {
+		_userIdle_intervalTimer->cancel();
+		_userIdle_intervalTimer = nullptr;
+	}
+	timer_mutex.unlock();
+	isTornDown = true;
 }
 //
 // Imperatives - Interface
@@ -52,7 +62,7 @@ void Controller::temporarilyDisable_userIdle()
 	_numberOfRequestsToLockUserIdleAsDisabled += 1;
 	if (_numberOfRequestsToLockUserIdleAsDisabled == 1) { // if we're requesting to disable without it already having been disabled, i.e. was 0, now 1
 		MDEBUG("App.UserIdle: Temporarily disabling the user idle timer.");
-		__disable_userIdle();
+		__lockMutexAnd_disable_userIdle();
 	} else {
 		MDEBUG("App.UserIdle: Requested to temporarily disable user idle but already disabled. Incremented lock.");
 	}
@@ -73,47 +83,60 @@ void Controller::reEnable_userIdle()
 }
 //
 // Imperatives - Internal
-void Controller::__disable_userIdle()
+void Controller::__lockMutexAnd_disable_userIdle()
 {
-	if (_userIdle_intervalTimer == nullptr) {
-		BOOST_THROW_EXCEPTION(logic_error("__disable_userIdle called but already have nil self.userIdle_intervalTimer"));
-		return;
+	timer_mutex.lock();
+	{
+		if (_userIdle_intervalTimer == nullptr) {
+			BOOST_THROW_EXCEPTION(logic_error("__lockMutexAnd_disable_userIdle called but already have nil self.userIdle_intervalTimer"));
+			return;
+		}
+		_userIdle_intervalTimer->cancel();
+		_userIdle_intervalTimer = nullptr;
 	}
-	_userIdle_intervalTimer->cancel();
-	_userIdle_intervalTimer = nullptr;
+	timer_mutex.unlock();
 }
 void Controller::__reEnable_userIdle()
 {
-	if (_userIdle_intervalTimer != nullptr) {
-		BOOST_THROW_EXCEPTION(logic_error("__reEnable_userIdle called but non-nil self.userIdle_intervalTimer"));
-		return;
-	}
-	_initiate_userIdle_intervalTimer();
+	_lockMutexAnd_initiate_userIdle_intervalTimer(); // mutex lock is contained within here
 }
 //
-void Controller::_initiate_userIdle_intervalTimer()
+void Controller::_lockMutexAnd_initiate_userIdle_intervalTimer()
 {
-	if (_userIdle_intervalTimer != nullptr) { // necessary?
-		BOOST_THROW_EXCEPTION(logic_error("Expected _userIdle_intervalTimer == nullptr"));
-		return;
-	}
-	//
-	// TOOD: synchronize this to main thread ?
-//	DispatchQueue.main.async
-//	{ [unowned self] in
+	timer_mutex.lock();
+	{
+		if (_userIdle_intervalTimer != nullptr) { // necessary?
+			BOOST_THROW_EXCEPTION(logic_error("Expected _userIdle_intervalTimer == nullptr"));
+			return;
+		}
+		//
 		_dateOfLastUserInteraction = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()); // reset this in case the app disabled user idle at a time at all different from when the last idle breaking action occurred - s since last user interaction should always be 0 when the userIdle timer starts anyway
 		//
-		__create_repeating_timer();
-//	}
+		__givenLocked_create_repeating_timer();
+	}
+	timer_mutex.unlock();
 }
-void Controller::__create_repeating_timer()
+void Controller::__givenLocked_create_repeating_timer()
 {
+	if (_userIdle_intervalTimer != nullptr) { // necessary?
+		BOOST_THROW_EXCEPTION(logic_error("__givenLocked_create_repeating_timer: Expected _userIdle_intervalTimer == nullptr"));
+		return;
+	}
+	if (isTornDown) {
+		BOOST_THROW_EXCEPTION(logic_error("__givenLocked_create_repeating_timer: Expected isTornDown == false"));
+		return;
+	}
 	_userIdle_intervalTimer = dispatch_ptr->after(1 * 1000, [this]()
 	{
 		checkIdleTimeout();
 		//
 		// we will never get this callback called if the timer is canceled, so it's safe to just re-enter (recreate) here
-		__create_repeating_timer();
+		timer_mutex.lock();
+		{
+			_userIdle_intervalTimer = nullptr; // since we're finished with it
+			__givenLocked_create_repeating_timer();
+		}
+		timer_mutex.unlock();
 	});
 }
 //
@@ -121,10 +144,11 @@ void Controller::__create_repeating_timer()
 void Controller::checkIdleTimeout()
 {
 	optional<double> appTimeoutAfterS_orNone_orNeverValue = idleTimeoutAfterS_SettingsProvider->get_appTimeoutAfterS_noneForDefault_orNeverValue();
-	double appTimeoutAfterS = appTimeoutAfterS_orNone_orNeverValue != none ? *appTimeoutAfterS_orNone_orNeverValue : 20.0; // use default on no pw entered / no settings info yet
-	if (appTimeoutAfterS == Settings::appTimeoutAfterS_neverValue) { // then idle timer is specifically disabled
+	double appTimeoutAfterS_orNeverValue = appTimeoutAfterS_orNone_orNeverValue != none ? *appTimeoutAfterS_orNone_orNeverValue : idleTimeoutAfterS_SettingsProvider->get_default_appTimeoutAfterS(); // use default on no pw entered / no settings info yet
+	if (appTimeoutAfterS_orNeverValue == Settings::appTimeoutAfterS_neverValue) { // then idle timer is specifically disabled
 		return; // do nothing
 	}
+	double appTimeoutAfterS = appTimeoutAfterS_orNeverValue;
 	time_t now;
 	time(&now); // get current time; same as: now = time(NULL)
 	double sSinceLastInteraction = difftime(now, _dateOfLastUserInteraction);

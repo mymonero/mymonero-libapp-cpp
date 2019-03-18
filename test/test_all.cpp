@@ -1279,8 +1279,6 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 				1000*checkNotYetLockedAfter_s,
 				[&userIdleController, &passwordController, &idleTimeoutAfterS_settingsProvider, &sawTestCompletion]()
 				{
-					cout << "userIdleController->isUserIdle: " << userIdleController->isUserIdle << endl;
-					
 					BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true after only 'checkNotYetLockedAfter_s' sec");
 					BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to still have been entered here");
 					userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
@@ -1300,8 +1298,6 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 								1000*checkIsLockedAfter_s,
 								[&passwordController, &userIdleController, &sawTestCompletion]()
 								{
-									cout << "userIdleController->isUserIdle: " << userIdleController->isUserIdle << endl;
-									
 									BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true checkIsLockedAfter_s sec after checkNotYetLockedAfter_s sec after breaking user idle");
 									BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet() == false, "Password expected to no longer be after idle");
 									BOOST_REQUIRE_MESSAGE(passwordController->getPassword() == none, "Password expected to be null after user idle");
@@ -1341,4 +1337,14 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 	// no failure seen by now
 	cout << "Test: Finished sleeping" << endl;
 	BOOST_REQUIRE_MESSAGE(sawTestCompletion, "Expected true sawTestCompletion");
+	//
+	userIdleController->teardown();
+}
+//
+//
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("userIdle_controller__idleBeakThenLockDown"))
+{
+	using namespace App;
+	//
+	ServiceLocator::instance().teardown();
 }

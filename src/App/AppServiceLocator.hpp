@@ -87,6 +87,10 @@ namespace App
 		//
 		public:
 			~ServiceLocator();
+			void teardown()
+			{
+				userIdleController->teardown();
+			}
 			//
 			static ServiceLocator& instance()
 			{

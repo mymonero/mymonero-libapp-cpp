@@ -37,6 +37,7 @@
 
 #include <iostream>
 #include <boost/signals2.hpp>
+#include <mutex>
 #include "../Dispatch/Dispatch_Interface.hpp"
 #include "../Settings/SettingsController.hpp"
 
@@ -63,12 +64,12 @@ namespace UserIdle
 			this->setup();
 		}
 		~Controller() {
-			if (_userIdle_intervalTimer != nullptr) {
-				_userIdle_intervalTimer->cancel();
-				_userIdle_intervalTimer = nullptr;
-			}
+			teardown();
 			cout << "Destructed user idle" << endl;
 		}
+		//
+		// Lifecycle
+		void teardown();
 		//
 		// Constructor args
 		string documentsPath;
@@ -90,6 +91,8 @@ namespace UserIdle
 	private:
 		//
 		// Properties
+		bool isTornDown = false;
+		std::mutex timer_mutex;
 		time_t _dateOfLastUserInteraction = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 		uint32_t _numberOfRequestsToLockUserIdleAsDisabled = 0;
 		std::unique_ptr<Dispatch::CancelableTimerHandle> _userIdle_intervalTimer; // initialized to nullptr
@@ -97,10 +100,10 @@ namespace UserIdle
 		// Imperatives
 		void setup();
 		//
-		void __disable_userIdle();
+		void __lockMutexAnd_disable_userIdle();
 		void __reEnable_userIdle();
-		void _initiate_userIdle_intervalTimer();
-		void __create_repeating_timer();
+		void _lockMutexAnd_initiate_userIdle_intervalTimer();
+		void __givenLocked_create_repeating_timer();
 		//
 		void _idleBreakingActionOccurred();
 		void _userDidInteract();
