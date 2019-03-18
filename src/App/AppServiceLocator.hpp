@@ -89,7 +89,10 @@ namespace App
 			~ServiceLocator();
 			void teardown()
 			{
-				userIdleController->teardown();
+				dispatch_ptr = nullptr;
+				settingsController = nullptr;
+				passwordController = nullptr;
+				userIdleController = nullptr;
 			}
 			//
 			static ServiceLocator& instance()

@@ -68,9 +68,6 @@ namespace UserIdle
 			cout << "Destructed user idle" << endl;
 		}
 		//
-		// Lifecycle
-		void teardown();
-		//
 		// Constructor args
 		string documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
@@ -99,6 +96,7 @@ namespace UserIdle
 		//
 		// Imperatives
 		void setup();
+		void teardown();
 		//
 		void __lockMutexAnd_disable_userIdle();
 		void __reEnable_userIdle();

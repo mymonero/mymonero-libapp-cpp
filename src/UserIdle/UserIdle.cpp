@@ -44,9 +44,11 @@ void Controller::setup()
 void Controller::teardown()
 {
 	timer_mutex.lock();
-	if (_userIdle_intervalTimer != nullptr) {
-		_userIdle_intervalTimer->cancel();
-		_userIdle_intervalTimer = nullptr;
+	{
+		if (_userIdle_intervalTimer != nullptr) {
+			_userIdle_intervalTimer->cancel();
+			_userIdle_intervalTimer = nullptr;
+		}
 	}
 	timer_mutex.unlock();
 	isTornDown = true;
