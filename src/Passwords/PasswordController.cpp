@@ -47,7 +47,6 @@ using namespace Passwords;
 // Constants - Persistence
 static string collectionName = string("PasswordMeta");
 static string plaintextMessageToSaveForUnlockChallenges = string("this is just a string that we'll use for checking whether a given password can unlock an encrypted version of this very message");
-
 //
 enum class DictKey
 {
@@ -183,6 +182,16 @@ void Controller::TEST_resetPasswordControllerInitAndObservers()
 // Imperatives - Lifecycle
 void Controller::setup()
 {
+	if (documentsPath.empty()) {
+		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected documentsPath.empty() != true"));
+	}
+	if (dispatch_ptr == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected dispatch_ptr != nullptr"));
+	}
+	if (userIdleController == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected userIdleController != nullptr"));
+	}
+	//
 	startObserving();
 	initializeRuntimeAndBoot();
 }

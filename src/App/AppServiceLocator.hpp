@@ -65,20 +65,25 @@ namespace App
 				// TODO: assert existence of deps here? -- documentsPath etc
 				//
 				dispatch_ptr = this_dispatch_ptr; // store - it got std::moved
-				settingsController = std::make_shared<Settings::Controller>(
-					documentsPath,
-					dispatch_ptr
-				);
-				userIdleController = std::make_shared<UserIdle::Controller>(
-					documentsPath,
-					dispatch_ptr,
-					settingsController
-				);
-				passwordController = std::make_shared<Passwords::Controller>(
-					documentsPath, // figure it's ok to pass w/o copy b/c of ServiceLocator lifecycle
-					dispatch_ptr,
-					userIdleController
-				);
+				//
+				settingsController = std::make_shared<Settings::Controller>();
+				userIdleController = std::make_shared<UserIdle::Controller>();
+				passwordController = std::make_shared<Passwords::Controller>();
+				//
+				passwordController->documentsPath = documentsPath;
+				passwordController->dispatch_ptr = dispatch_ptr;
+				passwordController->userIdleController = userIdleController;
+				passwordController->setup();
+				//
+				userIdleController->documentsPath = documentsPath;
+				userIdleController->dispatch_ptr = dispatch_ptr;
+				userIdleController->idleTimeoutAfterS_SettingsProvider = settingsController;
+				userIdleController->setup();
+				//
+				settingsController->documentsPath = documentsPath;
+				settingsController->dispatch_ptr = dispatch_ptr;
+				settingsController->passwordController = passwordController;
+				settingsController->setup();
 				//
 				built = true;
 				//

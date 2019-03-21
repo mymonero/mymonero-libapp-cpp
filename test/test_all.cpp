@@ -885,6 +885,168 @@ BOOST_AUTO_TEST_CASE(passwords_controller_biometric_authentication, *utf::depend
 }
 //
 //
+#include "../src/Currencies/Currencies.hpp"
+//
+auto to_specificAPIAddressURLAuthority = string("myserver.com");
+double to_appTimeoutAfterS = 60;
+bool to_authentication__requireWhenSending = !Settings::default_authentication__requireWhenSending;
+bool to_authentication__requireToShowWalletSecrets = !Settings::default_authentication__requireToShowWalletSecrets;
+bool to_authentication__tryBiometric = !Settings::default_authentication__tryBiometric;
+auto to_displayCurrencySymbol = Currencies::CurrencySymbolFrom(Currencies::BRL);
+//
+BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("passwords_controller_biometric_authentication"))
+{
+	cout << "settingsController_settingAndGetting" << endl;
+	using namespace App;
+	using namespace Settings;
+	//
+	auto controller = ServiceLocator::instance().settingsController;
+	//
+	// First, determine whether Settings already saved... before any boot
+	bool settingsAlreadySaved = controller->hasExisting_saved_document();
+	BOOST_REQUIRE_MESSAGE(controller->hasBooted(), "Expected settingscontroller->hasBooted");
+	//
+	//
+	optional<string> expectedInitial_specificAPIAddressURLAuthority = none;
+	if (settingsAlreadySaved) {
+		expectedInitial_specificAPIAddressURLAuthority = to_specificAPIAddressURLAuthority;
+	}
+	optional<double> expectedInitial_appTimeoutAfterS = settingsAlreadySaved ? to_appTimeoutAfterS : controller->default_appTimeoutAfterS();
+	bool expectedInitial_authentication__requireWhenSending = settingsAlreadySaved ? to_authentication__requireWhenSending : Settings::default_authentication__requireWhenSending;
+	bool expectedInitial_authentication__requireToShowWalletSecrets = settingsAlreadySaved ? to_authentication__requireToShowWalletSecrets : Settings::default_authentication__requireToShowWalletSecrets;
+	bool expectedInitial_authentication__tryBiometric = settingsAlreadySaved ? to_authentication__tryBiometric : Settings::default_authentication__tryBiometric;
+	Currencies::CurrencySymbol expectedInitial_displayCurrencySymbol = settingsAlreadySaved ? to_displayCurrencySymbol : Settings::default_displayCurrencySymbol;
+	//
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_specificAPIAddressURLAuthority == controller->specificAPIAddressURLAuthority(),
+		"Expected controller->specificAPIAddressURLAuthority of " << controller->specificAPIAddressURLAuthority() << " to equal " << expectedInitial_specificAPIAddressURLAuthority
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_appTimeoutAfterS == controller->appTimeoutAfterS_noneForDefault_orNeverValue(),
+		"Expected controller->appTimeoutAfterS_noneForDefault_orNeverValue of " << controller->appTimeoutAfterS_noneForDefault_orNeverValue() << " to equal " << expectedInitial_appTimeoutAfterS
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_authentication__requireWhenSending == controller->authentication__requireWhenSending(),
+		"Expected controller->authentication__requireWhenSending of " << controller->authentication__requireWhenSending() << " to equal " << expectedInitial_authentication__requireWhenSending
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_authentication__requireToShowWalletSecrets == controller->authentication__requireToShowWalletSecrets(),
+		"Expected controller->authentication__requireToShowWalletSecrets of " << controller->authentication__requireToShowWalletSecrets() << " to equal " << expectedInitial_authentication__requireToShowWalletSecrets
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_authentication__tryBiometric == controller->authentication__tryBiometric(),
+		"Expected controller->authentication__tryBiometric of " << controller->authentication__tryBiometric() << " to equal " << expectedInitial_authentication__tryBiometric
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_displayCurrencySymbol == controller->displayCurrencySymbol(),
+		"Expected controller->displayCurrencySymbol of " << controller->displayCurrencySymbol() << " to equal " << expectedInitial_displayCurrencySymbol
+	);
+	//
+	bool saw_specificAPIAddressURLAuthority_signal = false;
+	controller->specificAPIAddressURLAuthority_signal.connect([&saw_specificAPIAddressURLAuthority_signal] {
+		BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal == false, "Expected saw to be false");
+		saw_specificAPIAddressURLAuthority_signal = true;
+	});
+	BOOST_REQUIRE(controller->set_specificAPIAddressURLAuthority(to_specificAPIAddressURLAuthority));
+	BOOST_REQUIRE_MESSAGE(controller->specificAPIAddressURLAuthority() == to_specificAPIAddressURLAuthority, "Expected controller->specificAPIAddressURLAuthority of ${controller->specificAPIAddressURLAuthority} to equal ${to_specificAPIAddressURLAuthority}");
+	//
+	bool saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal = false;
+	controller->appTimeoutAfterS_noneForDefault_orNeverValue_signal.connect(
+	[&saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal]
+	{
+		BOOST_REQUIRE_MESSAGE(saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal == false, "Expected saw to be false");
+		saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal = true;
+	});
+	BOOST_REQUIRE(controller->set_appTimeoutAfterS_noneForDefault_orNeverValue(to_appTimeoutAfterS));
+	BOOST_REQUIRE_MESSAGE(controller->appTimeoutAfterS_noneForDefault_orNeverValue() == to_appTimeoutAfterS, "Expected controller->appTimeoutAfterS_noneForDefault_orNeverValue of ${controller->appTimeoutAfterS_noneForDefault_orNeverValue} to equal ${to_appTimeoutAfterS}");
+	//
+	bool saw_authentication__requireWhenSending_signal = false;
+	controller->authentication__requireWhenSending_signal.connect(
+	[&saw_authentication__requireWhenSending_signal]
+	{
+		BOOST_REQUIRE_MESSAGE(saw_authentication__requireWhenSending_signal == false, "Expected saw to be false");
+		saw_authentication__requireWhenSending_signal = true;
+	});
+	BOOST_REQUIRE(controller->set_authentication__requireWhenSending(to_authentication__requireWhenSending));
+	BOOST_REQUIRE_MESSAGE(controller->authentication__requireWhenSending() == to_authentication__requireWhenSending, "Expected controller->authentication__requireWhenSending of ${controller->authentication__requireWhenSending} to equal ${to_authentication__requireWhenSending}");
+	//
+	bool saw_authentication__requireToShowWalletSecrets_signal = false;
+	controller->authentication__requireToShowWalletSecrets_signal.connect([&saw_authentication__requireToShowWalletSecrets_signal] {
+		BOOST_REQUIRE_MESSAGE(saw_authentication__requireToShowWalletSecrets_signal == false, "Expected saw to be false");
+		saw_authentication__requireToShowWalletSecrets_signal = true;
+	});
+	BOOST_REQUIRE(controller->set_authentication__requireToShowWalletSecrets(to_authentication__requireToShowWalletSecrets));
+	BOOST_REQUIRE_MESSAGE(controller->authentication__requireToShowWalletSecrets() == to_authentication__requireToShowWalletSecrets, "Expected controller->authentication__requireToShowWalletSecrets of ${controller->authentication__requireToShowWalletSecrets} to equal ${to_authentication__requireToShowWalletSecrets}");
+	//
+	bool saw_authentication__tryBiometric_signal = false;
+	controller->authentication__tryBiometric_signal.connect([&saw_authentication__tryBiometric_signal] {
+		BOOST_REQUIRE_MESSAGE(saw_authentication__tryBiometric_signal == false, "Expected saw to be false");
+		saw_authentication__tryBiometric_signal = true;
+	});
+	BOOST_REQUIRE(controller->set_authentication__tryBiometric(to_authentication__tryBiometric));
+	BOOST_REQUIRE_MESSAGE(controller->authentication__tryBiometric() == to_authentication__tryBiometric, "Expected controller->authentication__tryBiometric of ${controller->authentication__tryBiometric} to equal ${to_authentication__tryBiometric}");
+	//
+	bool saw_displayCurrencySymbol_signal = false;
+	controller->displayCurrencySymbol_signal.connect([&saw_displayCurrencySymbol_signal] {
+		BOOST_REQUIRE_MESSAGE(saw_displayCurrencySymbol_signal == false, "Expected saw to be false");
+		saw_displayCurrencySymbol_signal = true;
+	});
+	BOOST_REQUIRE(controller->set_displayCurrencySymbol(to_displayCurrencySymbol));
+	BOOST_REQUIRE_MESSAGE(controller->displayCurrencySymbol() == to_displayCurrencySymbol, "Expected controller->displayCurrencySymbol of ${controller->displayCurrencySymbol} to equal ${to_displayCurrencySymbol}");
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(50)); // wait for async notifies
+	BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal, "Expected to see specificAPIAddressURLAuthority_signal");
+	BOOST_REQUIRE_MESSAGE(saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal, "Expected to see appTimeoutAfterS_noneForDefault_orNeverValue_signal");
+	BOOST_REQUIRE_MESSAGE(saw_authentication__requireWhenSending_signal, "Expected to see authentication__requireWhenSending_signal");
+	BOOST_REQUIRE_MESSAGE(saw_authentication__requireToShowWalletSecrets_signal, "Expected to see authentication__requireToShowWalletSecrets_signal");
+	BOOST_REQUIRE_MESSAGE(saw_authentication__tryBiometric_signal, "Expected to see authentication__tryBiometric_signal");
+	BOOST_REQUIRE_MESSAGE(saw_displayCurrencySymbol_signal, "Expected to see displayCurrencySymbol_signal");
+}
+BOOST_AUTO_TEST_CASE(settingsController_postSave, *utf::depends_on("settingsController_settingAndGetting"))
+{ // this test has been added even though settingsController_settingAndGetting is equipped to check post-save expected values because a deleteEverything happens below, wiping out the save
+	cout << "settingsController_postSave" << endl;
+	using namespace App;
+	using namespace Settings;
+	//
+	auto controller = ServiceLocator::instance().settingsController;
+	bool settingsAlreadySaved = controller->hasExisting_saved_document();
+	BOOST_REQUIRE_MESSAGE(controller->hasBooted(), "Expected settingscontroller->hasBooted");
+	BOOST_REQUIRE_MESSAGE(settingsAlreadySaved, "Expected settingsAlreadySaved");
+	//
+	optional<string> expectedInitial_specificAPIAddressURLAuthority = to_specificAPIAddressURLAuthority;
+	optional<double> expectedInitial_appTimeoutAfterS = to_appTimeoutAfterS;
+	bool expectedInitial_authentication__requireWhenSending = to_authentication__requireWhenSending;
+	bool expectedInitial_authentication__requireToShowWalletSecrets = to_authentication__requireToShowWalletSecrets;
+	bool expectedInitial_authentication__tryBiometric = to_authentication__tryBiometric;
+	Currencies::CurrencySymbol expectedInitial_displayCurrencySymbol = to_displayCurrencySymbol;
+	//
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_specificAPIAddressURLAuthority == controller->specificAPIAddressURLAuthority(),
+		"Expected controller->specificAPIAddressURLAuthority of " << controller->specificAPIAddressURLAuthority() << " to equal " << expectedInitial_specificAPIAddressURLAuthority
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_appTimeoutAfterS == controller->appTimeoutAfterS_noneForDefault_orNeverValue(),
+		"Expected controller->appTimeoutAfterS_noneForDefault_orNeverValue of " << controller->appTimeoutAfterS_noneForDefault_orNeverValue() << " to equal " << expectedInitial_appTimeoutAfterS
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_authentication__requireWhenSending == controller->authentication__requireWhenSending(),
+		"Expected controller->authentication__requireWhenSending of " << controller->authentication__requireWhenSending() << " to equal " << expectedInitial_authentication__requireWhenSending
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_authentication__requireToShowWalletSecrets == controller->authentication__requireToShowWalletSecrets(),
+		"Expected controller->authentication__requireToShowWalletSecrets of " << controller->authentication__requireToShowWalletSecrets() << " to equal " << expectedInitial_authentication__requireToShowWalletSecrets
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_authentication__tryBiometric == controller->authentication__tryBiometric(),
+		"Expected controller->authentication__tryBiometric of " << controller->authentication__tryBiometric() << " to equal " << expectedInitial_authentication__tryBiometric
+	);
+	BOOST_REQUIRE_MESSAGE(
+		expectedInitial_displayCurrencySymbol == controller->displayCurrencySymbol(),
+		"Expected controller->displayCurrencySymbol of " << controller->displayCurrencySymbol() << " to equal " << expectedInitial_displayCurrencySymbol
+	);
+}
+//
+//
 uint32_t spamTryInterval_ms = 1000;
 class Mocked_SpammingIncorrect_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -937,7 +1099,7 @@ public:
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
 	}
 };
-BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_on("passwords_controller_biometric_authentication"))
+BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_on("settingsController_postSave"))
 {
 	cout << "passwords_controller_spammingIncorrectEntry" << endl;
 	using namespace App;
@@ -1113,6 +1275,23 @@ public:
 		);
 	}
 };
+class Mocked_ChangePassword_Registrant_NoError: public Passwords::ChangePasswordRegistrant
+{
+public:
+	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
+	bool didEnter_registrant_changePasswordMethod = false;
+	//
+	std::string identifier() const
+	{
+		return uuid_string;
+	}
+	//
+	optional<Passwords::EnterPW_Fn_ValidationErr_Code> passwordController_ChangePassword()
+	{
+		didEnter_registrant_changePasswordMethod = true;
+		return boost::none;
+	}
+};
 BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_correct, *utf::depends_on("passwords_controller_changePassword_incorrect"))
 {
 	cout << "passwords_controller_changePassword_correct" << endl;
@@ -1134,6 +1313,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_correct, *utf::depends_
 	Mocked_ChangePassword_Correct_PasswordEntryDelegate entryDelegate{};
 	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
 	//
+	Mocked_ChangePassword_Registrant_NoError changePWRegistrant;
+	ServiceLocator::instance().passwordController->addRegistrantForChangePassword(changePWRegistrant);
+	//
 	ServiceLocator::instance().passwordController->erroredWhileSettingNewPassword_signal.connect([](Passwords::EnterPW_Fn_ValidationErr_Code code) {
 		BOOST_REQUIRE_MESSAGE(false, "Unexpected code " << code);
 	});
@@ -1151,6 +1333,11 @@ BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_correct, *utf::depends_
 	});
 	//
 	ServiceLocator::instance().passwordController->initiate_changePassword();
+	//
+	//
+	BOOST_REQUIRE_MESSAGE(changePWRegistrant.didEnter_registrant_changePasswordMethod, "Unexpectedly never entered MockedPasswords_ChangePasswordRegistrant_NoError changePW function");
+	//
+	ServiceLocator::instance().passwordController->removeRegistrantForChangePassword(changePWRegistrant);
 }
 //
 class Mocked_EnterCorrectChanged_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
@@ -1199,16 +1386,16 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterCorrectChanged, *utf::depends_on(
 }
 //
 #include "../src/Dispatch/Dispatch.asio.hpp"
-#include "../src/Settings/SettingsController.hpp"
+#include "../src/Settings/SettingsProviders.hpp"
 std::shared_ptr<Passwords::Controller> mockedUserIdle_passwordController;
 class MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider: public Settings::IdleTimeoutAfterS_SettingsProvider
 {
 public:
-	double get_default_appTimeoutAfterS() const
+	double default_appTimeoutAfterS()
 	{
 		return 5;
 	}
-	optional<double> get_appTimeoutAfterS_noneForDefault_orNeverValue() const
+	optional<double> appTimeoutAfterS_noneForDefault_orNeverValue()
 	{
 		return boost::none; // unused
 	}
@@ -1237,24 +1424,26 @@ public:
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
 	}
 };
-BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on("passwords_controller_enterCorrectChanged"))
+BOOST_AUTO_TEST_CASE(userIdle_controller__idleBreakThenLockDown, *utf::depends_on("passwords_controller_enterCorrectChanged"))
 {
-	cout << "userIdle_controller__idleBeakThenLockDown" << endl;
+	cout << "userIdle_controller__idleBreakThenLockDown" << endl;
 	using namespace App;
 	using namespace Dispatch;
 	using namespace Settings;
 	//
 	auto idleTimeoutAfterS_settingsProvider = std::make_shared<MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider>();
-	auto userIdleController = std::make_shared<UserIdle::Controller>(
-		ServiceLocator::instance().documentsPath,
-		ServiceLocator::instance().dispatch_ptr,
-		idleTimeoutAfterS_settingsProvider
-	);
-	mockedUserIdle_passwordController = std::make_shared<Passwords::Controller>(
-		ServiceLocator::instance().documentsPath,
-		ServiceLocator::instance().dispatch_ptr,
-		userIdleController
-	);
+	auto userIdleController = std::make_shared<UserIdle::Controller>();
+	userIdleController->documentsPath = ServiceLocator::instance().documentsPath;
+	userIdleController->dispatch_ptr = ServiceLocator::instance().dispatch_ptr;
+	userIdleController->idleTimeoutAfterS_SettingsProvider = idleTimeoutAfterS_settingsProvider;
+	userIdleController->setup();
+	//
+	mockedUserIdle_passwordController = std::make_shared<Passwords::Controller>();
+	mockedUserIdle_passwordController->documentsPath = ServiceLocator::instance().documentsPath;
+	mockedUserIdle_passwordController->dispatch_ptr = ServiceLocator::instance().dispatch_ptr;
+	mockedUserIdle_passwordController->userIdleController = userIdleController;
+	mockedUserIdle_passwordController->setup();
+	//
 	auto passwordController = mockedUserIdle_passwordController;
 	MockedUserIdle_CorrectChangedPasswordEntryDelegate entryDelegate_enterPW{};
 	passwordController->setPasswordEntryDelegate(entryDelegate_enterPW);
@@ -1272,9 +1461,9 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 		[&passwordController, &idleTimeoutAfterS_settingsProvider, &userIdleController, &sawTestCompletion]
 		(Passwords::Password password, Passwords::Type type)
 		{
-			BOOST_REQUIRE(idleTimeoutAfterS_settingsProvider->get_appTimeoutAfterS_noneForDefault_orNeverValue() == none);
+			BOOST_REQUIRE(idleTimeoutAfterS_settingsProvider->appTimeoutAfterS_noneForDefault_orNeverValue() == none);
 			BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to have been entered by now");
-			double checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+			double checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
 			cout << "Test: Now waiting " << checkNotYetLockedAfter_s << " sec" << endl;
 			ServiceLocator::instance().dispatch_ptr->after(
 				1000*checkNotYetLockedAfter_s,
@@ -1284,7 +1473,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 					BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to still have been entered here");
 					userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
 					
-					uint32_t checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+					uint32_t checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
 					cout << "Test: Now waiting " << checkStillNotYetLockedAfter_s << " sec" << endl;
 					ServiceLocator::instance().dispatch_ptr->after(
 						1000*checkStillNotYetLockedAfter_s,
@@ -1331,7 +1520,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 	);
 	long numberOfTimerDelaysToWaitFor = 3;
 	long effective_numberOfTimerDelaysToWaitFor = numberOfTimerDelaysToWaitFor + 1; // just for extra padding
-	long sleep_ms = effective_numberOfTimerDelaysToWaitFor * ceil(idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS()) * 1000;
+	long sleep_ms = effective_numberOfTimerDelaysToWaitFor * ceil(idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS()) * 1000;
 	cout << "Test: Sleeping for " << sleep_ms << "ms" << endl;
 	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms)); // just wait a longish time for the timers above
 	//
@@ -1341,7 +1530,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBeakThenLockDown, *utf::depends_on
 	//
 	mockedUserIdle_passwordController = nullptr;
 }
-BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::depends_on("userIdle_controller__idleBeakThenLockDown"))
+BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::depends_on("userIdle_controller__idleBreakThenLockDown"))
 {
 	cout << "userIdle_controller_verifyUserIdleDisableReEnable" << endl;
 	using namespace App;
@@ -1349,16 +1538,18 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 	using namespace Settings;
 	//
 	auto idleTimeoutAfterS_settingsProvider = std::make_shared<MockedUserIdle_Short_IdleTimeoutAfterS_SettingsProvider>();
-	auto userIdleController = std::make_shared<UserIdle::Controller>(
-		ServiceLocator::instance().documentsPath,
-		ServiceLocator::instance().dispatch_ptr,
-		idleTimeoutAfterS_settingsProvider
-	);
-	mockedUserIdle_passwordController = std::make_shared<Passwords::Controller>(
-		ServiceLocator::instance().documentsPath,
-		ServiceLocator::instance().dispatch_ptr,
-		userIdleController
-	);
+	auto userIdleController = std::make_shared<UserIdle::Controller>();
+	userIdleController->documentsPath = ServiceLocator::instance().documentsPath;
+	userIdleController->dispatch_ptr = ServiceLocator::instance().dispatch_ptr;
+	userIdleController->idleTimeoutAfterS_SettingsProvider = idleTimeoutAfterS_settingsProvider;
+	userIdleController->setup();
+	//
+	mockedUserIdle_passwordController = std::make_shared<Passwords::Controller>();
+	mockedUserIdle_passwordController->documentsPath = ServiceLocator::instance().documentsPath;
+	mockedUserIdle_passwordController->dispatch_ptr = ServiceLocator::instance().dispatch_ptr;
+	mockedUserIdle_passwordController->userIdleController = userIdleController;
+	mockedUserIdle_passwordController->setup();
+	//
 	auto passwordController = mockedUserIdle_passwordController;
 	MockedUserIdle_CorrectChangedPasswordEntryDelegate entryDelegate_enterPW{};
 	passwordController->setPasswordEntryDelegate(entryDelegate_enterPW);
@@ -1372,7 +1563,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 		"Expected a password not to have been entered at the beginning of this test"
 	);
 	//
-	long checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+	long checkNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
 	std::this_thread::sleep_for(std::chrono::seconds(checkNotYetLockedAfter_s));
 	//
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true after only checkNotYetLockedAfter_s sec");
@@ -1382,7 +1573,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true ${checkIsLockedAfter_s}s after checkNotYetLockedAfter_s sec after breaking user idle");
 	userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should now NOT be true after breaking user idle");
-	long checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+	long checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
 	std::this_thread::sleep_for(std::chrono::seconds(checkStillNotYetLockedAfter_s));
 	//
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true checkNotYetLockedAfter_s sec after breaking user idle");
@@ -1392,7 +1583,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 	//
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should still NOT be true after temporarily disabling user idle");
 	userIdleController->reEnable_userIdle();
-	long checkStillNotYetLockedAfterReEnable_s = idleTimeoutAfterS_settingsProvider->get_default_appTimeoutAfterS() - 1; // 1s before idle kicks in
+	long checkStillNotYetLockedAfterReEnable_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
 	std::this_thread::sleep_for(std::chrono::seconds(checkStillNotYetLockedAfterReEnable_s));
 	//
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should still NOT be true after re-enabling user idle");

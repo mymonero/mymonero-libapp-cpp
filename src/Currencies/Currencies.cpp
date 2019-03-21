@@ -1,5 +1,7 @@
 //
-//  Dispatch_Interface.hpp
+//  Currencies.cpp
+//  MyMonero
+//
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -28,29 +30,8 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+//
+#include "Currencies.hpp"
+using namespace Currencies;
+//
 
-#ifndef Dispatch_Interface_hpp
-#define Dispatch_Interface_hpp
-
-#include <string>
-#include <functional>
-
-namespace Dispatch
-{
-	struct CancelableTimerHandle
-	{
-		virtual ~CancelableTimerHandle() {}
-		//
-		virtual void cancel() = 0;
-	};
-	//
-	struct Dispatch
-	{
-		virtual ~Dispatch() {}
-		//
-		virtual std::unique_ptr<CancelableTimerHandle> after(uint32_t ms, std::function<void()>&& fn) = 0;
-		virtual void async(std::function<void()>&& fn) = 0;
-	};
-}
-
-#endif /* Dispatch_Interface_hpp */

@@ -39,27 +39,15 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/signals2.hpp>
+#include <boost/uuid/uuid.hpp> // uuid class
+#include <boost/uuid/uuid_generators.hpp> // generators
 #include <memory>
+#include <mutex>
 #include "../Persistence/document_persister.hpp"
 #include "../Dispatch/Dispatch_Interface.hpp"
-
-namespace Settings
-{ // IdleTimeoutAfterS
-	//
-	// Constants - Special states
-	static const double appTimeoutAfterS_neverValue = -1;
-	//
-	class IdleTimeoutAfterS_SettingsProvider
-	{
-	public:
-		virtual ~IdleTimeoutAfterS_SettingsProvider() {}
-		//
-		// Constants - Default values
-		virtual double get_default_appTimeoutAfterS() const = 0;
-		// Properties
-		virtual optional<double> get_appTimeoutAfterS_noneForDefault_orNeverValue() const = 0;
-	};
-}
+#include "../Passwords/PasswordController.hpp"
+#include "./SettingsProviders.hpp"
+#include "../Currencies/Currencies.hpp"
 //
 namespace Settings
 {
@@ -67,41 +55,141 @@ namespace Settings
 	using namespace boost;
 	using namespace document_persister;
 	//
+	// Constants
+	enum Settings_DictKey
+	{
+		__min = 0,
+		//
+		_id = 1,
+		specificAPIAddressURLAuthority = 2,
+		appTimeoutAfterS_nilForDefault_orNeverValue = 3,
+		displayCurrencySymbol = 4,
+		authentication__requireWhenSending = 5,
+		authentication__requireToShowWalletSecrets = 6,
+		authentication__tryBiometric = 7,
+		//
+		__max = 8
+	};
+	static Currencies::CurrencySymbol default_displayCurrencySymbol = Currencies::CurrencySymbolFrom(Currencies::Currency::XMR);
+	static bool default_authentication__requireWhenSending = true;
+	static bool default_authentication__requireToShowWalletSecrets = true;
+	static bool default_authentication__tryBiometric = true;
+	//
+	// Accessory types
+	typedef boost::variant<
+		optional<double>,
+		bool,
+		optional<Currencies::CurrencySymbol>,
+		optional<string>
+	> prop_val_arg_type;
+	//
 	// Controllers
-	class Controller: public IdleTimeoutAfterS_SettingsProvider
+	class Controller:
+		public IdleTimeoutAfterS_SettingsProvider,
+		public Passwords::DeleteEverythingRegistrant,
+		public Passwords::ChangePasswordRegistrant
 	{
 	public:
 		//
 		// Lifecycle - Init
-		Controller(
-			string documentsPath,
-			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
-		) {
-			this->documentsPath = documentsPath;
-			this->dispatch_ptr = dispatch_ptr;
-			//
-			this->setup();
+		Controller() {
+			// set dependencies then call setup()
 		}
 		~Controller() {
 			cout << "Destructed Settings" << endl;
 		}
 		//
-		// Constructor args
+		// Dependencies
 		string documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
-		//
-		// Signals
-		//
-		// Accessors - IdleTimeoutAfterS_SettingsProvider
-		double get_default_appTimeoutAfterS() const;
-		optional<double> get_appTimeoutAfterS_noneForDefault_orNeverValue() const;
-	private:
-		//
-		// Imperatives
+		std::shared_ptr<Passwords::Controller> passwordController;
+		// Then call:
 		void setup();
 		//
-		// Properties
+		// Signals
+		boost::signals2::signal<void()> specificAPIAddressURLAuthority_signal;
+		boost::signals2::signal<void()> appTimeoutAfterS_noneForDefault_orNeverValue_signal;
+		boost::signals2::signal<void()> displayCurrencySymbol_signal;
+		boost::signals2::signal<void()> authentication__requireWhenSending_signal;
+		boost::signals2::signal<void()> authentication__requireToShowWalletSecrets_signal;
+		boost::signals2::signal<void()> authentication__tryBiometric_signal;
+		//
+		// Accessors
+		bool hasExisting_saved_document() const;
+		bool hasBooted();
+		//
+		// Protocols - PasswordControllerEventParticipant
+		std::string identifier() const
+		{
+			return uuid_string;
+		}
+		// Protocols - DeleteEverythingRegistrant
+		optional<string> passwordController_DeleteEverything();
+		// Protocols - ChangePasswordRegistrant
+		optional<Passwords::EnterPW_Fn_ValidationErr_Code> passwordController_ChangePassword();
+		//
+		// Accessors - IdleTimeoutAfterS_SettingsProvider
+		double default_appTimeoutAfterS();
+		optional<double> appTimeoutAfterS_noneForDefault_orNeverValue();
+		// Accessors - Other properties - Synchronized
+		optional<string> specificAPIAddressURLAuthority();
+		bool authentication__requireWhenSending();
+		bool authentication__requireToShowWalletSecrets();
+		bool authentication__tryBiometric();
+		Currencies::CurrencySymbol displayCurrencySymbol();
+		Currencies::Currency displayCurrency();
+		//
+		// Imperatives
+		bool set_appTimeoutAfterS_noneForDefault_orNeverValue(optional<double> value);
+		bool set_authentication__requireWhenSending(bool value);
+		bool set_authentication__requireToShowWalletSecrets(bool value);
+		bool set_authentication__tryBiometric(bool value);
+		bool set_displayCurrencySymbol(optional<Currencies::CurrencySymbol> value);
+		bool set_specificAPIAddressURLAuthority(optional<string> value);
+	private:
+		//
+		// Properties - Runtime
+		std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
+		std::mutex property_mutex;
+		bool _hasBooted = false;
+		// Properties - Saved values
+		optional<DocumentId> _id = none;
 		optional<double> _appTimeoutAfterS_noneForDefault_orNeverValue;
+		optional<string> _specificAPIAddressURLAuthority;
+		bool _authentication__requireWhenSending;
+		bool _authentication__requireToShowWalletSecrets;
+		bool _authentication__tryBiometric;
+		Currencies::CurrencySymbol _displayCurrencySymbol;
+		//
+		// Accessors
+		optional<string> _givenLocked_existing_saved_documentContentString() const;
+		bool shouldInsertNotUpdate() const;
+		property_tree::ptree _givenLocked_new_dictRepresentation() const;
+		//
+		// Imperatives
+		void startObserving();
+		void _setup_loadState();
+		//
+		bool _locked_set_save_and_emit(Settings_DictKey key, prop_val_arg_type val);
+		void _set(Settings_DictKey key, prop_val_arg_type val);
+		void _onAsync_invokeEmitterFor_changed(Settings_DictKey key);
+		void _onAsync_invokeEmitterFor_changed__all();
+		void _givenLocked_initWithDefaults();
+		void _givenLocked_setup_loadState(
+			optional<DocumentId> arg_id,
+			optional<string> specificAPIAddressURLAuthority,
+			optional<double> appTimeoutAfterS_noneForDefault_orNeverValue,
+			bool authentication__requireWhenSending,
+			bool authentication__requireToShowWalletSecrets,
+			bool authentication__tryBiometric,
+			Currencies::CurrencySymbol displayCurrencySymbol
+		);
+		//
+		bool _givenLocked_saveToDisk();
+		bool __givenLocked_saveToDisk_insert();
+		bool __givenLocked_saveToDisk_update();
+		bool ___givenLocked_saveToDisk_write();
+		//
 	};
 }
 

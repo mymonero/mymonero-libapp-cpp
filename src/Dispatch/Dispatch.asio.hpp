@@ -77,6 +77,13 @@ namespace Dispatch
 			});
 			return std::make_unique<CancelableTimerHandle_asio>(t);
 		}
+		void async(std::function<void()>&& fn)
+		{
+			boost::asio::post(_ctx, [fn = std::move(fn)]()
+			{
+				fn();
+			});
+		}
 	private:
 		io_context &_ctx;
 		executor_work_guard<io_context::executor_type> _guard = make_work_guard(_ctx);

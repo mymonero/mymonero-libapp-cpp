@@ -148,7 +148,8 @@ namespace Passwords
 		enterFreshPassword = 6,
 		saveError = 7,
 		changePasswordError = 8,
-		clearValidationErrorAndAllowRetry = 9
+		clearValidationErrorAndAllowRetry = 9,
+		notBootedYet = 10
 	};
 }
 namespace Passwords
@@ -189,16 +190,8 @@ namespace Passwords
 	public:
 		//
 		// Lifecycle - Init
-		Controller(
-			string documentsPath,
-			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
-			std::shared_ptr<UserIdle::Controller> userIdleController
-		) {
-			this->documentsPath = documentsPath;
-			this->dispatch_ptr = dispatch_ptr;
-			this->userIdleController = userIdleController;
-			//
-			this->setup();
+		Controller() {
+			// set dependencies then call setup()
 		}
 		~Controller() {
 			if (_pw_entry_unlock_timer_handle != nullptr) {
@@ -208,10 +201,12 @@ namespace Passwords
 			cout << "Destructed Passwords" << endl;
 		}
 		//
-		// Constructor args
+		// Dependencies
 		string documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 		std::shared_ptr<UserIdle::Controller> userIdleController;
+		// Then call:
+		void setup();
 		//
 		// Signals
 		boost::signals2::signal<void()> obtainedNewPassword_signal;
@@ -340,7 +335,6 @@ namespace Passwords
 		bool withExistingPassword_isCorrect(const string &enteredPassword) const;
 		//
 		// Imperatives
-		void setup();
 		void startObserving();
 		void initializeRuntimeAndBoot();
 		void _proceedTo_load(const DocumentJSON &documentJSON);

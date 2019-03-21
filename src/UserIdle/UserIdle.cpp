@@ -39,6 +39,16 @@ using namespace UserIdle;
 // Imperatives - Lifecycle
 void Controller::setup()
 {
+	if (documentsPath.empty()) {
+		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected documentsPath.empty() != true"));
+	}
+	if (dispatch_ptr == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected dispatch_ptr != nullptr"));
+	}
+	if (idleTimeoutAfterS_SettingsProvider == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected idleTimeoutAfterS_SettingsProvider != nullptr"));
+	}
+	//
 	_lockMutexAnd_initiate_userIdle_intervalTimer();
 }
 void Controller::teardown()
@@ -145,8 +155,8 @@ void Controller::__givenLocked_create_repeating_timer()
 // Imperatives - Publicly callable
 void Controller::checkIdleTimeout()
 {
-	optional<double> appTimeoutAfterS_orNone_orNeverValue = idleTimeoutAfterS_SettingsProvider->get_appTimeoutAfterS_noneForDefault_orNeverValue();
-	double appTimeoutAfterS_orNeverValue = appTimeoutAfterS_orNone_orNeverValue != none ? *appTimeoutAfterS_orNone_orNeverValue : idleTimeoutAfterS_SettingsProvider->get_default_appTimeoutAfterS(); // use default on no pw entered / no settings info yet
+	optional<double> appTimeoutAfterS_orNone_orNeverValue = idleTimeoutAfterS_SettingsProvider->appTimeoutAfterS_noneForDefault_orNeverValue();
+	double appTimeoutAfterS_orNeverValue = appTimeoutAfterS_orNone_orNeverValue != none ? *appTimeoutAfterS_orNone_orNeverValue : idleTimeoutAfterS_SettingsProvider->default_appTimeoutAfterS(); // use default on no pw entered / no settings info yet
 	if (appTimeoutAfterS_orNeverValue == Settings::appTimeoutAfterS_neverValue) { // then idle timer is specifically disabled
 		return; // do nothing
 	}

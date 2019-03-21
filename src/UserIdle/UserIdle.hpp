@@ -39,7 +39,7 @@
 #include <boost/signals2.hpp>
 #include <mutex>
 #include "../Dispatch/Dispatch_Interface.hpp"
-#include "../Settings/SettingsController.hpp"
+#include "../Settings/SettingsProviders.hpp"
 
 namespace UserIdle
 {
@@ -52,26 +52,20 @@ namespace UserIdle
 	public:
 		//
 		// Lifecycle - Init
-		Controller(
-			string documentsPath,
-			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
-			std::shared_ptr<Settings::IdleTimeoutAfterS_SettingsProvider> idleTimeoutAfterS_SettingsProvider
-		) {
-			this->documentsPath = documentsPath;
-			this->dispatch_ptr = dispatch_ptr;
-			this->idleTimeoutAfterS_SettingsProvider = idleTimeoutAfterS_SettingsProvider;
-			//
-			this->setup();
+		Controller() {
+			// set dependencies then call setup()
 		}
 		~Controller() {
 			teardown();
 			cout << "Destructed user idle" << endl;
 		}
 		//
-		// Constructor args
+		// Dependencies
 		string documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 		std::shared_ptr<Settings::IdleTimeoutAfterS_SettingsProvider> idleTimeoutAfterS_SettingsProvider;
+		// Then call:
+		void setup();
 		//
 		// Properties
 		bool isUserIdle = false;
@@ -95,7 +89,6 @@ namespace UserIdle
 		std::unique_ptr<Dispatch::CancelableTimerHandle> _userIdle_intervalTimer; // initialized to nullptr
 		//
 		// Imperatives
-		void setup();
 		void teardown();
 		//
 		void __lockMutexAnd_disable_userIdle();

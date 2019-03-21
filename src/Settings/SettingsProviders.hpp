@@ -1,5 +1,7 @@
 //
-//  Dispatch_Interface.hpp
+//  SettingsProviders.cpp
+//  MyMonero
+//
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -28,29 +30,30 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+//
 
-#ifndef Dispatch_Interface_hpp
-#define Dispatch_Interface_hpp
+#ifndef SettingsProviders_hpp
+#define SettingsProviders_hpp
 
-#include <string>
-#include <functional>
+#include <boost/optional/optional.hpp>
 
-namespace Dispatch
-{
-	struct CancelableTimerHandle
-	{
-		virtual ~CancelableTimerHandle() {}
-		//
-		virtual void cancel() = 0;
-	};
+namespace Settings
+{ // IdleTimeoutAfterS
+	using namespace boost;
 	//
-	struct Dispatch
+	// Constants - Special states
+	static const double appTimeoutAfterS_neverValue = -1;
+	//
+	class IdleTimeoutAfterS_SettingsProvider
 	{
-		virtual ~Dispatch() {}
+	public:
+		virtual ~IdleTimeoutAfterS_SettingsProvider() {}
 		//
-		virtual std::unique_ptr<CancelableTimerHandle> after(uint32_t ms, std::function<void()>&& fn) = 0;
-		virtual void async(std::function<void()>&& fn) = 0;
+		// Constants - Default values
+		virtual double default_appTimeoutAfterS() = 0;
+		// Properties
+		virtual optional<double> appTimeoutAfterS_noneForDefault_orNeverValue() = 0;
 	};
 }
 
-#endif /* Dispatch_Interface_hpp */
+#endif /* SettingsProviders_hpp */
