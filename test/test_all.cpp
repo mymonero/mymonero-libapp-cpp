@@ -1655,26 +1655,26 @@ BOOST_AUTO_TEST_CASE(currencies__conversions, *utf::depends_on("userIdle_control
 }
 BOOST_AUTO_TEST_CASE(moneroAmounts__verifyParsingAndFormatting, *utf::depends_on("currencies__conversions"))
 {
+	using namespace Currencies;
+	//
 	cout << "moneroAmounts__verifyParsingAndFormatting" << endl;
 	//
-	// TODO:
-//	val correct_xmrAmountDouble = -0.002618
-//	val correct_xmrAmountDoubleString = "-0.002618"
-//	val correct_xmrAmount = MoneroAmount("-2618000000")
-//
-//	val parsed_xmrAmount = MoneroAmountFrom(correct_xmrAmountDoubleString)
-//	assertTrue("Expected parsed_xmrAmount of ${parsed_xmrAmount} to equal correct_xmrAmount of ${correct_xmrAmount}", parsed_xmrAmount == correct_xmrAmount)
-//	//
-//	val formatted_xmrAmountDoubleString = FormattedString(correct_xmrAmount)
-//	assertTrue("Expected formatted_xmrAmountDoubleString of ${formatted_xmrAmountDoubleString} to equal correct_xmrAmountDoubleString of ${correct_xmrAmountDoubleString}", formatted_xmrAmountDoubleString == correct_xmrAmountDoubleString)
-//	//
-//	val converted_xmrAmountDouble = DoubleFromMoneroAmount(correct_xmrAmount)
-//	assertTrue("Expected converted_xmrAmountDouble of ${converted_xmrAmountDouble} to equal correct_xmrAmountDouble of ${correct_xmrAmountDouble}", converted_xmrAmountDouble == correct_xmrAmountDouble)
-//	//
-//	val converted_xmrAmount = MoneroAmountFrom(correct_xmrAmountDouble)
-//	assertTrue("Expected converted_xmrAmount of ${converted_xmrAmount} to equal correct_xmrAmount of ${correct_xmrAmount}", converted_xmrAmount == correct_xmrAmount)
-}
+	double correct_xmrAmountDouble = -0.002618;
+	string correct_xmrAmountDoubleString = "-0.002618";
+	MoneroAmount correct_xmrAmount = MoneroAmount("-2618000000");
 
+	MoneroAmount parsed_xmrAmount = MoneroAmountFromDoubleString(correct_xmrAmountDoubleString);
+	BOOST_REQUIRE_MESSAGE(parsed_xmrAmount == correct_xmrAmount, "Expected parsed_xmrAmount of " << parsed_xmrAmount << " to equal correct_xmrAmount of " << correct_xmrAmount);
+	//
+	string formatted_xmrAmountDoubleString = DoubleFormattedString(correct_xmrAmount);
+	BOOST_REQUIRE_MESSAGE(formatted_xmrAmountDoubleString == correct_xmrAmountDoubleString, "Expected formatted_xmrAmountDoubleString of " << formatted_xmrAmountDoubleString << " to equal correct_xmrAmountDoubleString of " << correct_xmrAmountDoubleString);
+	//
+	double converted_xmrAmountDouble = DoubleFromMoneroAmount(correct_xmrAmount);
+	BOOST_REQUIRE_MESSAGE(converted_xmrAmountDouble == correct_xmrAmountDouble, "Expected converted_xmrAmountDouble of " << converted_xmrAmountDouble << " to equal correct_xmrAmountDouble of " << correct_xmrAmountDouble);
+	//
+	MoneroAmount converted_xmrAmount = MoneroAmountFromDouble(correct_xmrAmountDouble);
+	BOOST_REQUIRE_MESSAGE(converted_xmrAmount == correct_xmrAmount, "Expected converted_xmrAmount of " << converted_xmrAmount << " to equal correct_xmrAmount of " << correct_xmrAmount);
+}
 //
 BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("moneroAmounts__verifyParsingAndFormatting"))
 {

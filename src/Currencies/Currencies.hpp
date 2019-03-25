@@ -51,8 +51,165 @@ namespace MoneroConstants
 //
 namespace Currencies
 {
+	using namespace std;
+	//
 	typedef uint64_t TwelveDecimalMoneyAmount; // aka 12-decimal (-atomic-unit) money-amount
 	typedef uint64_t TwoDecimalMoneyAmount;
+	//
+	inline double doubleFrom(TwelveDecimalMoneyAmount moneroAmount)
+	{
+		return stod(cryptonote::print_money(moneroAmount));
+	}
+	//
+	inline char money_decimal_punctuation_char()
+	{
+		std::locale mylocale;
+		const std::moneypunct<char>& mp = std::use_facet<std::moneypunct<char> >(mylocale);
+		//
+		return mp.decimal_point();
+	}
+	class twodecimal_comma_moneypunct : public std::moneypunct<char>
+	{
+	public:
+		static void imbue(std::ostream &os)
+		{
+			os.imbue(std::locale(os.getloc(), new twodecimal_comma_moneypunct));
+		}
+	protected:
+		virtual char_type do_decimal_point() const
+		{
+			return money_decimal_punctuation_char();
+		}
+		std::string do_grouping() const
+		{
+			return "\0"; // the zero by itself means do no grouping
+		}
+	};
+	inline string localizedTwoDecimalDoubleFormattedString(double val)
+	{
+		stringstream ss;
+		twodecimal_comma_moneypunct::imbue(ss);
+		ss << val;
+		//
+		return ss.str();
+	}
+}
+namespace Currencies
+{
+	using namespace std;
+	//
+	struct MoneroAmount
+	{
+		TwelveDecimalMoneyAmount _magnitude;
+		bool _is_negative;
+		//
+		MoneroAmount(const string &str)
+		{
+			if (str.empty()) {
+				BOOST_THROW_EXCEPTION(logic_error("Invalid input to MoneroAmount"));
+				return;
+			}
+			static size_t lengthOfNegChar = 1;
+			if (str.substr(0, lengthOfNegChar) == "-") {
+				if (str.size() == lengthOfNegChar) {
+					BOOST_THROW_EXCEPTION(logic_error("String with only '-' is invalid input to MoneroAmount"));
+					return;
+				}
+				_is_negative = true;
+				//
+				std::istringstream iss(str.substr(lengthOfNegChar, str.size() - lengthOfNegChar));
+				iss >> _magnitude;
+			} else {
+				std::istringstream iss(str);
+				iss >> _magnitude;
+			}
+		}
+		MoneroAmount(TwelveDecimalMoneyAmount magnitude, bool is_negative)
+		{
+			_magnitude = magnitude;
+			_is_negative = is_negative;
+		}
+		//
+		MoneroAmount(const MoneroAmount &m2)
+		{
+			_magnitude = m2._magnitude;
+			_is_negative = m2._is_negative;
+		}
+		MoneroAmount operator=(MoneroAmount m2)
+		{
+			_magnitude = m2._magnitude;
+			_is_negative = m2._is_negative;
+			//
+			return m2;
+		}
+		bool operator==(MoneroAmount m2)
+		{
+			if (m2._is_negative == _is_negative && m2._magnitude == _magnitude) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		// TODO: implement operator+ and operator- ....
+	};
+	static inline ostream &operator<<(ostream &out, const MoneroAmount &m)
+	{
+		out << m._is_negative << m._magnitude; // opting for bigint representation here rather than BigDecimal
+		//
+		return out;
+	}
+	static inline MoneroAmount MoneroAmountFromDoubleString(const string &str)
+	{
+		if (str.empty()) {
+			BOOST_THROW_EXCEPTION(logic_error("Invalid input to MoneroAmountFromDoubleString"));
+		}
+		bool is_negative = false;
+		static size_t lengthOfNegChar = 1;
+		string final_str;
+		if (str.substr(0, lengthOfNegChar) == "-") {
+			if (str.size() == lengthOfNegChar) {
+				BOOST_THROW_EXCEPTION(logic_error("String with only '-' is invalid input to MoneroAmountFromDoubleString"));
+			}
+			is_negative = true;
+			final_str = str.substr(lengthOfNegChar, str.size() - lengthOfNegChar);
+		} else {
+			final_str = str;
+		}
+		TwelveDecimalMoneyAmount magnitude;
+		bool r = cryptonote::parse_amount(magnitude, final_str);
+		if (!r) {
+			BOOST_THROW_EXCEPTION(logic_error("Unable to parse input to MoneroAmountFromDoubleString"));
+		}
+		//
+		return MoneroAmount(magnitude, is_negative);
+	}
+	static inline string DoubleFormattedString(const MoneroAmount &m)
+	{
+		string m_str = cryptonote::print_money(m._magnitude); // as double string
+		m_str.erase(m_str.find_last_not_of('0') + 1, std::string::npos);
+		if (m._is_negative) {
+			stringstream ss;
+			ss << "-" << m_str;
+			//
+			return ss.str();
+		}
+		return m_str;
+	}
+	static inline double DoubleFromMoneroAmount(const MoneroAmount &m)
+	{
+		double abs_double = doubleFrom(m._magnitude);
+		if (m._is_negative) {
+			return -1 * abs_double;
+		}
+		return abs_double;
+	}
+	static inline MoneroAmount MoneroAmountFromDouble(double d)
+	{
+		stringstream ss;
+		ss << d;
+		//
+		return MoneroAmountFromDoubleString(ss.str());
+	}
 }
 namespace Currencies
 {
@@ -297,44 +454,6 @@ namespace Currencies
 }
 namespace Currencies
 {
-	inline double doubleFrom(TwelveDecimalMoneyAmount moneroAmount)
-	{
-		return stod(cryptonote::print_money(moneroAmount));
-	}
-	//
-	inline char money_decimal_punctuation_char()
-	{
-		std::locale mylocale;
-		const std::moneypunct<char>& mp = std::use_facet<std::moneypunct<char> >(mylocale);
-		//
-		return mp.decimal_point();
-	}
-	class twodecimal_comma_moneypunct : public std::moneypunct<char>
-	{
-	public:
-		static void imbue(std::ostream &os)
-		{
-			os.imbue(std::locale(os.getloc(), new twodecimal_comma_moneypunct));
-		}
-	protected:
-		virtual char_type do_decimal_point() const
-		{
-			return money_decimal_punctuation_char();
-		}
-		std::string do_grouping() const
-		{
-			return "\0"; // the zero by itself means do no grouping
-		}
-	};
-	inline string localizedTwoDecimalDoubleFormattedString(double val)
-	{
-		stringstream ss;
-		twodecimal_comma_moneypunct::imbue(ss);
-		ss << val;
-		//
-		return ss.str();
-	}
-	//
 	inline vector<string> split(char *phrase, string delimiter)
 	{
 		vector<string> list;
