@@ -55,6 +55,8 @@ namespace UserIdle
 		Controller() {
 			// set dependencies then call setup()
 		}
+		Controller(const Controller&) = delete; // disable copy constructor to prevent inadvertent temporary in pointer
+		Controller& operator=(const Controller&) = delete;
 		~Controller() {
 			teardown();
 			cout << "Destructed user idle" << endl;

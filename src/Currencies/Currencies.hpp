@@ -206,6 +206,12 @@ namespace Currencies
 	class ConversionRatesController
 	{
 	public:
+		ConversionRatesController() {}
+		~ConversionRatesController() {
+			cout << "Destructed ~ConversionRatesController" << endl;
+		}
+		ConversionRatesController(const ConversionRatesController&) = delete; // disable copy constructor to prevent inadvertent temporary in pointer
+		ConversionRatesController& operator=(const ConversionRatesController&) = delete;
 		//
 		// Lifecycle
 		void setup() {}

@@ -193,6 +193,8 @@ namespace Passwords
 		Controller() {
 			// set dependencies then call setup()
 		}
+		Controller(const Controller&) = delete; // disable copy constructor to prevent inadvertent temporary in pointer
+		Controller& operator=(const Controller&) = delete;
 		~Controller() {
 			if (_pw_entry_unlock_timer_handle != nullptr) {
 				_pw_entry_unlock_timer_handle->cancel();

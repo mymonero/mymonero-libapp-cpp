@@ -1653,8 +1653,30 @@ BOOST_AUTO_TEST_CASE(currencies__conversions, *utf::depends_on("userIdle_control
 	double expected_backInMonero_rounded_amountDouble = round(expected_xmrAmountDouble * roundingMultiplier) / roundingMultiplier;
 	BOOST_REQUIRE_MESSAGE(backInMonero_rounded_amountDouble == expected_backInMonero_rounded_amountDouble, "Expected backInMonero_rounded_amountDouble of " << backInMonero_rounded_amountDouble << " to equal " << expected_backInMonero_rounded_amountDouble);
 }
+BOOST_AUTO_TEST_CASE(moneroAmounts__verifyParsingAndFormatting, *utf::depends_on("currencies__conversions"))
+{
+	cout << "moneroAmounts__verifyParsingAndFormatting" << endl;
+	//
+	// TODO:
+//	val correct_xmrAmountDouble = -0.002618
+//	val correct_xmrAmountDoubleString = "-0.002618"
+//	val correct_xmrAmount = MoneroAmount("-2618000000")
 //
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("currencies__conversions"))
+//	val parsed_xmrAmount = MoneroAmountFrom(correct_xmrAmountDoubleString)
+//	assertTrue("Expected parsed_xmrAmount of ${parsed_xmrAmount} to equal correct_xmrAmount of ${correct_xmrAmount}", parsed_xmrAmount == correct_xmrAmount)
+//	//
+//	val formatted_xmrAmountDoubleString = FormattedString(correct_xmrAmount)
+//	assertTrue("Expected formatted_xmrAmountDoubleString of ${formatted_xmrAmountDoubleString} to equal correct_xmrAmountDoubleString of ${correct_xmrAmountDoubleString}", formatted_xmrAmountDoubleString == correct_xmrAmountDoubleString)
+//	//
+//	val converted_xmrAmountDouble = DoubleFromMoneroAmount(correct_xmrAmount)
+//	assertTrue("Expected converted_xmrAmountDouble of ${converted_xmrAmountDouble} to equal correct_xmrAmountDouble of ${correct_xmrAmountDouble}", converted_xmrAmountDouble == correct_xmrAmountDouble)
+//	//
+//	val converted_xmrAmount = MoneroAmountFrom(correct_xmrAmountDouble)
+//	assertTrue("Expected converted_xmrAmount of ${converted_xmrAmount} to equal correct_xmrAmount of ${correct_xmrAmount}", converted_xmrAmount == correct_xmrAmount)
+}
+
+//
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("moneroAmounts__verifyParsingAndFormatting"))
 {
 	cout << "teardownRuntime" << endl;
 	using namespace App;
