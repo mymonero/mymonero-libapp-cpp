@@ -36,8 +36,24 @@
 #define Currencies_hpp
 
 #include <iostream>
+#include <unordered_map>
+#include <locale>
 #include <boost/optional/optional.hpp>
-
+#include <boost/signals2.hpp>
+#include <boost/algorithm/string.hpp>
+#include "misc_log_ex.h"
+#include "cryptonote_format_utils.h"
+//
+namespace MoneroConstants
+{
+	static size_t currency_unitPlaces = 12;
+}
+//
+namespace Currencies
+{
+	typedef uint64_t TwelveDecimalMoneyAmount; // aka 12-decimal (-atomic-unit) money-amount
+	typedef uint64_t TwoDecimalMoneyAmount;
+}
 namespace Currencies
 {
 	using namespace std;
@@ -123,6 +139,10 @@ namespace Currencies
 			return "";
 		}
 	}
+	inline CurrencyUID CurrencyUIDFrom(Currency ccy)
+	{
+		return CurrencySymbolFrom(ccy); // same thing since they're unique
+	}
 	inline Currency CurrencyFrom(CurrencySymbol symbol)
 	{
 		if (symbol == "") {
@@ -173,6 +193,296 @@ namespace Currencies
 		BOOST_THROW_EXCEPTION(logic_error("Unrecognized CurrencySymbol"));
 		return Currency::none;
 	}
+	inline size_t unitsForDisplay(Currency ccy)
+	{
+		if (ccy == Currency::XMR) {
+			return MoneroConstants::currency_unitPlaces;
+		}
+		return 2;
+	}
+}
+namespace Currencies
+{
+	class ConversionRatesController
+	{
+	public:
+		//
+		// Lifecycle
+		void setup() {}
+		//
+		// Signals
+		boost::signals2::signal<void()> didUpdateAvailabilityOfRates_signal;
+		//
+		// Accessors
+		bool isRateReady(Currency currency) const
+		{
+			if (currency == Currency::none || currency == Currency::XMR)
+			{
+				BOOST_THROW_EXCEPTION(logic_error("Invalid 'currency' argument value"));
+			}
+			auto it = xmrToCurrencyRatesByCurrencyUID.find(CurrencyUIDFrom(currency));
+			//
+			return it != xmrToCurrencyRatesByCurrencyUID.end();
+		}
+		optional<CcyConversion_Rate> rateFromXMR_orNoneIfNotReady(Currency toCurrency) const
+		{
+			if (toCurrency == Currency::none || toCurrency == Currency::XMR) {
+				BOOST_THROW_EXCEPTION(logic_error("Invalid 'currency' argument value"));
+			}
+			auto it = xmrToCurrencyRatesByCurrencyUID.find(CurrencyUIDFrom(toCurrency));
+			if (it == xmrToCurrencyRatesByCurrencyUID.end()) {
+				return none;
+			}
+			return it->second;
+		}
+		//
+		// Imperatives
+		bool set(
+			CcyConversion_Rate XMRToCurrencyRate,
+			Currency forCurrency,
+			bool isPartOfBatch = false
+		) {
+			bool doNotNotify = isPartOfBatch;
+			string ccyUID = CurrencyUIDFrom(forCurrency);
+			bool wasSetValueDifferent = XMRToCurrencyRate != xmrToCurrencyRatesByCurrencyUID[ccyUID];
+			xmrToCurrencyRatesByCurrencyUID[ccyUID] = XMRToCurrencyRate;
+			if (doNotNotify != true) {
+				_notifyOf_updateTo_XMRToCurrencyRate();
+			}
+			return wasSetValueDifferent;
+		}
+		void ifBatched_notifyOf_set_XMRToCurrencyRate()
+		{
+			MDEBUG("CcyConversionRates: Received updates: $xmrToCurrencyRatesByCurrencyUID");
+			_notifyOf_updateTo_XMRToCurrencyRate();
+		}
+		void set_xmrToCcyRatesByCcy(std::unordered_map<Currency, double> xmrToCcyRatesByCcy)
+		{
+			bool wasAnyRateChanged = false;
+			std::unordered_map<Currency, double>::iterator it = xmrToCcyRatesByCcy.begin();
+			while (it != xmrToCcyRatesByCcy.end()) {
+				Currency currency = it->first;
+				double rate = it->second;
+				bool wasSetValueDifferent = set(
+					rate,
+					currency,
+					true // isPartOfBatch
+				);
+				if (wasSetValueDifferent) {
+					wasAnyRateChanged = true;
+				}
+				it++;
+			}
+			if (wasAnyRateChanged) {
+				ifBatched_notifyOf_set_XMRToCurrencyRate();
+			}
+		}
+	private:
+		//
+		// Properties
+		std::unordered_map<CurrencyUID, CcyConversion_Rate> xmrToCurrencyRatesByCurrencyUID;
+		//
+		// Imperatives
+		void _notifyOf_updateTo_XMRToCurrencyRate()
+		{
+			didUpdateAvailabilityOfRates_signal();
+		}
+	};
+}
+namespace Currencies
+{
+	inline double doubleFrom(TwelveDecimalMoneyAmount moneroAmount)
+	{
+		return stod(cryptonote::print_money(moneroAmount));
+	}
+	//
+	inline char money_decimal_punctuation_char()
+	{
+		std::locale mylocale;
+		const std::moneypunct<char>& mp = std::use_facet<std::moneypunct<char> >(mylocale);
+		//
+		return mp.decimal_point();
+	}
+	class twodecimal_comma_moneypunct : public std::moneypunct<char>
+	{
+	public:
+		static void imbue(std::ostream &os)
+		{
+			os.imbue(std::locale(os.getloc(), new twodecimal_comma_moneypunct));
+		}
+	protected:
+		virtual char_type do_decimal_point() const
+		{
+			return money_decimal_punctuation_char();
+		}
+		std::string do_grouping() const
+		{
+			return "\0"; // the zero by itself means do no grouping
+		}
+	};
+	inline string localizedTwoDecimalDoubleFormattedString(double val)
+	{
+		stringstream ss;
+		twodecimal_comma_moneypunct::imbue(ss);
+		ss << val;
+		//
+		return ss.str();
+	}
+	//
+	inline vector<string> split(char *phrase, string delimiter)
+	{
+		vector<string> list;
+		string s = string(phrase);
+		size_t pos = 0;
+		string token;
+		while ((pos = s.find(delimiter)) != string::npos) {
+			token = s.substr(0, pos);
+			list.push_back(token);
+			s.erase(0, pos + delimiter.length());
+		}
+		list.push_back(s);
+		return list;
+	}
+	//
+	inline string nonAtomicCurrency_localized_formattedString( // is nonAtomic-unit'd currency a good enough way to categorize these?
+		double final_amountDouble,
+		Currencies::Currency inCcy,
+		optional<string> decimalSeparator_orNoneForLocaleDefault
+	) {
+		if (inCcy == Currencies::XMR) {
+			BOOST_THROW_EXCEPTION(logic_error("nonAtomicCurrency_localized_formattedString should not be called with ccy of XMR"));
+			return "";
+		}
+		string decimalSeparator;
+		if (decimalSeparator_orNoneForLocaleDefault != boost::none) {
+			decimalSeparator = decimalSeparator_orNoneForLocaleDefault.get();
+		} else {
+			decimalSeparator = money_decimal_punctuation_char();
+		}
+		if (final_amountDouble == 0) {
+			return "0"; // not 0.0 / 0,0 / ...
+		}
+		string naiveLocalizedString = localizedTwoDecimalDoubleFormattedString(final_amountDouble);
+		vector<string> components;
+		boost::split(components, naiveLocalizedString, boost::is_any_of(decimalSeparator));
+		size_t components_count = components.size();
+		if (components_count == 0) {
+			BOOST_THROW_EXCEPTION(logic_error("Unexpected 0 components while formatting nonatomic currency"));
+			return "";
+		}
+		if (components_count == 1) { // meaning there's no '.'
+			if (boost::algorithm::contains(naiveLocalizedString, decimalSeparator)) {
+				BOOST_THROW_EXCEPTION(logic_error("Expected naiveLocalizedString not to contain decimalSeparator"));
+				return "";
+			}
+			stringstream oss;
+			oss << naiveLocalizedString << decimalSeparator << "00";
+			//
+			return oss.str();
+		}
+		if (components_count != 2) {
+			BOOST_THROW_EXCEPTION(logic_error("Expected naiveLocalizedString components_count to be 2"));
+			return "";
+		}
+		string component_1 = components[0];
+		string component_2 = components[1];
+		size_t component_2_characters_count = component_2.size();
+		if (component_2_characters_count > unitsForDisplay(inCcy)) {
+			BOOST_THROW_EXCEPTION(logic_error("Expected component_2_characters_count <= unitsForDisplay(inCcy)"));
+			return "";
+		}
+		size_t requiredNumberOfZeroes = unitsForDisplay(inCcy) - component_2_characters_count;
+		stringstream rightSidePaddingZeroes;
+		if (requiredNumberOfZeroes > 0) {
+			for (int i = 0 ; i < requiredNumberOfZeroes ; i++) {
+				rightSidePaddingZeroes << "0"; // TODO: less verbose way to do this?
+			}
+		}
+		stringstream return_ss;
+		return_ss << component_1 << decimalSeparator << component_2 << rightSidePaddingZeroes.str(); // pad
+		//
+		return return_ss.str();
+	}
+	//
+	//
+	inline optional<double> displayUnitsRounded_amountInCurrency( // NOTE: __DISPLAY_ units
+		TwelveDecimalMoneyAmount moneroAmount,
+		Currency inCcy,
+		const ConversionRatesController &controller
+	) {
+		if (inCcy == Currency::none) {
+			BOOST_THROW_EXCEPTION(logic_error("Selected currency unexpectedly ::none"));
+			return none;
+		}
+		double moneroAmountDouble = doubleFrom(moneroAmount);
+		if (inCcy == Currencies::XMR) {
+			return moneroAmountDouble; // no conversion necessary
+		}
+		optional<double> xmrToCurrencyRate = controller.rateFromXMR_orNoneIfNotReady(inCcy);
+		if (xmrToCurrencyRate == boost::none) {
+			return none; // ccyConversion rate unavailable - consumers will try again
+		}
+		double raw_ccyConversionRateApplied_amount = moneroAmountDouble * xmrToCurrencyRate.get();
+		double roundingMultiplier = pow((double)10, (double)unitsForDisplay(inCcy));
+		double truncated_amount = round(roundingMultiplier * raw_ccyConversionRateApplied_amount) / roundingMultiplier;
+		//
+		return truncated_amount;
+	}
+	//
+	static int ccyConversionRateCalculated_moneroAmountDouble_roundingPlaces = 4; // 4 rather than, say, 2, b/c it's relatively more unlikely that fiat amts will be over 10-100 xmr - and b/c some currencies require it for xmr value not to be 0 - and 5 places is a bit excessive
+	inline optional<double> rounded_ccyConversionRateCalculated_moneroAmountDouble(
+		double userInputAmountDouble,
+		Currency selectedCurrency,
+		const ConversionRatesController &controller
+	) { // may return nil if ccyConversion rate unavailable - consumers will try again on 'didUpdateAvailabilityOfRates'
+		if (selectedCurrency == Currency::none) {
+			BOOST_THROW_EXCEPTION(logic_error("Selected currency unexpectedly none"));
+			return none;
+		}
+		optional<CcyConversion_Rate> xmrToCurrencyRate = controller.rateFromXMR_orNoneIfNotReady(selectedCurrency);
+		if (xmrToCurrencyRate == boost::none) {
+			return none; // ccyConversion rate unavailable - consumers will try again on 'didUpdateAvailabilityOfRates'
+		}
+		// conversion:
+		// currencyAmt = xmrAmt * xmrToCurrencyRate;
+		// xmrAmt = currencyAmt / xmrToCurrencyRate.
+		// I figure it's better to apply the rounding here rather than only at the display level so that what is actually sent corresponds to what the user saw, even if greater ccyConversion precision /could/ be accomplished..
+		double raw_ccyConversionRateApplied_amount = userInputAmountDouble * (1 / (*xmrToCurrencyRate));
+		double roundingMultiplier = (double)pow(10, ccyConversionRateCalculated_moneroAmountDouble_roundingPlaces);
+		double truncated_amount = (double)round(roundingMultiplier * raw_ccyConversionRateApplied_amount) / roundingMultiplier; // must be truncated for display purposes
+		//
+		return truncated_amount;
+	}
+//	inline func amountConverted_displayStringComponents(
+//														from amount: MoneroAmount,
+//														ccy: CcyConversionRates.Currency,
+//														chopNPlaces: UInt = 0
+//														) -> (
+//															  formattedAmount: String,
+//															  final_ccy: CcyConversionRates.Currency
+//															  ) {
+//		var formattedAmount: String
+//		var final_input_amount: MoneroAmount!
+//		if chopNPlaces != 0 {
+//			let power = MoneroAmount("10")!.power(Int(chopNPlaces)) // this *should* be ok for amount, even if it has no decimal places, because those places would be filled with 0s in such a number
+//			final_input_amount = (amount / power) * power
+//		} else {
+//			final_input_amount = amount
+//		}
+//			var mutable_ccy = ccy
+//			if ccy == .XMR {
+//				formattedAmount = final_input_amount!.localized_formattedString
+//			} else {
+//				let convertedAmount = ccy.displayUnitsRounded_amountInCurrency(fromMoneroAmount: final_input_amount!)
+//				if convertedAmount != nil {
+//					formattedAmount = MoneroAmount.shared_localized_twoDecimalPlaceDoubleFormatter().string(for: convertedAmount)!
+//				} else {
+//					formattedAmount = final_input_amount!.localized_formattedString
+//					mutable_ccy = .XMR // display XMR until rate is ready? or maybe just show 'LOADING…'?
+//				}
+//			}
+//			return (formattedAmount, mutable_ccy)
+//			}
 }
 
 #endif /* Currencies_hpp */

@@ -41,6 +41,7 @@
 #include "../Passwords/PasswordController.hpp"
 #include "../Settings/SettingsController.hpp"
 #include "../UserIdle/UserIdle.hpp"
+#include "../Currencies/Currencies.hpp"
 //
 namespace App
 {
@@ -69,6 +70,7 @@ namespace App
 				settingsController = std::make_shared<Settings::Controller>();
 				userIdleController = std::make_shared<UserIdle::Controller>();
 				passwordController = std::make_shared<Passwords::Controller>();
+				ccyConversionRatesController = std::make_shared<Currencies::ConversionRatesController>();
 				//
 				passwordController->documentsPath = documentsPath;
 				passwordController->dispatch_ptr = dispatch_ptr;
@@ -85,6 +87,8 @@ namespace App
 				settingsController->passwordController = passwordController;
 				settingsController->setup();
 				//
+				ccyConversionRatesController->setup();
+				//
 				built = true;
 				//
 				return *this;
@@ -98,6 +102,7 @@ namespace App
 				settingsController = nullptr;
 				passwordController = nullptr;
 				userIdleController = nullptr;
+				ccyConversionRatesController = nullptr;
 			}
 			//
 			static ServiceLocator& instance()
@@ -116,6 +121,7 @@ namespace App
 			std::shared_ptr<Passwords::Controller> passwordController;
 			std::shared_ptr<Settings::Controller> settingsController;
 			std::shared_ptr<UserIdle::Controller> userIdleController;
+			std::shared_ptr<Currencies::ConversionRatesController> ccyConversionRatesController;
 			//
 			// Lifecycle - Init
 			ServiceLocator &build(

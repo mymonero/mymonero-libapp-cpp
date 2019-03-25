@@ -948,7 +948,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 		saw_specificAPIAddressURLAuthority_signal = true;
 	});
 	BOOST_REQUIRE(controller->set_specificAPIAddressURLAuthority(to_specificAPIAddressURLAuthority));
-	BOOST_REQUIRE_MESSAGE(controller->specificAPIAddressURLAuthority() == to_specificAPIAddressURLAuthority, "Expected controller->specificAPIAddressURLAuthority of ${controller->specificAPIAddressURLAuthority} to equal ${to_specificAPIAddressURLAuthority}");
+	BOOST_REQUIRE_MESSAGE(controller->specificAPIAddressURLAuthority() == to_specificAPIAddressURLAuthority, "Expected controller->specificAPIAddressURLAuthority of " << controller->specificAPIAddressURLAuthority() << " to equal " << to_specificAPIAddressURLAuthority);
 	//
 	bool saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal = false;
 	controller->appTimeoutAfterS_noneForDefault_orNeverValue_signal.connect(
@@ -958,7 +958,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 		saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal = true;
 	});
 	BOOST_REQUIRE(controller->set_appTimeoutAfterS_noneForDefault_orNeverValue(to_appTimeoutAfterS));
-	BOOST_REQUIRE_MESSAGE(controller->appTimeoutAfterS_noneForDefault_orNeverValue() == to_appTimeoutAfterS, "Expected controller->appTimeoutAfterS_noneForDefault_orNeverValue of ${controller->appTimeoutAfterS_noneForDefault_orNeverValue} to equal ${to_appTimeoutAfterS}");
+	BOOST_REQUIRE_MESSAGE(controller->appTimeoutAfterS_noneForDefault_orNeverValue() == to_appTimeoutAfterS, "Expected controller->appTimeoutAfterS_noneForDefault_orNeverValue of " << controller->appTimeoutAfterS_noneForDefault_orNeverValue() << " to equal " << to_appTimeoutAfterS);
 	//
 	bool saw_authentication__requireWhenSending_signal = false;
 	controller->authentication__requireWhenSending_signal.connect(
@@ -968,7 +968,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 		saw_authentication__requireWhenSending_signal = true;
 	});
 	BOOST_REQUIRE(controller->set_authentication__requireWhenSending(to_authentication__requireWhenSending));
-	BOOST_REQUIRE_MESSAGE(controller->authentication__requireWhenSending() == to_authentication__requireWhenSending, "Expected controller->authentication__requireWhenSending of ${controller->authentication__requireWhenSending} to equal ${to_authentication__requireWhenSending}");
+	BOOST_REQUIRE_MESSAGE(controller->authentication__requireWhenSending() == to_authentication__requireWhenSending, "Expected controller->authentication__requireWhenSending of " << controller->authentication__requireWhenSending() << " to equal " << to_authentication__requireWhenSending);
 	//
 	bool saw_authentication__requireToShowWalletSecrets_signal = false;
 	controller->authentication__requireToShowWalletSecrets_signal.connect([&saw_authentication__requireToShowWalletSecrets_signal] {
@@ -976,7 +976,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 		saw_authentication__requireToShowWalletSecrets_signal = true;
 	});
 	BOOST_REQUIRE(controller->set_authentication__requireToShowWalletSecrets(to_authentication__requireToShowWalletSecrets));
-	BOOST_REQUIRE_MESSAGE(controller->authentication__requireToShowWalletSecrets() == to_authentication__requireToShowWalletSecrets, "Expected controller->authentication__requireToShowWalletSecrets of ${controller->authentication__requireToShowWalletSecrets} to equal ${to_authentication__requireToShowWalletSecrets}");
+	BOOST_REQUIRE_MESSAGE(controller->authentication__requireToShowWalletSecrets() == to_authentication__requireToShowWalletSecrets, "Expected controller->authentication__requireToShowWalletSecrets of " << controller->authentication__requireToShowWalletSecrets() << " to equal " << to_authentication__requireToShowWalletSecrets);
 	//
 	bool saw_authentication__tryBiometric_signal = false;
 	controller->authentication__tryBiometric_signal.connect([&saw_authentication__tryBiometric_signal] {
@@ -984,7 +984,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 		saw_authentication__tryBiometric_signal = true;
 	});
 	BOOST_REQUIRE(controller->set_authentication__tryBiometric(to_authentication__tryBiometric));
-	BOOST_REQUIRE_MESSAGE(controller->authentication__tryBiometric() == to_authentication__tryBiometric, "Expected controller->authentication__tryBiometric of ${controller->authentication__tryBiometric} to equal ${to_authentication__tryBiometric}");
+	BOOST_REQUIRE_MESSAGE(controller->authentication__tryBiometric() == to_authentication__tryBiometric, "Expected controller->authentication__tryBiometric of " << controller->authentication__tryBiometric() << " to equal " << to_authentication__tryBiometric);
 	//
 	bool saw_displayCurrencySymbol_signal = false;
 	controller->displayCurrencySymbol_signal.connect([&saw_displayCurrencySymbol_signal] {
@@ -992,7 +992,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 		saw_displayCurrencySymbol_signal = true;
 	});
 	BOOST_REQUIRE(controller->set_displayCurrencySymbol(to_displayCurrencySymbol));
-	BOOST_REQUIRE_MESSAGE(controller->displayCurrencySymbol() == to_displayCurrencySymbol, "Expected controller->displayCurrencySymbol of ${controller->displayCurrencySymbol} to equal ${to_displayCurrencySymbol}");
+	BOOST_REQUIRE_MESSAGE(controller->displayCurrencySymbol() == to_displayCurrencySymbol, "Expected controller->displayCurrencySymbol of " << controller->displayCurrencySymbol() << " to equal " << to_displayCurrencySymbol);
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(50)); // wait for async notifies
 	BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal, "Expected to see specificAPIAddressURLAuthority_signal");
@@ -1467,7 +1467,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBreakThenLockDown, *utf::depends_o
 			cout << "Test: Now waiting " << checkNotYetLockedAfter_s << " sec" << endl;
 			ServiceLocator::instance().dispatch_ptr->after(
 				1000*checkNotYetLockedAfter_s,
-				[&userIdleController, &passwordController, &idleTimeoutAfterS_settingsProvider, &sawTestCompletion]()
+				[&userIdleController, &passwordController, &idleTimeoutAfterS_settingsProvider, &sawTestCompletion, &checkNotYetLockedAfter_s]()
 				{
 					BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true after only 'checkNotYetLockedAfter_s' sec");
 					BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to still have been entered here");
@@ -1477,9 +1477,9 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBreakThenLockDown, *utf::depends_o
 					cout << "Test: Now waiting " << checkStillNotYetLockedAfter_s << " sec" << endl;
 					ServiceLocator::instance().dispatch_ptr->after(
 						1000*checkStillNotYetLockedAfter_s,
-						[&userIdleController, &passwordController, &sawTestCompletion]()
+						[&userIdleController, &passwordController, &sawTestCompletion, &checkNotYetLockedAfter_s]()
 						{
-							BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true ${checkNotYetLockedAfter_s}s after breaking user idle");
+							BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true " << checkNotYetLockedAfter_s << " sec after breaking user idle");
 							BOOST_REQUIRE_MESSAGE(passwordController->getPassword() != none, "Password not expected to be null after unlock when user not idle");
 							BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Password expected to be entered after an unlock when user not idle");
 							uint32_t checkIsLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
@@ -1570,7 +1570,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 	long checkIsLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
 	std::this_thread::sleep_for(std::chrono::seconds(checkIsLockedAfter_s));
 	//
-	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true ${checkIsLockedAfter_s}s after checkNotYetLockedAfter_s sec after breaking user idle");
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true " << checkIsLockedAfter_s << " sec after checkNotYetLockedAfter_s sec after breaking user idle");
 	userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
 	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should now NOT be true after breaking user idle");
 	long checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
@@ -1590,13 +1590,71 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 	long checkIsFinallyLockedAfter_s = 1 + 1; // at default_appTimeoutAfterS + 1
 	std::this_thread::sleep_for(std::chrono::seconds(checkIsFinallyLockedAfter_s));
 	//
-	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true ${checkIsFinallyLockedAfter_s}s after checkStillNotYetLockedAfterReEnable_s sec after re-enabling user idle");
+	BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle, "isUserIdle SHOULD be true " << checkIsFinallyLockedAfter_s << " sec after checkStillNotYetLockedAfterReEnable_s sec after re-enabling user idle");
 	//
 	mockedUserIdle_passwordController = nullptr;
 }
 //
+BOOST_AUTO_TEST_CASE(currencies__conversions, *utf::depends_on("userIdle_controller_verifyUserIdleDisableReEnable"))
+{
+	cout << "currencies__conversions" << endl;
+	using namespace App;
+	//
+	bool didSeeUpdate = false;
+	std::shared_ptr<Currencies::ConversionRatesController> controller = ServiceLocator::instance().ccyConversionRatesController;
+	controller->didUpdateAvailabilityOfRates_signal.connect(
+		[&didSeeUpdate]
+	{
+		didSeeUpdate = true;
+	});
+	//
+	double usdRate = 126.66;
+	Currencies::Currency toCcy = Currencies::Currency::USD;
+	std::unordered_map<Currencies::Currency, double> xmrToCcyRatesByCcy({
+		{ toCcy, usdRate }
+	});
+	controller->set_xmrToCcyRatesByCcy(xmrToCcyRatesByCcy);
+	//
+	BOOST_REQUIRE_MESSAGE(didSeeUpdate, "Expected to have seen rates update by now");
+	optional<Currencies::CcyConversion_Rate> rateBack = controller->rateFromXMR_orNoneIfNotReady(Currencies::Currency::USD);
+	BOOST_REQUIRE_MESSAGE(rateBack != none && *rateBack == usdRate, "Expected to have rate back from controller.");
+	//
+	uint64_t xmrAmount = 2618000000;
+	double xmrAmountDouble = Currencies::doubleFrom(xmrAmount);
+	double expected_xmrAmountDouble = 0.002618;
+	BOOST_REQUIRE_MESSAGE(xmrAmountDouble == expected_xmrAmountDouble, "Expected xmrAmountDouble of " << xmrAmountDouble << " == Double(xmrAmount)");
+	//
+	optional<double> inCurrency_amountDouble = Currencies::displayUnitsRounded_amountInCurrency(
+		xmrAmount,
+		toCcy,
+		*controller
+	);
+	double expected_inCurrency_amountDouble = 0.33;
+	BOOST_REQUIRE_MESSAGE(inCurrency_amountDouble != none, "Expected non-none inCurrency_amount of " << inCurrency_amountDouble << " to equal " << expected_inCurrency_amountDouble << ", inCurrency_amountDouble == expected_inCurrency_amountDouble");
+	BOOST_REQUIRE_MESSAGE(*inCurrency_amountDouble == expected_inCurrency_amountDouble, "Expected inCurrency_amountDouble of " << inCurrency_amountDouble << " to equal " << expected_inCurrency_amountDouble);
+	//
+	string inCurrency_amountFormattedString = Currencies::nonAtomicCurrency_localized_formattedString(
+		*inCurrency_amountDouble,
+		Currencies::USD,
+		string(".") // just to make it possible to do the string comparison here
+	);
+	string expected_inCurrency_amountFormattedString = "0.33";
+	BOOST_REQUIRE_MESSAGE(
+		inCurrency_amountFormattedString == expected_inCurrency_amountFormattedString,
+		"Expected inCurrency_amountFormattedString of " << inCurrency_amountFormattedString << " to equal " << expected_inCurrency_amountFormattedString
+	);
+	//
+	optional<double> backInMonero_rounded_amountDouble = Currencies::rounded_ccyConversionRateCalculated_moneroAmountDouble(
+		*inCurrency_amountDouble,
+		Currencies::Currency::USD,
+		*controller
+	);
+	double roundingMultiplier = (double)pow(10, Currencies::ccyConversionRateCalculated_moneroAmountDouble_roundingPlaces);
+	double expected_backInMonero_rounded_amountDouble = round(expected_xmrAmountDouble * roundingMultiplier) / roundingMultiplier;
+	BOOST_REQUIRE_MESSAGE(backInMonero_rounded_amountDouble == expected_backInMonero_rounded_amountDouble, "Expected backInMonero_rounded_amountDouble of " << backInMonero_rounded_amountDouble << " to equal " << expected_backInMonero_rounded_amountDouble);
+}
 //
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("userIdle_controller_verifyUserIdleDisableReEnable"))
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("currencies__conversions"))
 {
 	cout << "teardownRuntime" << endl;
 	using namespace App;
