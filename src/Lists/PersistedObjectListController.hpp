@@ -99,7 +99,14 @@ namespace Lists
 		}
 		//
 		// Accessors
-		const std::vector<std::shared_ptr<Persistable::Object>> &records() { return _records; }
+		std::vector<std::shared_ptr<Persistable::Object>> records()
+		{ // accessing within the mutex and returning a copy so as to resolve possible mutability and consistency issues
+			// TODO: is this too expensive? are the pointers themselves being copied?
+			_records_mutex.lock();
+			auto r_copy = _records;
+			_records_mutex.unlock();
+			return r_copy;
+		}
 		bool hasBooted() const { return _hasBooted; }
 		//
 		// Accessors - Override
@@ -134,7 +141,7 @@ namespace Lists
 		//
 		// Delegation - Updates
 		void _atRuntime__record_wasSuccessfullySetUp(std::shared_ptr<Persistable::Object> listedObject); // this is to be called by subclasses
-		void _atRuntime__record_wasSuccessfullySetUp_noSortNoListUpdated(std::shared_ptr<Persistable::Object> listedObject);
+		void _atRuntime__lockMutexAnd_record_wasSuccessfullySetUp_noSortNoListUpdated(std::shared_ptr<Persistable::Object> listedObject);
 		//
 	private:
 		//
@@ -143,6 +150,7 @@ namespace Lists
 		std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
 		const CollectionName _listedObjectTypeCollectionName;
 		std::vector<std::shared_ptr<Persistable::Object>> _records;
+		std::mutex _records_mutex;
 		//
 		boost::signals2::connection connection__PasswordController_willDeconstructBootedStateAndClearPassword;
 		boost::signals2::connection connection__PasswordController_didDeconstructBootedStateAndClearPassword;

@@ -84,7 +84,11 @@ void Controller::startObserving_passwordController()
 }
 void Controller::setup_fetchAndReconstituteExistingRecords()
 {
-	_records.clear(); // zeroing
+	_records_mutex.lock();
+	{
+		_records.clear(); // zeroing
+	}
+	_records_mutex.unlock();
 	//
 	auto err_orIds = _new_idsOfPersistedRecords();
 	if (err_orIds.err_str != boost::none) {
@@ -140,7 +144,11 @@ void Controller::setup_fetchAndReconstituteExistingRecords()
 					passwordController,
 					plaintext_documentJSON
 				);
-				_records.push_back(listedObjectInstance);
+				_records_mutex.lock();
+				{ // TODO: should we lock outside of the for loop?
+					_records.push_back(listedObjectInstance);
+				}
+				_records_mutex.unlock();
 				overridable_booting_didReconstitute(listedObjectInstance);
 			}
 			_setup_didBoot();
@@ -259,42 +267,50 @@ void Controller::_removeFromList_noListUpdatedNotify(Persistable::Object &object
 		BOOST_THROW_EXCEPTION(logic_error("_removeFromList_noListUpdatedNotify can only remove an object with a non-none _id"));
 		return;
 	}
-	size_t index = 0;
-	bool found = false;
-	for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = _records.begin(); it != _records.end(); ++it) {
-		if ((*it)->_id == none) {
-			continue; // no way to compare reliably, so skip
+	_records_mutex.lock();
+	{
+		size_t index = 0;
+		bool found = false;
+		for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = _records.begin(); it != _records.end(); ++it) {
+			if ((*it)->_id == none) {
+				continue; // no way to compare reliably, so skip
+			}
+			if ((*(*it)->_id) == *(object._id)) {
+				found = true;
+				break;
+			}
+			index++;
 		}
-		if ((*(*it)->_id) == *(object._id)) {
-			found = true;
-			break;
+		if (!found) {
+			BOOST_THROW_EXCEPTION(logic_error("object is not in _records"));
+			return;
 		}
-		index++;
+		_records.erase(_records.begin() + index);
 	}
-	if (!found) {
-		BOOST_THROW_EXCEPTION(logic_error("object is not in _records"));
-		return;
-	}
-	_records.erase(_records.begin() + index);
+	_records_mutex.unlock();
 }
 //
 // Delegation - Updates
 void Controller::_atRuntime__record_wasSuccessfullySetUp(std::shared_ptr<Persistable::Object> listedObject)
 {
-	_atRuntime__record_wasSuccessfullySetUp_noSortNoListUpdated(listedObject);
+	_atRuntime__lockMutexAnd_record_wasSuccessfullySetUp_noSortNoListUpdated(listedObject);
 	if (overridable_shouldSortOnEveryRecordAdditionAtRuntime() == true) { // this is no longer actually used by anything
 		overridable_finalizeAndSortRecords();
 	}
 	__dispatchAsync_listUpdated_records();
 	// ^-- so control can be passed back before all observers of notification handle their work - which is done synchronously
 }
-void Controller::_atRuntime__record_wasSuccessfullySetUp_noSortNoListUpdated(std::shared_ptr<Persistable::Object> listedObject)
+void Controller::_atRuntime__lockMutexAnd_record_wasSuccessfullySetUp_noSortNoListUpdated(std::shared_ptr<Persistable::Object> listedObject)
 {
-	if (overridable_wantsRecordsAppendedNotPrepended() == true) {
-		_records.push_back(listedObject);
-	} else {
-		_records.insert(_records.begin(), listedObject); // so we add it to the top
+	_records_mutex.lock();
+	{
+		if (overridable_wantsRecordsAppendedNotPrepended() == true) {
+			_records.push_back(listedObject);
+		} else {
+			_records.insert(_records.begin(), listedObject); // so we add it to the top
+		}
 	}
+	_records_mutex.unlock();
 //	overridable_startObserving(listedObject_ptr) // TODO if necessary - but shouldn't be at the moment - if implemented, be sure to add corresponding stopObserving in _removeFromList_noListUpdatedNotify
 }
 //
@@ -313,7 +329,11 @@ void Controller::__dispatchAsync_listUpdated_records()
 // Delegation - Notifications - Password Controller
 void Controller::PasswordController_willDeconstructBootedStateAndClearPassword()
 {
-	_records.clear();
+	_records_mutex.lock();
+	{
+		_records.clear();
+	}
+	_records_mutex.unlock();
 	_hasBooted = false;
 	// now we'll wait for the "did" event ---v before emiting anything like list updated, etc
 }
@@ -344,19 +364,25 @@ optional<Passwords::EnterPW_Fn_ValidationErr_Code> Controller::passwordControlle
 		return Passwords::EnterPW_Fn_ValidationErr_Code::notBootedYet; // critical: not ready to get this
 	}
 	// change all record passwords by re-saving
-	for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = _records.begin(); it != _records.end(); ++it) {
-		if (((*it)->didFailToInitialize_flag != none && *((*it)->didFailToInitialize_flag) == true)
-			|| ((*it)->didFailToBoot_flag != none && *((*it)->didFailToBoot_flag) == true)) {
-			MERROR("Lists: This record failed to boot. Not messing with its saved data");
-			BOOST_THROW_EXCEPTION(logic_error("Expected record to have been booted during change-password.")); // not considering this a runtime error.. app can deal with it.. plus we don't want to abort a save just for this - if we did, change pw revert would not work anyway
-			//
-			return Passwords::EnterPW_Fn_ValidationErr_Code::unexpectedState;
-		}
-		// by here, we've checked if the record had a problem booting or initializing
-		optional<string> err_str = (*it)->saveToDisk();
-		if (err_str != none) { // err_str is logged
-			return Passwords::EnterPW_Fn_ValidationErr_Code::saveError;
+	_records_mutex.lock();
+	{
+		for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = _records.begin(); it != _records.end(); ++it) {
+			if (((*it)->didFailToInitialize_flag != none && *((*it)->didFailToInitialize_flag) == true)
+				|| ((*it)->didFailToBoot_flag != none && *((*it)->didFailToBoot_flag) == true)) {
+				MERROR("Lists: This record failed to boot. Not messing with its saved data");
+				BOOST_THROW_EXCEPTION(logic_error("Expected record to have been booted during change-password.")); // not considering this a runtime error.. app can deal with it.. plus we don't want to abort a save just for this - if we did, change pw revert would not work anyway
+				//
+				_records_mutex.unlock(); // Critical: must unlock
+				return Passwords::EnterPW_Fn_ValidationErr_Code::unexpectedState;
+			}
+			// by here, we've checked if the record had a problem booting or initializing
+			optional<string> err_str = (*it)->saveToDisk();
+			if (err_str != none) { // err_str is logged
+				_records_mutex.unlock(); // Critical: must unlock
+				return Passwords::EnterPW_Fn_ValidationErr_Code::saveError;
+			}
 		}
 	}
+	_records_mutex.unlock(); // Critical: must unlock
 	return none; // success
 }
