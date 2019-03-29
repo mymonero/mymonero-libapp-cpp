@@ -53,6 +53,7 @@
 #include <boost/archive/iterators/insert_linebreaks.hpp>
 #include <boost/archive/iterators/transform_width.hpp>
 #include <boost/archive/iterators/ostream_iterator.hpp>
+#include <boost/signals2.hpp>
 using namespace std;
 using namespace boost;
 //
@@ -99,6 +100,7 @@ namespace Persistable
 			}
 			// Lifecycle - Teardown
 			virtual ~Object(); // this must be virtual since there are virtual methods on this class
+			virtual void teardown(); // overridable
 			//
 			// Properties - Dependencies
 			std::shared_ptr<const string> documentsPath;
@@ -111,6 +113,14 @@ namespace Persistable
 			optional<bool> didFailToInitialize_flag;
 			optional<bool> didFailToBoot_flag;
 			optional<string> didFailToBoot_errStr;
+			//
+			// Signals - Boot state change notification declarations for your convenience - not posted for you - see Wallet.cpp
+			boost::signals2::signal<void()> booted_signal;
+			boost::signals2::signal<void()> failedToBoot_signal;
+			// Signals - Posted automatically
+			boost::signals2::signal<void(const Persistable::Object &obj)> willBeDeinitialized_signal; // this is necessary since views like UITableView and UIPickerView won't necessarily call .prepareForReuse() on an unused cell (e.g. after logged-in-runtime teardown), leaving PersistableObject instances hanging around
+			boost::signals2::signal<void(const Persistable::Object &obj)> willBeDeleted_signal;
+			boost::signals2::signal<void(const Persistable::Object &obj)> wasDeleted_signal;
 			//
 			// Accessors - Overridable - Required
 			virtual const CollectionName &collectionName() const = 0;

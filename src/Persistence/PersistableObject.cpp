@@ -36,7 +36,11 @@
 // Private - Lifecycle - Teardown
 Persistable::Object::~Object()
 {
-	// TODO: emit .willBeDeinitialized for observers
+	teardown();
+}
+void Persistable::Object::teardown()
+{
+	willBeDeinitialized_signal(*this);
 }
 //
 // Private - Accessors
@@ -78,14 +82,15 @@ optional<std::string> Persistable::Object::deleteFromDisk()
 		cout << "Persistence" << ": " << "Asked to delete() but had not yet been saved." << endl; // TODO: maybe call central logging lib which then can be routed to Android log if we want
 		//
 		// posting notifications so UI updates, e.g. to pop views etc
-//		this->willBeDeleted_fns.invoke(this);
-//		this->wasDeleted_fns.invoke(this);
+		willBeDeleted_signal(*this);
+		wasDeleted_signal(*this);
+		//
 		return none; // no error
 	}
 	if (this->_id == none) {
 		BOOST_THROW_EXCEPTION(logic_error("deleteFromDisk called with nil _id"));
 	}
-//	this.willBeDeleted_fns.invoke(this, "")
+	willBeDeleted_signal(*this);
 	vector<DocumentId> ids;
 	ids.push_back(*(this->_id));
 	//
@@ -103,7 +108,7 @@ optional<std::string> Persistable::Object::deleteFromDisk()
 	} else {
 		cout << "Persistence" << ": " << "Deleted " << this << endl;
 		// NOTE: handlers of this should dispatch async so err_str can be returned -- it would be nice to post this on next-tick but self might have been released by then
-//		this.wasDeleted_fns.invoke(this, "")
+		wasDeleted_signal(*this);
 	}
 	return std::move(result.err_str); // does this move do anything?
 }
