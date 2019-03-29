@@ -59,7 +59,7 @@ namespace App
 			ServiceLocator_SpecificImpl *_pImpl;
 			//
 			ServiceLocator &_shared_build( // use this for platform-specific implementations of ServiceLocator::build
-				const string &this_documentsPath,
+				std::shared_ptr<string> this_documentsPath,
 				std::shared_ptr<Dispatch::Dispatch> this_dispatch_ptr
 			) {
 				documentsPath = this_documentsPath;
@@ -115,7 +115,7 @@ namespace App
 			// Properties - Initial: Status
 			bool built = false;
 			// Properties - Initial: Required for build()
-			string documentsPath;
+			std::shared_ptr<string> documentsPath;
 			// Properties - Services: Built and retained dependencies
 			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 			std::shared_ptr<Passwords::Controller> passwordController;
@@ -125,7 +125,7 @@ namespace App
 			//
 			// Lifecycle - Init
 			ServiceLocator &build(
-				const string &documentsPath
+				std::shared_ptr<string> documentsPath
 			); // simply returns the singleton for convenience
    };
 }

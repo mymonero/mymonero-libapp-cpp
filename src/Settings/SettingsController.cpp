@@ -66,11 +66,11 @@ std::string _dictKey(Settings_DictKey fromKey)
 	}
 }
 //
-// Imperatives - Lifecycle
+// Imperatives - Lifecycle - Setup
 void Controller::setup()
 {
-	if (documentsPath.empty()) {
-		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected documentsPath.empty() != true"));
+	if (documentsPath == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("ListController: expected documentsPath != nullptr"));
 	}
 	if (dispatch_ptr == nullptr) {
 		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected dispatch_ptr != nullptr"));
@@ -128,6 +128,17 @@ void Controller::_setup_loadState()
 	property_mutex.unlock();
 }
 //
+// Imperatives - Lifecycle - Teardown
+void Controller::teardown()
+{
+	stopObserving();
+}
+void Controller::stopObserving()
+{
+	passwordController->removeRegistrantForDeleteEverything(*this);
+	passwordController->removeRegistrantForChangePassword(*this);
+}
+//
 // Accessors
 bool Controller::hasExisting_saved_document() const
 { // Exposed for Testing (Not necessary for app integration)
@@ -136,7 +147,7 @@ bool Controller::hasExisting_saved_document() const
 }
 optional<string> Controller::_givenLocked_existing_saved_documentContentString() const
 {
-	auto result = allDocuments(documentsPath, collectionName);
+	auto result = allDocuments(*documentsPath, collectionName);
 	if (result.err_str) {
 		ostringstream ss;
 		ss << "Settings: Fatal error while loading " << collectionName << ": " << *result.err_str << "" << endl;
@@ -439,7 +450,7 @@ bool Controller::___givenLocked_saveToDisk_write()
 //	throwUnlessOnSyncThread()
 	//
 	optional<string> err_str = document_persister::write(
-		documentsPath,
+		*documentsPath,
 		Persistable::new_plaintextJSONStringFromDocumentDict(_givenLocked_new_dictRepresentation()),
 		*_id,
 		collectionName
@@ -458,7 +469,7 @@ optional<string> Controller::passwordController_DeleteEverything()
 	optional<string> err_str = none;
 	property_mutex.lock();
 	{ // so as not to race with any saves
-		errOr_numRemoved result = document_persister::removeAllDocuments(documentsPath, collectionName);
+		errOr_numRemoved result = document_persister::removeAllDocuments(*documentsPath, collectionName);
 		if (result.err_str != none) {
 			err_str = std::move(*result.err_str);
 		} else { // if delete succeeded

@@ -98,7 +98,7 @@ namespace Persistable
 				//
 			}
 			// Lifecycle - Teardown
-			~Object();
+			virtual ~Object(); // this must be virtual since there are virtual methods on this class
 			//
 			// Properties - Dependencies
 			std::shared_ptr<const string> documentsPath;
@@ -108,8 +108,12 @@ namespace Persistable
 			boost::optional<std::string> _id;
 			boost::optional<long> insertedAt_sSinceEpoch;
 			//
+			optional<bool> didFailToInitialize_flag;
+			optional<bool> didFailToBoot_flag;
+			optional<string> didFailToBoot_errStr;
+			//
 			// Accessors - Overridable - Required
-			virtual CollectionName collectionName() const = 0;
+			virtual const CollectionName &collectionName() const = 0;
 			virtual property_tree::ptree new_dictRepresentation() const
 			{ // override and implement but call on Persistable::Object
 				property_tree::ptree dict;

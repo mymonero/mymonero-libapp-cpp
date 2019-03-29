@@ -98,11 +98,12 @@ namespace Settings
 		Controller(const Controller&) = delete; // disable copy constructor to prevent inadvertent temporary in pointer
 		Controller& operator=(const Controller&) = delete;
 		~Controller() {
-			cout << "Destructed Settings" << endl;
+			cout << "Destructing a Settings::Controller" << endl;
+			teardown();
 		}
 		//
 		// Dependencies
-		string documentsPath;
+		std::shared_ptr<string> documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 		std::shared_ptr<Passwords::Controller> passwordController;
 		// Then call:
@@ -171,6 +172,9 @@ namespace Settings
 		// Imperatives
 		void startObserving();
 		void _setup_loadState();
+		//
+		void teardown();
+		void stopObserving();
 		//
 		bool _locked_set_save_and_emit(Settings_DictKey key, prop_val_arg_type val);
 		void _set(Settings_DictKey key, prop_val_arg_type val);

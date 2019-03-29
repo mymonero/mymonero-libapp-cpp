@@ -39,8 +39,8 @@ using namespace UserIdle;
 // Imperatives - Lifecycle
 void Controller::setup()
 {
-	if (documentsPath.empty()) {
-		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected documentsPath.empty() != true"));
+	if (documentsPath == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("ListController: expected documentsPath != nullptr"));
 	}
 	if (dispatch_ptr == nullptr) {
 		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected dispatch_ptr != nullptr"));

@@ -36,9 +36,6 @@
 #include "../UserIdle/UserIdle.hpp"
 #include "../Persistence/PersistableObject.hpp"
 #include "misc_log_ex.h"
-#include <boost/asio.hpp>
-#include <thread>
-#include <chrono>
 using namespace std;
 using namespace boost;
 using namespace document_persister;
@@ -77,7 +74,7 @@ Passwords::Type Controller::getPasswordType() const
 }
 bool Controller::hasUserSavedAPassword() const
 { // this obviously has a file I/O hit, which is not optimal; alternatives are use sparingly or cache at appropriate locations
-	errOr_documentIds result = idsOfAllDocuments(documentsPath, collectionName);
+	errOr_documentIds result = idsOfAllDocuments(*documentsPath, collectionName);
 	if (result.err_str) {
 		BOOST_THROW_EXCEPTION(logic_error(*result.err_str));
 		return false;
@@ -182,8 +179,8 @@ void Controller::TEST_resetPasswordControllerInitAndObservers()
 // Imperatives - Lifecycle
 void Controller::setup()
 {
-	if (documentsPath.empty()) {
-		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected documentsPath.empty() != true"));
+	if (documentsPath == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("ListController: expected documentsPath != nullptr"));
 	}
 	if (dispatch_ptr == nullptr) {
 		BOOST_THROW_EXCEPTION(logic_error("PasswordController: expected dispatch_ptr != nullptr"));
@@ -207,7 +204,7 @@ void Controller::initializeRuntimeAndBoot()
 		BOOST_THROW_EXCEPTION(logic_error("initializeRuntimeAndBoot called while already booted"));
 		return;
 	}
-	auto result = allDocuments(documentsPath, collectionName);
+	auto result = allDocuments(*documentsPath, collectionName);
 	if (result.err_str) {
 		ostringstream ss;
 		ss << "Passwords: Fatal error while loading " << collectionName << ": " << *result.err_str << "" << endl;
@@ -255,6 +252,15 @@ void Controller::_proceedTo_load(const DocumentJSON &documentJSON)
 	hasBooted = true;
 	_callAndFlushAllBlocksWaitingForBootToExecute();
 	MDEBUG("Passwords: Booted \(self) and called all waiting blocks. Waiting for unlock.");
+}
+//
+// Imperatives - Lifecycle - Teardown
+void Controller::teardown()
+{
+	if (_pw_entry_unlock_timer_handle != nullptr) {
+		_pw_entry_unlock_timer_handle->cancel();
+		_pw_entry_unlock_timer_handle = nullptr;
+	}
 }
 //
 // Imperatives - Execution Deferment
@@ -327,7 +333,7 @@ void Controller::onceBootedAndPasswordObtained(
 	}
 	// then we have to wait for it
 	auto callback_info_container = std::make_shared<once_booted_callback_info_container>();
-	auto _aPasswordWasObtained = [this, fn, callback_info_container]()
+	auto _aPasswordWasObtained = [this, fn = std::move(fn), callback_info_container]()
 	{
 		if (callback_info_container->guardAllCallBacks() != false) {
 			callback_info_container->stopListening(); // immediately unsubscribe
@@ -341,7 +347,7 @@ void Controller::onceBootedAndPasswordObtained(
 			userCanceled_fn();
 		}
 	};
-	onceBooted([callback_info_container, this, _aPasswordWasObtained, _obtainingPasswordWasCanceled] () {
+	onceBooted([&callback_info_container, this, _aPasswordWasObtained, _obtainingPasswordWasCanceled] () {
 		// hang onto connections so we can unsub
 		callback_info_container->connection__obtainedNewPassword = obtainedNewPassword_signal.connect(_aPasswordWasObtained);
 		callback_info_container->connection__obtainedCorrectExistingPassword = obtainedCorrectExistingPassword_signal.connect(_aPasswordWasObtained);
@@ -442,7 +448,7 @@ void Controller::initiate_verifyUserAuthenticationForAction(
 ) {
 	onceBooted([
 		this, customNavigationBarTitle_orNone,
-		canceled_fn, entryAttempt_succeeded_fn, tryBiometrics
+		canceled_fn = std::move(canceled_fn), entryAttempt_succeeded_fn = std::move(entryAttempt_succeeded_fn), tryBiometrics
 	] (void) {
 		if (hasUserEnteredValidPasswordYet() == false) {
 			BOOST_THROW_EXCEPTION(logic_error("initiate_verifyUserAuthenticationForAction called but hasUserEnteredValidPasswordYet == false. This should be disallowed in the UI"));
@@ -806,7 +812,7 @@ optional<string>/*err_str*/ Controller::saveToDisk()
 	persistableDocument.put(_dictKey(DictKey::passwordType), _passwordType);
 	persistableDocument.put(_dictKey(DictKey::messageAsEncryptedDataForUnlockChallenge_base64String), *_messageAsEncryptedDataForUnlockChallenge_base64String);
 	const std::string plaintextString = Persistable::new_plaintextJSONStringFromDocumentDict(persistableDocument);
-	optional<string> err_str = document_persister::write(documentsPath, plaintextString, *_id, collectionName);
+	optional<string> err_str = document_persister::write(*documentsPath, plaintextString, *_id, collectionName);
 	if (err_str != none) {
 		MERROR("Passwords: Error while persisting " << *err_str);
 	}
@@ -840,7 +846,7 @@ void Controller::removeRegistrantForChangePassword(ChangePasswordRegistrant &reg
 	for (std::vector<ChangePasswordRegistrant *>::iterator it = ptrsTo_changePasswordRegistrants.begin(); it != ptrsTo_changePasswordRegistrants.end(); ++it) {
 		if (**it == registrant) {
 			found = true;
-			continue;
+			break;
 		}
 		index++;
 	}
@@ -932,7 +938,7 @@ void Controller::removeRegistrantForDeleteEverything(DeleteEverythingRegistrant 
 	for (std::vector<DeleteEverythingRegistrant *>::iterator it = ptrsTo_deleteEverythingRegistrants.begin(); it != ptrsTo_deleteEverythingRegistrants.end(); ++it) {
 		if (**it == registrant) {
 			found = true;
-			continue;
+			break;
 		}
 		index++;
 	}
@@ -970,7 +976,7 @@ void Controller::initiateDeleteEverything()
 			}
 			//
 			// then delete pw record
-			errOr_numRemoved result = document_persister::removeAllDocuments(documentsPath, collectionName);
+			errOr_numRemoved result = document_persister::removeAllDocuments(*documentsPath, collectionName);
 			if (result.err_str != none) {
 				cb(std::move(*result.err_str));
 				return;
@@ -1022,7 +1028,7 @@ void Controller::_deconstructBootedStateAndClearPassword(
 	// TODO:? do we need to cancel any waiting functions here? not sure it would be possible to have any (unless code fault)…… we'd only deconstruct the booted state and pop the enter pw screen here if we had already booted before - which means there shouldn't be such waiting functions - so maybe assert that here - which requires hanging onto those functions somehow
 	willDeconstructBootedStateAndClearPassword_signal(isForADeleteEverything); // indicate to consumers they should tear down and await the "did" event to re-request
 	//
-	hasFiredWill_fn([fn, this](optional<string> err_str) {
+	hasFiredWill_fn([fn = std::move(fn), this](optional<string> err_str) {
 		if (err_str != none) {
 			fn(std::move(*err_str));
 			return;

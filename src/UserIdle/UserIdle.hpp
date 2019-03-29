@@ -58,12 +58,12 @@ namespace UserIdle
 		Controller(const Controller&) = delete; // disable copy constructor to prevent inadvertent temporary in pointer
 		Controller& operator=(const Controller&) = delete;
 		~Controller() {
+			cout << "Destructing a UserIdle::Controller" << endl;
 			teardown();
-			cout << "Destructed user idle" << endl;
 		}
 		//
 		// Dependencies
-		string documentsPath;
+		std::shared_ptr<string> documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 		std::shared_ptr<Settings::IdleTimeoutAfterS_SettingsProvider> idleTimeoutAfterS_SettingsProvider;
 		// Then call:

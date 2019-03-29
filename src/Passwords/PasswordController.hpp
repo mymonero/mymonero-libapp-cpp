@@ -149,7 +149,8 @@ namespace Passwords
 		saveError = 7,
 		changePasswordError = 8,
 		clearValidationErrorAndAllowRetry = 9,
-		notBootedYet = 10
+		notBootedYet = 10,
+		unexpectedState = 11
 	};
 }
 namespace Passwords
@@ -196,15 +197,12 @@ namespace Passwords
 		Controller(const Controller&) = delete; // disable copy constructor to prevent inadvertent temporary in pointer
 		Controller& operator=(const Controller&) = delete;
 		~Controller() {
-			if (_pw_entry_unlock_timer_handle != nullptr) {
-				_pw_entry_unlock_timer_handle->cancel();
-				_pw_entry_unlock_timer_handle = nullptr;
-			}
-			cout << "Destructed Passwords" << endl;
+			cout << "Destructing a Passwords::Controller" << endl;
+			teardown();
 		}
 		//
 		// Dependencies
-		string documentsPath;
+		std::shared_ptr<string> documentsPath;
 		std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 		std::shared_ptr<UserIdle::Controller> userIdleController;
 		// Then call:
@@ -337,6 +335,7 @@ namespace Passwords
 		bool withExistingPassword_isCorrect(const string &enteredPassword) const;
 		//
 		// Imperatives
+		void teardown();
 		void startObserving();
 		void initializeRuntimeAndBoot();
 		void _proceedTo_load(const DocumentJSON &documentJSON);

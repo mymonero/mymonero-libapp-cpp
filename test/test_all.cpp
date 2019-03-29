@@ -203,7 +203,7 @@ public:
 		//
 		return dict;
 	}
-	CollectionName collectionName() const { return mockedSavedObjects__CollectionName; }
+	const CollectionName &collectionName() const { return mockedSavedObjects__CollectionName; }
 };
 //
 const std::string _persistableObject_encryptedBase64String = "AwGNOxB4XmBTWlinIWg0sCPrfjwKGxwtshvmN4jMi3YBXYp6SAzx4WWMe0gNTV6vBT4iROJXMwpKyW6n+uzc2/nTrOPaLh0Dk8obNjeN1S2Rz7fMuiil2JHerFj2YM2vYpOPsaUg92mUojN8s1wNcfkpWtCF7oFD/VCKV3QYfRnFJyvmqD4LjFXg+ENB5um1bFdrk+36LbV9TGhVqjttYUMQtSUWOKtR+VqpuoEuRAVK4zxVSfzjAF3yHi85UaJLEi8=";
@@ -432,7 +432,7 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 App::ServiceLocator &builtSingleton()
 {
 	using namespace App;
-	return ServiceLocator::instance().build(_new_documentsPathString());
+	return ServiceLocator::instance().build(new_documentsPath());
 }
 BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submission_manualAddrPID"))
 {
@@ -473,6 +473,7 @@ BOOST_AUTO_TEST_CASE(passwords_controller_deleteEverything, *utf::depends_on("se
 		Mock_DeleteEverythingRegistrant deleteEverythingRegistrant;
 		ServiceLocator::instance().passwordController->addRegistrantForDeleteEverything(deleteEverythingRegistrant);
 		ServiceLocator::instance().passwordController->initiateDeleteEverything();
+		ServiceLocator::instance().passwordController->removeRegistrantForDeleteEverything(deleteEverythingRegistrant);
 	}
 }
 class Mocked_EnterCorrectNew_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
@@ -547,6 +548,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterNew, *utf::depends_on("passwords_
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect user to cancel");
 	};
 	ServiceLocator::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 class Mocked_EnterCorrectExisting_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -617,6 +621,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterExisting, *utf::depends_on("passw
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect user to cancel");
 	};
 	ServiceLocator::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 class Mocked_EnterIncorrectExisting_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -672,6 +679,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterIncorrectExisting, *utf::depends_
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect user to cancel");
 	};
 	ServiceLocator::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 class Mocked_CancelEnterExisting_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -727,6 +737,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_cancelEnterExisting, *utf::depends_on(
 		cout << "Got callback for expected cancelation" << endl;
 	};
 	ServiceLocator::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 class Mocked_Authentication_Password_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -806,6 +819,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_password_authentication, *utf::depends
 		false, string("Authorize"),
 		userCanceled_fn, entryAttempt_succeeded_fn
 	);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 class Mocked_Authentication_Biometric_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
@@ -882,6 +898,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_biometric_authentication, *utf::depend
 		userCanceled_fn,
 		entryAttempt_succeeded_fn
 	);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 //
 //
@@ -905,7 +924,6 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	// First, determine whether Settings already saved... before any boot
 	bool settingsAlreadySaved = controller->hasExisting_saved_document();
 	BOOST_REQUIRE_MESSAGE(controller->hasBooted(), "Expected settingscontroller->hasBooted");
-	//
 	//
 	optional<string> expectedInitial_specificAPIAddressURLAuthority = none;
 	if (settingsAlreadySaved) {
@@ -994,7 +1012,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE(controller->set_displayCurrencySymbol(to_displayCurrencySymbol));
 	BOOST_REQUIRE_MESSAGE(controller->displayCurrencySymbol() == to_displayCurrencySymbol, "Expected controller->displayCurrencySymbol of " << controller->displayCurrencySymbol() << " to equal " << to_displayCurrencySymbol);
 	//
-	std::this_thread::sleep_for(std::chrono::milliseconds(50)); // wait for async notifies
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
 	BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal, "Expected to see specificAPIAddressURLAuthority_signal");
 	BOOST_REQUIRE_MESSAGE(saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal, "Expected to see appTimeoutAfterS_noneForDefault_orNeverValue_signal");
 	BOOST_REQUIRE_MESSAGE(saw_authentication__requireWhenSending_signal, "Expected to see authentication__requireWhenSending_signal");
@@ -1168,6 +1186,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_
 	BOOST_REQUIRE_MESSAGE(didSeeUnlockAfterLockOut, "Expected didSeeUnlockAfterLockOut after finish");
 	BOOST_REQUIRE_MESSAGE(didSeeSuccessfulPWEntryAfterLockOut, "Expected didSeeSuccessfulPWEntryAfterLockOut after finish");
 	cout << "Test: Finished sleeping" << endl;
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 //
 class Mocked_ChangePassword_Incorrect_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
@@ -1199,8 +1220,6 @@ public:
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
 	}
 };
-//
-//
 BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_incorrect, *utf::depends_on("passwords_controller_spammingIncorrectEntry"))
 {
 	cout << "passwords_controller_changePassword_incorrect" << endl;
@@ -1239,6 +1258,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_incorrect, *utf::depend
 	});
 	//
 	ServiceLocator::instance().passwordController->initiate_changePassword();
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 //
 string changed_mock_password_string = string("a changed mock password");
@@ -1383,6 +1405,9 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterCorrectChanged, *utf::depends_on(
 		},
 		[](void) {}
 	);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate_enterPW);
 }
 //
 #include "../src/Dispatch/Dispatch.asio.hpp"
@@ -1470,6 +1495,9 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBreakThenLockDown, *utf::depends_o
 				[&userIdleController, &passwordController, &idleTimeoutAfterS_settingsProvider, &sawTestCompletion, &checkNotYetLockedAfter_s]()
 				{
 					BOOST_REQUIRE_MESSAGE(userIdleController->isUserIdle == false, "isUserIdle should NOT be true after only 'checkNotYetLockedAfter_s' sec");
+					//
+					// ^------ TODO: Still getting the occasional test failure here
+					//
 					BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to still have been entered here");
 					userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
 					
@@ -1676,7 +1704,222 @@ BOOST_AUTO_TEST_CASE(moneroAmounts__verifyParsingAndFormatting, *utf::depends_on
 	BOOST_REQUIRE_MESSAGE(converted_xmrAmount == correct_xmrAmount, "Expected converted_xmrAmount of " << converted_xmrAmount << " to equal correct_xmrAmount of " << correct_xmrAmount);
 }
 //
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("moneroAmounts__verifyParsingAndFormatting"))
+//
+#include "../src/Lists/PersistedObjectListController.hpp"
+#include "../src/Persistence/PersistableObject.hpp"
+const CollectionName mockedListObjects__CollectionName = "MockedListObjects";
+class MockedListObject: public Persistable::Object
+{ // using a different class from MockedSavedObject because that gets added before the password is changed, and if any of these tests fail, the MockedSavedObject tests which test loading will subsequently fail
+public:
+	boost::optional<std::string> addtlVal = none; // set this after init to avoid test fail
+	//
+	MockedListObject(
+		std::shared_ptr<std::string> documentsPath,
+		std::shared_ptr<const Passwords::PasswordProvider> passwordProvider
+	): Persistable::Object(
+		std::move(documentsPath),
+		std::move(passwordProvider)
+	) {
+	}
+	MockedListObject(
+		std::shared_ptr<std::string> documentsPath,
+		std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
+		const property_tree::ptree &plaintextData
+	): Persistable::Object(
+		std::move(documentsPath),
+		std::move(passwordProvider),
+		plaintextData
+	) {
+		BOOST_REQUIRE(this->_id != boost::none);
+		BOOST_REQUIRE(this->insertedAt_sSinceEpoch != boost::none);
+		//
+		this->addtlVal = plaintextData.get<std::string>("addtlVal");
+		BOOST_REQUIRE(this->addtlVal != boost::none);
+	}
+	virtual property_tree::ptree new_dictRepresentation() const
+	{
+		property_tree::ptree dict = Persistable::Object::new_dictRepresentation();
+		if (this->addtlVal) {
+			dict.put("addtlVal", *(this->addtlVal));
+		}
+		//
+		return dict;
+	}
+	const CollectionName &collectionName() const { return mockedListObjects__CollectionName; }
+};
+class MockedListController: public Lists::Controller
+{
+public:
+	MockedListController(
+		const CollectionName &collectionName
+	): Lists::Controller(collectionName) {}
+	//
+	std::shared_ptr<Persistable::Object> new_record(
+		std::shared_ptr<std::string> documentsPath,
+		std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
+		const document_persister::DocumentJSON &plaintext_documentJSON
+	) override {
+		return std::make_shared<MockedListObject>(
+			documentsPath,
+			passwordProvider,
+			plaintext_documentJSON
+		);
+	}
+	//
+	// Imperatives - Public - Adding
+	void onceBooted_addRecord(
+		string addtlVal,
+		std::function<
+			void(optional<string> err_str,
+			std::shared_ptr<MockedListObject> instance
+		)> fn
+	) {
+		onceBooted([this, addtlVal, fn = std::move(fn)]() {
+			this->passwordController->onceBootedAndPasswordObtained(
+				[this, addtlVal, fn = std::move(fn)](Passwords::Password password, Passwords::Type type)
+				{
+					std::shared_ptr<MockedListObject> instance = std::make_shared<MockedListObject>(documentsPath, passwordController);
+					instance->addtlVal = addtlVal;
+					optional<string> err_str = instance->saveToDisk(); // now we must save (insert) manually
+					if (err_str != none) {
+						fn(err_str, nullptr);
+						return;
+					}
+					_atRuntime__record_wasSuccessfullySetUp(instance);
+					fn(none, instance);
+				},
+				[]() {
+					// cancelled
+					BOOST_REQUIRE_MESSAGE(false, "Didn't expect to see cancel in onceBooted_addRecord()");
+				}
+			);
+		});
+	}
+};
+std::shared_ptr<MockedListController> new_constructed_mockedListController()
+{
+	using namespace App;
+	//
+	auto listController = std::make_shared<MockedListController>(
+		mockedListObjects__CollectionName
+	); // using a shared_ptr here instead of directly constructing due to deleted copy constructor
+	listController->documentsPath = ServiceLocator::instance().documentsPath;
+	listController->dispatch_ptr = ServiceLocator::instance().dispatch_ptr;
+	listController->passwordController = ServiceLocator::instance().passwordController;
+	listController->setup();
+	//
+	return listController;
+}
+BOOST_AUTO_TEST_CASE(listController_construction, *utf::depends_on("moneroAmounts__verifyParsingAndFormatting"))
+{
+	cout << "listController_construction" << endl;
+	using namespace App;
+	//
+	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
+	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
+	//
+	auto listController = new_constructed_mockedListController();
+	//
+	bool sawBoot = false;
+	listController->onceBooted([&sawBoot, listController]() {
+		sawBoot = true;
+		BOOST_REQUIRE_MESSAGE(listController->records().size() == 0, "Expected number of records to be 0");
+	});
+	BOOST_REQUIRE(sawBoot);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies so that we don't get an exception when calling the signal … though technically this should not be possible and indicates a flaw in the controller … some sort of GC/capture issue
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
+}
+static string addtlVal = string("this is the additional val");
+BOOST_AUTO_TEST_CASE(listController_addRecord, *utf::depends_on("listController_construction"))
+{
+	cout << "listController_addRecord" << endl;
+	using namespace App;
+	//
+	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
+	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
+	//
+	auto listController = new_constructed_mockedListController();
+	bool sawListUpdated = false;
+	bool hasAddedRecord = false;
+	size_t numberOfListUpdatedsSeen = 0;
+	auto connection = listController->list__updated_signal.connect(
+		[&sawListUpdated, &hasAddedRecord, &numberOfListUpdatedsSeen, listController]()
+		{
+			sawListUpdated = true;
+			numberOfListUpdatedsSeen += 1;
+			bool expectedNumberOfRecords = (hasAddedRecord ? 1 : 0);
+			BOOST_REQUIRE_MESSAGE(listController->records().size() == expectedNumberOfRecords, "Expected number of records to be " << expectedNumberOfRecords);
+		}
+	);
+	listController->onceBooted_addRecord(
+		addtlVal,
+		[&hasAddedRecord](optional<string> err_str, std::shared_ptr<MockedListObject> instance)
+		{
+			BOOST_REQUIRE_MESSAGE(err_str == none, "Found error while adding record to listController: " << err_str);
+			BOOST_REQUIRE_MESSAGE(instance != nullptr, "Returned instance was nil.");
+			BOOST_REQUIRE_MESSAGE(instance->addtlVal == addtlVal, "Expected instance->addtlVal == addtlVal");
+			//
+			hasAddedRecord = true; // use this to modulate number of expected records
+		}
+	);
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
+	BOOST_REQUIRE_MESSAGE(hasAddedRecord, "Expected to have seen record added");
+	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected to have seen list updated");
+	BOOST_REQUIRE_MESSAGE(numberOfListUpdatedsSeen == 2, "Expected to see 2 list_updated events calls");
+	//
+	connection.disconnect();
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
+}
+BOOST_AUTO_TEST_CASE(listController_loadedAddedRecords, *utf::depends_on("listController_addRecord"))
+{
+	cout << "listController_loadedAddedRecords" << endl;
+	using namespace App;
+	//
+	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
+	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
+	//
+	auto listController = new_constructed_mockedListController();
+	listController->onceBooted([listController]() {
+		BOOST_REQUIRE_MESSAGE(listController->records().size() == 1, "Expected number of records to be 1");
+	});
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
+}
+BOOST_AUTO_TEST_CASE(listController_deleteExistingRecord, *utf::depends_on("listController_loadedAddedRecords"))
+{
+	cout << "listController_deleteExistingRecord" << endl;
+	using namespace App;
+	//
+	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
+	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
+	//
+	bool sawListUpdated = false;
+	bool hasDeleted = false;
+	size_t nthCallOfListUpdated = 0;
+	auto listController = new_constructed_mockedListController();
+	auto connection = listController->list__updated_signal.connect([&sawListUpdated, &hasDeleted, &nthCallOfListUpdated, listController]() {
+		nthCallOfListUpdated += 1;
+		sawListUpdated = true;
+		size_t expectingNumRecords = hasDeleted ? 0 : 1; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
+		BOOST_REQUIRE_MESSAGE(listController->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in " << nthCallOfListUpdated << "th call of listController_deleteExistingRecord");
+	});
+	//
+	BOOST_REQUIRE(listController->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
+	BOOST_REQUIRE_MESSAGE(listController->records().size() == 1, "Expected number of records to be 1");
+	//
+	optional<string> err_str = listController->givenBooted_delete(*(listController->records()[0]));
+	BOOST_REQUIRE_MESSAGE(err_str == none, "Expected no save error from deleting listController's mocked objects");
+	hasDeleted = true; // the list-updated triggered by givenBooted_delete is called asynchronously, so we can rely on this being set to true after the delete but before the list-updated
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
+	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected true sawListUpdated");
+	//
+	connection.disconnect();
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
+}
+//
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("listController_deleteExistingRecord"))
 {
 	cout << "teardownRuntime" << endl;
 	using namespace App;

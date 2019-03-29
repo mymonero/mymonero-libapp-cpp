@@ -82,6 +82,8 @@ set(
 	src/Settings/SettingsProviders.cpp
     src/Settings/SettingsController.hpp
     src/Settings/SettingsController.cpp
+	src/Lists/PersistedObjectListController.hpp
+	src/Lists/PersistedObjectListController.cpp
     src/Currencies/Currencies.hpp
     src/Currencies/Currencies.cpp
     src/Persistence/document_persister.hpp
