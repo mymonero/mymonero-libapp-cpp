@@ -32,7 +32,6 @@ find_package(Boost COMPONENTS
     random REQUIRED
     regex REQUIRED
     serialization REQUIRED
-    signals REQUIRED
     system REQUIRED
     test_exec_monitor REQUIRED
     thread REQUIRED
