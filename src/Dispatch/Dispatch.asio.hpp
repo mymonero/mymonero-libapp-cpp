@@ -86,14 +86,19 @@ namespace Dispatch
 		}
 	private:
 		io_context &_ctx;
-		executor_work_guard<io_context::executor_type> _guard = make_work_guard(_ctx);
+		const executor_work_guard<io_context::executor_type> _guard = make_work_guard(_ctx); // const just to make sure no one gets rid of the work guard
 	};
 	//
 	struct io_ctx_thread_holder
 	{
 		io_ctx_thread_holder(io_context& ctx):
 			_ctx(ctx),
-			_thread([this]() { _ctx.run(); })
+			_thread([this]() {
+				_ctx.run();
+				if (true) {
+					BOOST_THROW_EXCEPTION(logic_error("io_ctx_thread_holder's _ctx.run() should never return."));
+				}
+			})
 		{
 		}
 		~io_ctx_thread_holder()
