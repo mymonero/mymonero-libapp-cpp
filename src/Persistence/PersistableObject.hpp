@@ -41,6 +41,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <iostream>
+//#include <mutex> // TODO: use mutex? (see _property_mutex below)
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/optional/optional.hpp>
@@ -141,6 +142,9 @@ namespace Persistable
 			boost::optional<std::string> saveToDisk();
 			boost::optional<std::string> deleteFromDisk();
 		private:
+			//
+			// Members
+//			std::mutex _property_mutex; // TODO: use this?
 			//
 			// Accessors
 			std::string new_encrypted_serializedFileRepresentation() const;

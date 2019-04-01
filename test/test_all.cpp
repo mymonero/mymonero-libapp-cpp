@@ -1845,10 +1845,12 @@ BOOST_AUTO_TEST_CASE(listController_addRecord, *utf::depends_on("listController_
 	auto connection = listController->list__updated_signal.connect(
 		[&sawListUpdated, &hasAddedRecord, &numberOfListUpdatedsSeen, listController]()
 		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the addRecord to return - since we cannot guarantee that the call will return before we enter this
+			//
 			sawListUpdated = true;
 			numberOfListUpdatedsSeen += 1;
 			bool expectedNumberOfRecords = (hasAddedRecord ? 1 : 0);
-			BOOST_REQUIRE_MESSAGE(listController->records().size() == expectedNumberOfRecords, "Expected number of records to be " << expectedNumberOfRecords);
+			BOOST_REQUIRE_MESSAGE(listController->records().size() == expectedNumberOfRecords, "Expected number of records to be " << expectedNumberOfRecords << " on call " << numberOfListUpdatedsSeen << " but it was " << listController->records().size());
 		}
 	);
 	listController->onceBooted_addRecord(
@@ -1898,12 +1900,17 @@ BOOST_AUTO_TEST_CASE(listController_deleteExistingRecord, *utf::depends_on("list
 	bool hasDeleted = false;
 	size_t nthCallOfListUpdated = 0;
 	auto listController = new_constructed_mockedListController();
-	auto connection = listController->list__updated_signal.connect([&sawListUpdated, &hasDeleted, &nthCallOfListUpdated, listController]() {
-		nthCallOfListUpdated += 1;
-		sawListUpdated = true;
-		size_t expectingNumRecords = hasDeleted ? 0 : 1; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
-		BOOST_REQUIRE_MESSAGE(listController->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in " << nthCallOfListUpdated << "th call of listController_deleteExistingRecord");
-	});
+	auto connection = listController->list__updated_signal.connect(
+		[&sawListUpdated, &hasDeleted, &nthCallOfListUpdated, listController]()
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
+			//
+			nthCallOfListUpdated += 1;
+			sawListUpdated = true;
+			size_t expectingNumRecords = hasDeleted ? 0 : 1; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
+			BOOST_REQUIRE_MESSAGE(listController->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of listController_deleteExistingRecord but it was " << listController->records().size());
+		}
+	);
 	//
 	BOOST_REQUIRE(listController->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
 	BOOST_REQUIRE_MESSAGE(listController->records().size() == 1, "Expected number of records to be 1");
