@@ -58,7 +58,7 @@ ServiceLocator &ServiceLocator::build(
 	std::shared_ptr<string> documentsPath
 ) {
 	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->io_ctx);
+	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
 	//
 	return _shared_build(documentsPath, std::move(dispatch_ptr));
 }

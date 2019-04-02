@@ -1013,7 +1013,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE_MESSAGE(controller->displayCurrencySymbol() == to_displayCurrencySymbol, "Expected controller->displayCurrencySymbol of " << controller->displayCurrencySymbol() << " to equal " << to_displayCurrencySymbol);
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
-	BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal, "Expected to see specificAPIAddressURLAuthority_signal");
+ 	BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal, "Expected to see specificAPIAddressURLAuthority_signal");
 	BOOST_REQUIRE_MESSAGE(saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal, "Expected to see appTimeoutAfterS_noneForDefault_orNeverValue_signal");
 	BOOST_REQUIRE_MESSAGE(saw_authentication__requireWhenSending_signal, "Expected to see authentication__requireWhenSending_signal");
 	BOOST_REQUIRE_MESSAGE(saw_authentication__requireToShowWalletSecrets_signal, "Expected to see authentication__requireToShowWalletSecrets_signal");

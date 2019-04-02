@@ -41,6 +41,32 @@ namespace Dispatch
 	using namespace std;
 	using namespace boost::asio;
 	//
+	struct io_ctx_thread_holder
+	{
+		io_context &_ctx;
+		//
+		io_ctx_thread_holder(io_context& ctx):
+		_ctx(ctx)
+		{
+		}
+		~io_ctx_thread_holder()
+		{
+			_thread.join();
+		}
+		//
+		void setup_after_work_guard()
+		{ // this must be called after init - and it's broken out into a separate function so that the holder of the work_guard can place it before calling _ctx.run() (to avoid a race condition)
+			_thread = std::thread([this]() {
+				_ctx.run();
+				if (true) {
+					BOOST_THROW_EXCEPTION(logic_error("io_ctx_thread_holder's _ctx.run() should never return."));
+				}
+			});
+		}
+	private:
+		std::thread _thread;
+	};
+	//
 	struct CancelableTimerHandle_asio: public CancelableTimerHandle
 	{
 		CancelableTimerHandle_asio(steady_timer *t):
@@ -59,9 +85,12 @@ namespace Dispatch
 	//
 	struct Dispatch_asio: public Dispatch
 	{
-		Dispatch_asio(io_context& ctx):
-			_ctx(ctx)
+		Dispatch_asio(io_ctx_thread_holder& ctx_thread_holder):
+			_ctx(ctx_thread_holder._ctx)
 		{
+			//
+			// Now that the work_guard is in place:
+			ctx_thread_holder.setup_after_work_guard(); // this *must* get called or no thread will be spawned nor will the ctx have run() called
 		}
 		~Dispatch_asio() {}
 		//
@@ -87,27 +116,6 @@ namespace Dispatch
 	private:
 		io_context &_ctx;
 		const executor_work_guard<io_context::executor_type> _guard = make_work_guard(_ctx); // const just to make sure no one gets rid of the work guard
-	};
-	//
-	struct io_ctx_thread_holder
-	{
-		io_ctx_thread_holder(io_context& ctx):
-			_ctx(ctx),
-			_thread([this]() {
-				_ctx.run();
-				if (true) {
-					BOOST_THROW_EXCEPTION(logic_error("io_ctx_thread_holder's _ctx.run() should never return."));
-				}
-			})
-		{
-		}
-		~io_ctx_thread_holder()
-		{
-			_thread.join();
-		}
-	private:
-		io_context &_ctx;
-		std::thread _thread;
 	};
 }
 
