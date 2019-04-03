@@ -1,5 +1,5 @@
 //
-//  SettingsProviders.cpp
+//  SettingsProviders.hpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com

@@ -1,5 +1,5 @@
 //
-//  document_persister.cpp
+//  document_persister.hpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
