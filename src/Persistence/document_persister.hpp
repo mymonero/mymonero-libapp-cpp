@@ -108,12 +108,12 @@ namespace document_persister
 	struct errOr_contentString
 	{
 		boost::optional<string> err_str;
-		boost::optional<string> string;
+		boost::optional<string> content_string;
 	};
 	struct errOr_contentStrings
 	{
 		boost::optional<string> err_str;
-		boost::optional<vector<string>> strings;
+		boost::optional<vector<string>> content_strings;
 	};
 	struct errOr_numRemoved
 	{
@@ -206,7 +206,7 @@ namespace document_persister
 			if (result.err_str) {
 				return { std::move(*result.err_str), boost::none };
 			}
-			documentContentStrings.push_back(std::move(*result.string));
+			documentContentStrings.push_back(std::move(*result.content_string));
 		}
 		return { boost::none, documentContentStrings };
 	}

@@ -154,7 +154,7 @@ optional<string> Controller::_givenLocked_existing_saved_documentContentString()
 		BOOST_THROW_EXCEPTION(logic_error(ss.str()));
 		return none;
 	}
-	auto numDocuments = (*(result.strings)).size();
+	auto numDocuments = (*(result.content_strings)).size();
 	if (numDocuments > 1) {
 		ostringstream ss;
 		ss << "Settings: Unexpected state while loading " << collectionName << ": more than one saved doc." << endl;
@@ -165,7 +165,7 @@ optional<string> Controller::_givenLocked_existing_saved_documentContentString()
 	if (numDocuments == 0) {
 		return none;
 	}
-	return (*(result.strings))[0];
+	return (*(result.content_strings))[0];
 }
 //
 // Accessors - Properties / Synchronized

@@ -119,11 +119,11 @@ void Controller::setup_fetchAndReconstituteExistingRecords()
 				_setup_didFailToBoot(*err_orJSONStrings.err_str);
 				return;
 			}
-			if (err_orJSONStrings.strings->size() == 0) { // just in case
+			if (err_orJSONStrings.content_strings->size() == 0) { // just in case
 				_setup_didBoot();
 				return;
 			}
-			for (auto it = (*(err_orJSONStrings.strings)).begin(); it != (*(err_orJSONStrings.strings)).end(); it++) {
+			for (auto it = (*(err_orJSONStrings.content_strings)).begin(); it != (*(err_orJSONStrings.content_strings)).end(); it++) {
 				optional<string> plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 					*it,
 					*(passwordController->getPassword())

@@ -211,7 +211,7 @@ void Controller::initializeRuntimeAndBoot()
 		BOOST_THROW_EXCEPTION(logic_error(ss.str()));
 		return;
 	}
-	auto numDocuments = (*(result.strings)).size();
+	auto numDocuments = (*(result.content_strings)).size();
 	if (numDocuments > 1) {
 		ostringstream ss;
 		ss << "Passwords: Unexpected state while loading " << collectionName << ": more than one saved doc." << endl;
@@ -225,7 +225,7 @@ void Controller::initializeRuntimeAndBoot()
 		return;
 	}
 	_proceedTo_load(
-		Persistable::new_plaintextDocumentDictFromJSONString((*(result.strings))[0])
+		Persistable::new_plaintextDocumentDictFromJSONString((*(result.content_strings))[0])
 	);
 }
 void Controller::_proceedTo_load(const DocumentJSON &documentJSON)

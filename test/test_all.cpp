@@ -127,9 +127,9 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allDocuments, *utf::depends_on("mocked
 		std::cout << *result.err_str << endl;
 		BOOST_REQUIRE(!result.err_str);
 	}
-	BOOST_REQUIRE_MESSAGE(result.strings, "Expected result.strings");
-	BOOST_REQUIRE_MESSAGE((*(result.strings)).size() > 0, "Expected result.string.count() > 0"); // from __insert
-	string joinedValuesString = algorithm::join(*(result.strings), ", ");
+	BOOST_REQUIRE_MESSAGE(result.content_strings, "Expected result.content_strings");
+	BOOST_REQUIRE_MESSAGE((*(result.content_strings)).size() > 0, "Expected result.string.count() > 0"); // from __insert
+	string joinedValuesString = algorithm::join(*(result.content_strings), ", ");
 	cout << "mockedPlainStringDoc_allDocuments: document content strings: " << joinedValuesString << endl;
 }
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_removeAllDocuments, *utf::depends_on("mockedPlainStringDoc_allDocuments"))
@@ -253,10 +253,10 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting, *utf::depends_on("mockedSa
 		std::cout << *load__result.err_str << endl;
 		BOOST_REQUIRE(!load__result.err_str);
 	}
-	BOOST_REQUIRE(load__result.strings != none);
-	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
+	BOOST_REQUIRE(load__result.content_strings != none);
+	BOOST_REQUIRE((*(load__result.content_strings)).size() > 0);
 	auto passwordProvider = std::make_shared<MockedPasswordProvider>();
-	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
+	for (auto it = (*(load__result.content_strings)).begin(); it != (*(load__result.content_strings)).end(); it++) {
 		optional<string> plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 			*it,
 			*(passwordProvider->getPassword())
@@ -290,10 +290,10 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_deleteExisting, *utf::depends_on("mocked
 		*(result.ids)
 	);
 	BOOST_REQUIRE(load__result.err_str == none);
-	BOOST_REQUIRE(load__result.strings != none);
-	BOOST_REQUIRE((*(load__result.strings)).size() > 0);
+	BOOST_REQUIRE(load__result.content_strings != none);
+	BOOST_REQUIRE((*(load__result.content_strings)).size() > 0);
 	auto passwordProvider = std::make_shared<MockedPasswordProvider>();
-	for (auto it = (*(load__result.strings)).begin(); it != (*(load__result.strings)).end(); it++) {
+	for (auto it = (*(load__result.content_strings)).begin(); it != (*(load__result.content_strings)).end(); it++) {
 		optional<string> plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 			*it,
 			*(passwordProvider->getPassword())
