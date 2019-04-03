@@ -349,10 +349,13 @@ optional<string> Controller::passwordController_DeleteEverything()
 	errOr_numRemoved result = document_persister::removeAllDocuments(*documentsPath, _listedObjectTypeCollectionName);
 	if (result.err_str != none) {
 		MERROR("Lists: Error while deleting everything: " << *result.err_str);
+		//
+		return std::move(*result.err_str);
 	} else {
 		MDEBUG("Lists: Deleted all " << _listedObjectTypeCollectionName << ".");
+		//
+		return none;
 	}
-	return std::move(*result.err_str);
 }
 //
 // Protocols - ChangePasswordRegistrant
