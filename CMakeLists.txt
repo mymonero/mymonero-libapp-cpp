@@ -83,6 +83,12 @@ set(
     src/Settings/SettingsController.cpp
 	src/Lists/PersistedObjectListController.hpp
 	src/Lists/PersistedObjectListController.cpp
+	src/Wallets/Wallet.hpp
+	src/Wallets/Wallet.cpp
+	src/Wallets/WalletsListController_Base.hpp
+	src/Wallets/WalletsListController_Base.cpp
+	src/Wallets/WalletsListController.Full.hpp
+	src/Wallets/WalletsListController.Full.cpp
     src/Currencies/Currencies.hpp
     src/Currencies/Currencies.cpp
     src/Persistence/document_persister.hpp
