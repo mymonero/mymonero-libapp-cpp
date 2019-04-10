@@ -324,7 +324,7 @@ private:
 	bool _hasStoppedListening = false;
 };
 void Controller::onceBootedAndPasswordObtained(
-	std::function<void(Password password, Passwords::Type passwordType)> fn,
+	std::function<void(Password password, Passwords::Type passwordType)>&& fn,
 	std::function<void()> userCanceled_fn = {}
 ) {
 	if (hasUserEnteredValidPasswordYet()) {

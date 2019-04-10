@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  HostedMonero.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -31,44 +31,60 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
+#include "HostedMonero.hpp"
+using namespace HostedMonero;
 //
-//
-class App::ServiceLocator_SpecificImpl
+// Imperatives - Lifecycle
+void APIClient::setup()
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	if (requestFactory == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("APIClient: expected requestFactory != nullptr"));
+	}
+	if (settingsController == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("APIClient: expected settingsController != nullptr"));
+	}
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
+	startObserving();
 }
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr)
+void APIClient::startObserving()
+{
+	connection__SettingsController__specificAPIAddressURLAuthority_changed = settingsController->specificAPIAddressURLAuthority_signal.connect(
+		std::bind(&APIClient::SettingsController__specificAPIAddressURLAuthority_changed, this)
 	);
 }
-
-
+//
+// Imperatives - Lifecycle - Teardown
+void APIClient::teardown()
+{
+	stopObserving();
+}
+void APIClient::stopObserving()
+{
+	connection__SettingsController__specificAPIAddressURLAuthority_changed.disconnect();
+}
+//
+// Endpoints
+std::unique_ptr<HTTPRequests::Handle> APIClient::logIn(
+	const string &address,
+	const string &view_pub_key,
+	bool generated_locally,
+	std::function<void(
+		optional<string> err_str,
+		optional<HostedMonero::ParsedResult_Login> result
+	)> fn
+) {
+	// TODO
+	return requestFactory->new_request("login", []() {
+		
+	});
+}
+//
+// Delegation
+void APIClient::SettingsController__specificAPIAddressURLAuthority_changed()
+{
+	// TODO: implement this as some sort of synchronous emit
+//	initializeManagerWithFinalServerAuthority();
+	//
+	// Notify consumers to avoid race condition with anyone trying to make a request just before the manager gets de-initialized and re-initialized
+	initializedWithNewServerURL_signal();
+}

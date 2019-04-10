@@ -89,6 +89,10 @@ set(
 	src/Wallets/WalletsListController_Base.cpp
 	src/Wallets/WalletsListController.Full.hpp
 	src/Wallets/WalletsListController.Full.cpp
+	src/Wallets/Wallet_HostPollingController.hpp
+	src/Wallets/Wallet_HostPollingController.cpp
+	src/Wallets/Wallet_TxCleanupController.hpp
+	src/Wallets/Wallet_TxCleanupController.cpp
     src/Currencies/Currencies.hpp
     src/Currencies/Currencies.cpp
     src/Persistence/document_persister.hpp
@@ -99,6 +103,10 @@ set(
     src/App/AppServiceLocator.asio.cpp
     src/SendFunds/Controllers/SendFundsFormSubmissionController.hpp
     src/SendFunds/Controllers/SendFundsFormSubmissionController.cpp
+    src/APIClient/HTTPRequests_Interface.hpp
+    src/APIClient/HTTPRequests.dummy.hpp
+    src/APIClient/HostedMonero.cpp
+    src/APIClient/HostedMonero.hpp
 	src/OpenAlias/OpenAlias.hpp
 	src/OpenAlias/OpenAlias.cpp
     src/RNCryptor-C/rncryptor_c.h

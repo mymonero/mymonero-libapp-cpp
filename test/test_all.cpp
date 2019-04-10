@@ -78,6 +78,11 @@ inline std::shared_ptr<string> new_documentsPath()
 		_new_documentsPathString()
 	);
 }
+#include "../src/APIClient/HTTPRequests.dummy.hpp"
+inline std::shared_ptr<HTTPRequests::RequestFactory_dummy> new_httpRequestFactory__dummy()
+{
+	return std::make_shared<HTTPRequests::RequestFactory_dummy>();
+}
 //
 // Test suites - document_persister
 #include "../src/Persistence/document_persister.hpp"
@@ -429,16 +434,20 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 //
 // Test Suites - ServiceLocator
 #include "../src/App/AppServiceLocator.hpp"
-App::ServiceLocator &builtSingleton()
+App::ServiceLocator &builtSingleton(cryptonote::network_type nettype)
 {
 	using namespace App;
-	return ServiceLocator::instance().build(new_documentsPath());
+	return ServiceLocator::instance().build(
+		new_documentsPath(),
+		nettype,
+		new_httpRequestFactory__dummy()
+	);
 }
 BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submission_manualAddrPID"))
 {
 	using namespace App;
 	
-	builtSingleton();
+	builtSingleton(MAINNET);
 	
 	BOOST_REQUIRE(ServiceLocator::instance().built == true);
 	BOOST_REQUIRE(App::ServiceLocator::instance().dispatch_ptr != nullptr);
@@ -1663,8 +1672,7 @@ BOOST_AUTO_TEST_CASE(currencies__conversions, *utf::depends_on("userIdle_control
 	//
 	string inCurrency_amountFormattedString = Currencies::nonAtomicCurrency_localized_formattedString(
 		*inCurrency_amountDouble,
-		Currencies::USD,
-		string(".") // just to make it possible to do the string comparison here
+		Currencies::USD
 	);
 	string expected_inCurrency_amountFormattedString = "0.33";
 	BOOST_REQUIRE_MESSAGE(

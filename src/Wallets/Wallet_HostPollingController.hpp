@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  Wallet_HostPollingController.hpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -32,43 +32,59 @@
 //
 //
 
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
+#ifndef HostPollingController_hpp
+#define HostPollingController_hpp
 //
+#include <functional>
+#include "../APIClient/HTTPRequests_Interface.hpp"
 //
-class App::ServiceLocator_SpecificImpl
+namespace Wallets
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	using namespace std;
+//	using namespace boost;
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
+	// Forward-declarations
+	class Object;
 	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr)
-	);
-}
+	// Controllers
+	class HostPollingController
+	{
+	public:
+		//
+		// Lifecycle - Init
+		HostPollingController(
+			const Object &wallet,
+			std::function<void()>&& didUpdate_factorOf_isFetchingAnyUpdates_fn
+		):
+		_wallet(wallet),
+		_didUpdate_factorOf_isFetchingAnyUpdates_fn(std::move(didUpdate_factorOf_isFetchingAnyUpdates_fn))
+		{
+		}
+		~HostPollingController()
+		{
+		}
+		//
+		// Dependencies
 
 
+		//
+		// Properties
+
+		//
+		// Signals
+
+		//
+		// Imperatives
+		void requestFromUI_manualRefresh();
+	private:
+		//
+		// Properties
+		const Object &_wallet;
+		std::function<void()> _didUpdate_factorOf_isFetchingAnyUpdates_fn;
+		//
+		// Imperatives
+
+	};
+}
+
+#endif /* HostPollingController_hpp */

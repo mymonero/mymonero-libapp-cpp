@@ -48,14 +48,11 @@ namespace Wallets
 	public:
 		//
 		// Lifecycle - Init
-		ListController() 
+		ListController(cryptonote::network_type nettype):
+			ListController_Base(nettype)
 		{
-			// TODO: ensure parent class constructor is getting called
 		}
-		~ListController()
-		{
-			// TODO: ensure parent class destructor is getting called
-		}
+		~ListController() {}
 		//
 		// Dependencies
 

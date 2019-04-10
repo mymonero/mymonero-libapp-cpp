@@ -42,7 +42,10 @@
 #include "../Settings/SettingsProviders.hpp"
 #include "../Lists/PersistedObjectListController.hpp"
 #include "./Wallet.hpp"
-
+#include "../APIClient/HostedMonero.hpp"
+#include "cryptonote_config.h"
+//
+//
 namespace Wallets
 {
 	using namespace std;
@@ -52,11 +55,12 @@ namespace Wallets
 	class ListController_Base: public Lists::Controller
 	{
 	public:
-		ListController_Base(): Lists::Controller(Wallets::collectionName) {}
-		~ListController_Base()
+		ListController_Base(cryptonote::network_type nettype):
+			Lists::Controller(Wallets::collectionName),
+			_nettype(nettype)
 		{
-			// TODO: ensure parent class destructor is getting called
 		}
+		virtual ~ListController_Base() {}
 		//
 		// Overrides
 		std::shared_ptr<Persistable::Object> new_record(
@@ -64,33 +68,101 @@ namespace Wallets
 			std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
 			const document_persister::DocumentJSON &plaintext_documentJSON
 		) override {
+			if (apiClient == nullptr) {
+				BOOST_THROW_EXCEPTION(logic_error("Expected non-nullptr apiClient"));
+			}
 			return std::make_shared<Wallets::Object>(
 				documentsPath,
 				passwordProvider,
-				plaintext_documentJSON
+				plaintext_documentJSON,
+				_nettype,
+				apiClient,
+				dispatch_ptr
 			);
 		}
-		
 		//
 		// Dependencies
-
-
+		std::shared_ptr<HostedMonero::APIClient> apiClient;
+		//
+		// Lifecycle
+		void setup();
 		//
 		// Properties
-
+		
 		//
 		// Signals
-
+		//
+		// Accessors - Virtual overrides
+		bool overridable_shouldSortOnEveryRecordAdditionAtRuntime() override
+		{
+			return true;
+		}
+		bool overridable_wantsRecordsAppendedNotPrepended() override
+		{
+			return true;
+		}
+		void overridable_finalizeAndSortRecords() override
+		{
+			sort(
+				_records.begin(), _records.end(),
+				Lists::comparePersistableObjectSharedPtrBy_insertedAt_asc
+			);
+		}
+		//
+		// Accessors
+		std::vector<Wallets::SwatchColor> givenBooted_swatchesInUse();
+		
 		//
 		// Imperatives
-
+		void CreateNewWallet_NoBootNoListAdd( // call this first, then call OnceBooted_ObtainPW_AddNewlyGeneratedWallet
+			string localeCode,
+			std::function<void(optional<string> err, std::shared_ptr<Wallets::Object> walletInstance)> fn
+		);
+		void OnceBooted_ObtainPW_AddNewlyGeneratedWallet(
+			std::shared_ptr<Wallets::Object> walletInstance,
+			string walletLabel,
+			Wallets::SwatchColor swatchColor,
+			std::function<void(optional<string> err_str, std::shared_ptr<Wallets::Object> walletInstance)>&& fn,
+			std::function<void()>&& userCanceledPasswordEntry_fn = {} // default
+		);
+		//
+		// Delegation - Overrides - Booting reconstitution - Instance setup
+		void overridable_booting_didReconstitute(
+			std::shared_ptr<Persistable::Object> listedObjectInstance
+		) override {
+			//
+			// TODO:
+			//
+//			let wallet = listedObjectInstance as! Wallet
+//			if wallet.isLoggedIn {
+//				wallet.Boot_havingLoadedDecryptedExistingInitDoc(
+//																 { err_str in
+//																	 if let err_str = err_str {
+//																		 DDLog.Error("Wallets", "Error while booting wallet: \(err_str)")
+//																	 }
+//																 }
+//																 )
+//			} else {
+//				assert(wallet.isLoggingIn == false) // jic
+//				DDLog.Do("Wallets", "Wallet which was unable to log in was loaded. Attempting to reboot.")
+//				// going to treat this as a wallet which was saved but which failed to log in
+//				wallet.logOutThenSaveAndLogIn() // this method can handle being called when the wallet is not logged in
+//			}
+		}
 	private:
 		//
 		// Properties
-
+		const cryptonote::network_type _nettype;
+		boost::signals2::connection connection__HostedMonero_initializedWithNewServerURL;
+		//
+		// Lifecycle
+		void setup_startObserving();
+		void stopObserving();
 		//
 		// Imperatives
-
+		//
+		// Delegation
+		void HostedMonero_initializedWithNewServerURL();
 	};
 }
 

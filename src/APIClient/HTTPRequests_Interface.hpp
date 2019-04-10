@@ -1,7 +1,5 @@
 //
-//  AppServiceLocator.cpp
-//  MyMonero
-//
+//  HTTPRequests_Interface.hpp
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -30,45 +28,35 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-//
 
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
-//
-//
-class App::ServiceLocator_SpecificImpl
+#ifndef HTTPRequests_Interface_hpp
+#define HTTPRequests_Interface_hpp
+
+#include <string>
+#include <functional>
+
+namespace HTTPRequests
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	using namespace std;
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
+	// Accessory Types
+	typedef int ResponseJSON; // TODO: use rapidjson document type
 	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr)
-	);
+	// Principal Types
+	struct Handle
+	{
+		virtual ~Handle() {}
+		//
+		virtual void cancel() = 0;
+	};
+	//
+	struct RequestFactory
+	{
+		virtual ~RequestFactory() {}
+		//
+		virtual std::unique_ptr<Handle> new_request(string endpoint_url, std::function<void()>&& fn) = 0;
+	private:
+	};
 }
 
-
+#endif /* HTTPRequests_Interface_hpp */

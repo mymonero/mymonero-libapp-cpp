@@ -1,7 +1,5 @@
 //
-//  AppServiceLocator.cpp
-//  MyMonero
-//
+//  HTTPRequests_Interface.hpp
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -30,45 +28,38 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-//
 
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
-//
-//
-class App::ServiceLocator_SpecificImpl
+#ifndef HTTPRequests_dummy_hpp
+#define HTTPRequests_dummy_hpp
+
+#include "./HTTPRequests_Interface.hpp"
+
+namespace HTTPRequests
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	struct Handle_dummy: public Handle
+	{
+		Handle_dummy() {}
+		~Handle_dummy() {}
+		//
+		void cancel()
+		{
+			cout << "Canceling a HTTPRequests::Handle_dummy" << endl;
+		}
+	private:
+	};
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr)
-	);
+	struct RequestFactory_dummy: public RequestFactory
+	{
+		RequestFactory_dummy() {}
+		~RequestFactory_dummy() {}
+		//
+		std::unique_ptr<Handle> new_request(string endpoint_url, std::function<void()>&& fn)
+		{
+			// TODO…
+			return std::make_unique<Handle_dummy>();
+		}
+	private:
+	};
 }
 
-
+#endif /* HTTPRequests_dummy_hpp */

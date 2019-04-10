@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  WalletsListController.Full.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -31,44 +31,8 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
+#include "Wallet_TxCleanupController.hpp"
+#include "./Wallet.hpp"
+using namespace Wallets;
+#include "misc_log_ex.h"
 //
-//
-class App::ServiceLocator_SpecificImpl
-{
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
-	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr)
-	);
-}
-
-

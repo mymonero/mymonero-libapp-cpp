@@ -52,6 +52,20 @@ namespace Lists
 	using namespace boost;
 	using namespace document_persister;
 	//
+	// Comparators
+	static inline bool comparePersistableObjectSharedPtrBy_insertedAt_asc(
+		std::shared_ptr<Persistable::Object> l,
+		std::shared_ptr<Persistable::Object> r
+	) {
+		if (l->insertedAt_sSinceEpoch == none) {
+			return false;
+		}
+		if (r->insertedAt_sSinceEpoch == none) {
+			return true;
+		}
+		return *(l->insertedAt_sSinceEpoch) <= *(r->insertedAt_sSinceEpoch);
+	}
+	//
 	// Controllers
 	class Controller:
 		public Passwords::DeleteEverythingRegistrant,
@@ -143,20 +157,29 @@ namespace Lists
 		void _atRuntime__record_wasSuccessfullySetUp(std::shared_ptr<Persistable::Object> listedObject); // this is to be called by subclasses
 		void _atRuntime__lockMutexAnd_record_wasSuccessfullySetUp_noSortNoListUpdated(std::shared_ptr<Persistable::Object> listedObject);
 		//
+	protected:
+		bool _hasBooted = false;
+		std::vector<std::shared_ptr<Persistable::Object>> _records;
+		std::mutex _records_mutex;
+		//
+		// Lifecycle
+		void setup_startObserving();
+		void stopObserving();
+		//
+		// Delegation
+		void _listUpdated_records();
+		void __dispatchAsync_listUpdated_records();
+		//
 	private:
 		//
 		// Properties - Instance members
-		bool _hasBooted = false;
 		std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
 		const CollectionName _listedObjectTypeCollectionName;
-		std::vector<std::shared_ptr<Persistable::Object>> _records;
-		std::mutex _records_mutex;
 		//
 		boost::signals2::connection connection__PasswordController_willDeconstructBootedStateAndClearPassword;
 		boost::signals2::connection connection__PasswordController_didDeconstructBootedStateAndClearPassword;
 		//
 		// Lifecycle
-		void setup_startObserving();
 		void setup_tryToBoot();
 		void startObserving_passwordController();
 		void setup_fetchAndReconstituteExistingRecords();
@@ -164,7 +187,6 @@ namespace Lists
 		void _setup_didFailToBoot(const string &err_str);
 		//
 		void tearDown();
-		void stopObserving();
 		void _stopObserving_passwordController();
 		//
 		// Accessors
@@ -177,9 +199,6 @@ namespace Lists
 		// CRUD
 		void _removeFromList(Persistable::Object &object);
 		void _removeFromList_noListUpdatedNotify(Persistable::Object &object);
-		//
-		void _listUpdated_records();
-		void __dispatchAsync_listUpdated_records();
 		//
 		// Protocols - DeleteEverythingRegistrant
 		optional<string> passwordController_DeleteEverything();

@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  Wallet_HostPollingController.hpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -32,43 +32,53 @@
 //
 //
 
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
+#ifndef TxCleanupController_hpp
+#define TxCleanupController_hpp
 //
 //
-class App::ServiceLocator_SpecificImpl
+#include <iostream>
+//
+namespace Wallets
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	using namespace std;
+//	using namespace boost;
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
-}
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
+	// Forward-declarations
+	class Object;
 	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr)
-	);
+	// Controllers
+	class TxCleanupController
+	{
+	public:
+		//
+		// Lifecycle - Init
+		TxCleanupController(const Object &wallet): _wallet(wallet)
+		{
+		}
+		~TxCleanupController()
+		{
+		}
+		//
+		// Dependencies
+		
+		
+		//
+		// Properties
+		
+		//
+		// Signals
+		
+		//
+		// Imperatives
+		
+	private:
+		//
+		// Properties
+		const Object &_wallet; // a reference! this's lifecycle should be just slightly less than the wallet
+		//
+		// Imperatives
+		
+	};
 }
 
-
+#endif /* TxCleanupController_hpp */

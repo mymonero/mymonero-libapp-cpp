@@ -63,10 +63,7 @@ namespace Currencies
 	//
 	inline char money_decimal_punctuation_char()
 	{
-		std::locale mylocale;
-		const std::moneypunct<char>& mp = std::use_facet<std::moneypunct<char> >(mylocale);
-		//
-		return mp.decimal_point();
+		return '.'; // explicitly no support for locale-specific formatting to avoid bad edge-cases and bugs.. sending XXX.0 XMR instead of 0.XXX XMR 
 	}
 	class twodecimal_comma_moneypunct : public std::moneypunct<char>
 	{
@@ -471,19 +468,13 @@ namespace Currencies
 	//
 	inline string nonAtomicCurrency_localized_formattedString( // is nonAtomic-unit'd currency a good enough way to categorize these?
 		double final_amountDouble,
-		Currencies::Currency inCcy,
-		optional<string> decimalSeparator_orNoneForLocaleDefault
+		Currencies::Currency inCcy
 	) {
 		if (inCcy == Currencies::XMR) {
 			BOOST_THROW_EXCEPTION(logic_error("nonAtomicCurrency_localized_formattedString should not be called with ccy of XMR"));
 			return "";
 		}
-		string decimalSeparator;
-		if (decimalSeparator_orNoneForLocaleDefault != boost::none) {
-			decimalSeparator = decimalSeparator_orNoneForLocaleDefault.get();
-		} else {
-			decimalSeparator = money_decimal_punctuation_char();
-		}
+		string decimalSeparator; decimalSeparator.push_back(money_decimal_punctuation_char());
 		if (final_amountDouble == 0) {
 			return "0"; // not 0.0 / 0,0 / ...
 		}
