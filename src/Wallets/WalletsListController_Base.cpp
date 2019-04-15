@@ -113,48 +113,56 @@ void ListController_Base::OnceBooted_ObtainPW_AddNewlyGeneratedWallet(
 	std::function<void()>&& userCanceledPasswordEntry_fn
 ) {
 	std::weak_ptr<Wallets::Object> weak_wallet(walletInstance);
-
-	onceBooted(
-		[this, weak_wallet, walletLabel, swatchColor,
-		 fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)]()
-		{
-			passwordController->onceBootedAndPasswordObtained([
-				this, weak_wallet, walletLabel, swatchColor,
+	std::shared_ptr<ListController_Base> shared_this = shared_from_this();
+	std::weak_ptr<ListController_Base> weak_this = shared_this;
+	onceBooted([
+		weak_this, weak_wallet, walletLabel, swatchColor,
+		fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
+	] () {
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->passwordController->onceBootedAndPasswordObtained([
+				weak_this, weak_wallet, walletLabel, swatchColor,
 				 fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
 				] (
 					Passwords::Password password,
 					Passwords::Type type
 				) {
-					auto walletInstance = weak_wallet.lock();
-					if (walletInstance) {
-						walletInstance->Boot_byLoggingIn_givenNewlyCreatedWallet(
-							walletLabel,
-							swatchColor,
-							[this, fn = std::move(fn), weak_wallet](optional<string> err_str)
-							{
-								if (err_str != none) {
-									fn(*err_str, nullptr);
-									return;
+					if (auto inner_inner_spt = weak_this.lock()) {
+						auto walletInstance = weak_wallet.lock();
+						if (walletInstance) {
+							walletInstance->Boot_byLoggingIn_givenNewlyCreatedWallet(
+								walletLabel,
+								swatchColor,
+								[weak_this, fn = std::move(fn), weak_wallet](optional<string> err_str)
+								{
+									if (err_str != none) {
+										fn(*err_str, nullptr);
+										return;
+									}
+									if (auto inner_inner_inner_spt = weak_this.lock()) {
+										auto walletInstance = weak_wallet.lock();
+										if (walletInstance) {
+											inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(walletInstance);
+											//
+											fn(none, walletInstance);
+										}
+										MWARNING("Wallet instance freed during Boot_byLoggingIn_givenNewlyCreatedWallet");
+									}
 								}
-								auto walletInstance = weak_wallet.lock();
-								if (walletInstance) {
-									_atRuntime__record_wasSuccessfullySetUp(walletInstance);
-									//
-									fn(none, walletInstance);
-								}
-								MWARNING("Wallet instance freed during Boot_byLoggingIn_givenNewlyCreatedWallet");
-							}
-						);
-					} else {
-						MWARNING("Wallet instance freed during onceBootedAndPasswordObtained");
+							);
+						} else {
+							MWARNING("Wallet instance freed during onceBootedAndPasswordObtained");
+						}
 					}
 				},
-				[userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)](void) { // user canceled
+				[
+					userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
+				] (void) { // user canceled
 					userCanceledPasswordEntry_fn();
 				}
 			);
 		}
-	);
+	});
 }
 //void OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
 //															walletLabel: String,

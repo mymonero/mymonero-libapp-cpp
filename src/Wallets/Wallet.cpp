@@ -50,7 +50,6 @@ struct OptlErrStrCBFunctor
 void Object::teardown()
 {
 	Persistable::Object::teardown();
-	//
 	tearDownRuntime();
 }
 void Object::tearDownRuntime()
@@ -88,10 +87,10 @@ void Object::deBoot()
 //	let old__lockedBalance = self.lockedBalance
 //	let old__spentOutputs = self.spentOutputs
 //	let old__transactions = self.transactions
-//	do {
-//		self.tearDownRuntime() // stop any requests, etc
+//	{
+//		tearDownRuntime() // stop any requests, etc
 //	}
-//	do {
+//	{
 //		// important flags to clear:
 //		self.isLoggedIn = false
 //		self.didFailToBoot_flag = nil
@@ -115,19 +114,19 @@ void Object::deBoot()
 //		self.dateThatLast_fetchedAccountInfo = nil
 //		self.dateThatLast_fetchedAccountTransactions = nil
 //	}
-//	do {
+//	{
 //		self.___didReceiveActualChangeTo_balance(
-//												 old_totalReceived: old__totalReceived,
-//												 old_totalSent: old__totalSent,
-//												 old_lockedBalance: old__lockedBalance
-//												 )
+//			old_totalReceived: old__totalReceived,
+//			old_totalSent: old__totalSent,
+//			old_lockedBalance: old__lockedBalance
+//		)
 //		self.___didReceiveActualChangeTo_spentOutputs(
-//													  old_spentOutputs: old__spentOutputs
-//													  )
+//			old_spentOutputs: old__spentOutputs
+//		)
 //		self.___didReceiveActualChangeTo_heights()
 //		self.___didReceiveActualChangeTo_transactions(
-//													  old_transactions: old__transactions
-//													  )
+//			old_transactions: old__transactions
+//		)
 //		self.regenerate_shouldDisplayImportAccountOption()
 //	}
 //	let save_err_str = self.saveToDisk()
@@ -154,10 +153,12 @@ void Object::__trampolineFor_failedToBootWith_fnAndErrStr(
 ) {
 	_setStateThatFailedToBoot(err_str);
 	//
-	// IMPORTANT TODO: enable_shared_from_this, make weak_ptr via shared_ptr,
-	//
-	_dispatch_ptr->async([this]() {
-		failedToBoot_signal();
+	std::shared_ptr<Object> shared_this = shared_from_this();
+	std::weak_ptr<Object> weak_this = shared_this;
+	_dispatch_ptr->async([weak_this]() {
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->failedToBoot_signal();
+		}
 	});
 	fn(err_str);
 }
@@ -205,31 +206,35 @@ void Object::___proceed_havingActuallyBooted__trampolineFor_successfullyBooted(
 	_isBooted = true;
 	didFailToBoot_errStr = none;
 	didFailToBoot_flag = none;
-	
 	//
-	// IMPORTANT TODO: enable_shared_from_this, make weak_ptr via shared_ptr,
-	//
-	
-	_dispatch_ptr->async([this]()
+	std::shared_ptr<Object> shared_this = shared_from_this();
+	std::weak_ptr<Object> weak_this = shared_this;
+	_dispatch_ptr->async([weak_this]()
 	{
-		_atRuntime_setup_hostPollingController(); // instantiate (and kick off) polling controller
-		_txCleanupController = std::make_unique<Wallets::TxCleanupController>(*this);
-		//
-		booted_signal();
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->_atRuntime_setup_hostPollingController(); // instantiate (and kick off) polling controller
+			inner_spt->_txCleanupController = std::make_unique<Wallets::TxCleanupController>(*inner_spt);
+			//
+			inner_spt->booted_signal();
+		}
 	});
 	fn(none);
 }
 void Object::_atRuntime_setup_hostPollingController()
 {
-	//
-	// IMPORTANT TODO: enable_shared_from_this, make weak_ptr via shared_ptr,
-	//
+	std::shared_ptr<Object> shared_this = shared_from_this();
+	std::weak_ptr<Object> weak_this = shared_this;
 	_hostPollingController = std::make_unique<Wallets::HostPollingController>(
 		*this,
-		[this]() {
-			_dispatch_ptr->async([this]() {
-				didChange_isFetchingAnyUpdates_signal();
-			});
+		[weak_this]()
+		{
+			if (auto inner_spt = weak_this.lock()) {
+				inner_spt->_dispatch_ptr->async([weak_this]() {
+					if (auto inner_inner_spt = weak_this.lock()) {
+						inner_inner_spt->didChange_isFetchingAnyUpdates_signal();
+					}
+				});
+			}
 		}
 	);
 }
@@ -302,60 +307,64 @@ void Object::_boot_byLoggingIn(
 	auto cb_functor(OptlErrStrCBFunctor{
 		std::move(fn)
 	});
+	std::shared_ptr<Object> shared_this = shared_from_this();
+	std::weak_ptr<Object> weak_this = shared_this;
 	_logIn_requestHandle = _apiClient->logIn(
 		_public_address,
 		_view_pub_key,
 		*_local_wasAGeneratedWallet,
 		[
-			this,
+			weak_this,
 			persistEvenIfLoginFailed_forServerChange,
 			cb_functor
 		] (
 			optional<string> login__err_str,
 			optional<HostedMonero::ParsedResult_Login> result
 		) {
-			_isLoggingIn = false;
-			_isLoggedIn = login__err_str == none; // supporting shouldExitOnLoginError=false for wallet reboot
-			//
-			bool shouldExitOnLoginError = persistEvenIfLoginFailed_forServerChange == false;
-			if (login__err_str != none) {
-				if (shouldExitOnLoginError == true) {
-					__trampolineFor_failedToBootWith_fnAndErrStr(
-						std::move(cb_functor),
-						std::move(login__err_str)
-					);
-					_logIn_requestHandle = nullptr; // release
-					return;
-				} else {
-				// this allows us to continue with the above-set login info to call 'saveToDisk()' when this call to log in is coming from a wallet reboot. reason is that we expect all such wallets to be valid monero wallets if they are able to have been rebooted.
-				}
-			}
-			if (result != none) { // i.e. on error but shouldExitOnLoginError != true
-				_login__new_address = (*result).isANewAddressToServer;
-				_login__generated_locally = (*result).generated_locally;
-				_account_scan_start_height = (*result).start_height;
+			if (auto inner_spt = weak_this.lock()) {
+				inner_spt->_isLoggingIn = false;
+				inner_spt->_isLoggedIn = login__err_str == none; // supporting shouldExitOnLoginError=false for wallet reboot
 				//
-				regenerate_shouldDisplayImportAccountOption(); // now this can be called
-			}
-			optional<string> saveToDisk__err_str = saveToDisk();
-			if (saveToDisk__err_str != none) {
-				__trampolineFor_failedToBootWith_fnAndErrStr(
-					std::move(cb_functor),
-					std::move(*saveToDisk__err_str)
-				);
-				_logIn_requestHandle = nullptr; // release
-				return;
-			}
-			if (shouldExitOnLoginError == false && login__err_str != none) {
-				// if we are attempting to re-boot the wallet, but login failed
-				__trampolineFor_failedToBootWith_fnAndErrStr( // i.e. leave the wallet in the 'errored'/'failed to boot' state even though we saved
-					std::move(cb_functor),
-					std::move(*login__err_str)
-				);
-				_logIn_requestHandle = nullptr; // release
-			} else { // it's actually a success
-				_trampolineFor_successfullyBooted(std::move(cb_functor));
-				_logIn_requestHandle = nullptr; // release
+				bool shouldExitOnLoginError = persistEvenIfLoginFailed_forServerChange == false;
+				if (login__err_str != none) {
+					if (shouldExitOnLoginError == true) {
+						inner_spt->__trampolineFor_failedToBootWith_fnAndErrStr(
+							std::move(cb_functor),
+							std::move(login__err_str)
+						);
+						inner_spt->_logIn_requestHandle = nullptr; // release
+						return;
+					} else {
+					// this allows us to continue with the above-set login info to call 'saveToDisk()' when this call to log in is coming from a wallet reboot. reason is that we expect all such wallets to be valid monero wallets if they are able to have been rebooted.
+					}
+				}
+				if (result != none) { // i.e. on error but shouldExitOnLoginError != true
+					inner_spt->_login__new_address = (*result).isANewAddressToServer;
+					inner_spt->_login__generated_locally = (*result).generated_locally;
+					inner_spt->_account_scan_start_height = (*result).start_height;
+					//
+					inner_spt->regenerate_shouldDisplayImportAccountOption(); // now this can be called
+				}
+				optional<string> saveToDisk__err_str = inner_spt->saveToDisk();
+				if (saveToDisk__err_str != none) {
+					inner_spt->__trampolineFor_failedToBootWith_fnAndErrStr(
+						std::move(cb_functor),
+						std::move(*saveToDisk__err_str)
+					);
+					inner_spt->_logIn_requestHandle = nullptr; // release
+					return;
+				}
+				if (shouldExitOnLoginError == false && login__err_str != none) {
+					// if we are attempting to re-boot the wallet, but login failed
+					inner_spt->__trampolineFor_failedToBootWith_fnAndErrStr( // i.e. leave the wallet in the 'errored'/'failed to boot' state even though we saved
+						std::move(cb_functor),
+						std::move(*login__err_str)
+					);
+					inner_spt->_logIn_requestHandle = nullptr; // release
+				} else { // it's actually a success
+					inner_spt->_trampolineFor_successfullyBooted(std::move(cb_functor));
+					inner_spt->_logIn_requestHandle = nullptr; // release
+				}
 			}
 		}
 	);
@@ -467,7 +476,6 @@ void Object::Boot_byLoggingIn_existingWallet_withAddressAndKeys(
 ) {
 	_walletLabel = walletLabel;
 	_swatchColor = swatchColor;
-	//
 	_boot_byLoggingIn(
 		address,
 		sec_viewKey_string,

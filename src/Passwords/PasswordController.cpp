@@ -332,12 +332,16 @@ void Controller::onceBootedAndPasswordObtained(
 		return;
 	}
 	// then we have to wait for it
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
 	auto callback_info_container = std::make_shared<once_booted_callback_info_container>();
-	auto _aPasswordWasObtained = [this, fn = std::move(fn), callback_info_container]()
+	auto _aPasswordWasObtained = [weak_this, fn = std::move(fn), callback_info_container]()
 	{
-		if (callback_info_container->guardAllCallBacks() != false) {
-			callback_info_container->stopListening(); // immediately unsubscribe
-			fn(*_password, _passwordType);
+		if (auto inner_spt = weak_this.lock()) {
+			if (callback_info_container->guardAllCallBacks() != false) {
+				callback_info_container->stopListening(); // immediately unsubscribe
+				fn(*(inner_spt->_password), inner_spt->_passwordType);
+			}
 		}
 	};
 	auto _obtainingPasswordWasCanceled = [userCanceled_fn, callback_info_container]()
@@ -347,15 +351,17 @@ void Controller::onceBootedAndPasswordObtained(
 			userCanceled_fn();
 		}
 	};
-	onceBooted([&callback_info_container, this, _aPasswordWasObtained, _obtainingPasswordWasCanceled] () {
+	onceBooted([&callback_info_container, weak_this, _aPasswordWasObtained, _obtainingPasswordWasCanceled] () {
 		// hang onto connections so we can unsub
-		callback_info_container->connection__obtainedNewPassword = obtainedNewPassword_signal.connect(_aPasswordWasObtained);
-		callback_info_container->connection__obtainedCorrectExistingPassword = obtainedCorrectExistingPassword_signal.connect(_aPasswordWasObtained);
-		callback_info_container->connection__canceledWhileEnteringExistingPassword = canceledWhileEnteringExistingPassword_signal.connect(_obtainingPasswordWasCanceled);
-		callback_info_container->connection__canceledWhileEnteringNewPassword = canceledWhileEnteringNewPassword_signal.connect(_obtainingPasswordWasCanceled);
-		//
-		// now that we're subscribed, initiate the pw request
-		givenBooted_initiateGetNewOrExistingPasswordFromUserAndEmitIt();
+		if (auto inner_spt = weak_this.lock()) {
+			callback_info_container->connection__obtainedNewPassword = inner_spt->obtainedNewPassword_signal.connect(_aPasswordWasObtained);
+			callback_info_container->connection__obtainedCorrectExistingPassword = inner_spt->obtainedCorrectExistingPassword_signal.connect(_aPasswordWasObtained);
+			callback_info_container->connection__canceledWhileEnteringExistingPassword = inner_spt->canceledWhileEnteringExistingPassword_signal.connect(_obtainingPasswordWasCanceled);
+			callback_info_container->connection__canceledWhileEnteringNewPassword = inner_spt->canceledWhileEnteringNewPassword_signal.connect(_obtainingPasswordWasCanceled);
+			//
+			// now that we're subscribed, initiate the pw request
+			inner_spt->givenBooted_initiateGetNewOrExistingPasswordFromUserAndEmitIt();
+		}
 	});
 }
 void Controller::givenBooted_initiateGetNewOrExistingPasswordFromUserAndEmitIt()
@@ -386,54 +392,58 @@ void Controller::givenBooted_initiateGetNewOrExistingPasswordFromUserAndEmitIt()
 			BOOST_THROW_EXCEPTION(logic_error(err_str));
 			return;
 		}
+		std::shared_ptr<Controller> shared_this = shared_from_this();
+		std::weak_ptr<Controller> weak_this = shared_this;
 		_getUserToEnterTheirExistingPassword(
 			isForChangePassword,
 			isForAuthorizingAppActionOnly, // false
 			none, // customNavigationBarTitle
-			[this] (
+			[weak_this] (
 				optional<bool> didCancel_orNone,
 				optional<EnterPW_Fn_ValidationErr_Code> validationErr_orNone,
 				optional<Password> obtainedPasswordString
 			) -> void {
-				if (validationErr_orNone != none) { // takes precedence over cancel
-					unguard_getNewOrExistingPassword(); // TODO/FIXME: is this correct? don't we un-guard only on cancel or success?
-					erroredWhileGettingExistingPassword_signal(*validationErr_orNone);
-					return;
-				}
-				if (didCancel_orNone != none && *didCancel_orNone == true) {
+				if (auto inner_spt = weak_this.lock()) {
+					if (validationErr_orNone != none) { // takes precedence over cancel
+						inner_spt->unguard_getNewOrExistingPassword(); // TODO/FIXME: is this correct? don't we un-guard only on cancel or success?
+						inner_spt->erroredWhileGettingExistingPassword_signal(*validationErr_orNone);
+						return;
+					}
+					if (didCancel_orNone != none && *didCancel_orNone == true) {
+						// free/unset these at terminus of process ... slightly janky (entropic) to do it out-of-setting-function like this
+						inner_spt->isWaitingFor_enterExistingPassword_cb = false;
+						inner_spt->enterExistingPassword_final_fn = none;
+						//
+						inner_spt->canceledWhileEnteringExistingPassword_signal();
+						inner_spt->unguard_getNewOrExistingPassword();
+						return; // just silently exit after unguarding
+					}
+					optional<std::string> decryptedString = Persistable::new_plaintextStringFrom(
+						*inner_spt->_messageAsEncryptedDataForUnlockChallenge_base64String,
+						*obtainedPasswordString
+					);
+					if (decryptedString == none) {
+						inner_spt->unguard_getNewOrExistingPassword(); // TODO/FIXME: is this correct? don't we un-guard only on cancel or success?
+						MERROR("Passwords: Error while decrypting message for unlock challenge");
+						inner_spt->erroredWhileGettingExistingPassword_signal(incorrectPassword);
+						return;
+					}
+					if (*decryptedString != plaintextMessageToSaveForUnlockChallenges) {
+						inner_spt->unguard_getNewOrExistingPassword(); // TODO/FIXME: is this correct? don't we un-guard only on cancel or success?
+						inner_spt->erroredWhileGettingExistingPassword_signal(incorrectPassword);
+						return;
+					}
 					// free/unset these at terminus of process ... slightly janky (entropic) to do it out-of-setting-function like this
-					isWaitingFor_enterExistingPassword_cb = false;
-					enterExistingPassword_final_fn = none;
+					inner_spt->isWaitingFor_enterExistingPassword_cb = false;
+					inner_spt->enterExistingPassword_final_fn = none;
 					//
-					canceledWhileEnteringExistingPassword_signal();
-					unguard_getNewOrExistingPassword();
-					return; // just silently exit after unguarding
+					// then it's correct
+					// hang onto pw and set state
+					inner_spt->_didObtainPassword(*obtainedPasswordString);
+					// all done
+					inner_spt->unguard_getNewOrExistingPassword();
+					inner_spt->obtainedCorrectExistingPassword_signal();
 				}
-				optional<std::string> decryptedString = Persistable::new_plaintextStringFrom(
-					*_messageAsEncryptedDataForUnlockChallenge_base64String,
-					*obtainedPasswordString
-				);
-				if (decryptedString == none) {
-					unguard_getNewOrExistingPassword(); // TODO/FIXME: is this correct? don't we un-guard only on cancel or success?
-					MERROR("Passwords: Error while decrypting message for unlock challenge");
-					erroredWhileGettingExistingPassword_signal(incorrectPassword);
-					return;
-				}
-				if (*decryptedString != plaintextMessageToSaveForUnlockChallenges) {
-					unguard_getNewOrExistingPassword(); // TODO/FIXME: is this correct? don't we un-guard only on cancel or success?
-					erroredWhileGettingExistingPassword_signal(incorrectPassword);
-					return;
-				}
-				// free/unset these at terminus of process ... slightly janky (entropic) to do it out-of-setting-function like this
-				isWaitingFor_enterExistingPassword_cb = false;
-				enterExistingPassword_final_fn = none;
-				//
-				// then it's correct
-				// hang onto pw and set state
-				_didObtainPassword(*obtainedPasswordString);
-				// all done
-				unguard_getNewOrExistingPassword();
-				obtainedCorrectExistingPassword_signal();
 			}
 		);
 	}
@@ -446,65 +456,73 @@ void Controller::initiate_verifyUserAuthenticationForAction(
 	std::function<void()> canceled_fn,
 	std::function<void()> entryAttempt_succeeded_fn
 ) {
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
 	onceBooted([
-		this, customNavigationBarTitle_orNone,
+		weak_this, customNavigationBarTitle_orNone,
 		canceled_fn = std::move(canceled_fn), entryAttempt_succeeded_fn = std::move(entryAttempt_succeeded_fn), tryBiometrics
 	] (void) {
-		if (hasUserEnteredValidPasswordYet() == false) {
-			BOOST_THROW_EXCEPTION(logic_error("initiate_verifyUserAuthenticationForAction called but hasUserEnteredValidPasswordYet == false. This should be disallowed in the UI"));
-			return;
-		}
-		{ // guard
-			if (_isAlreadyGettingExistingOrNewPWFromUser == true) {
-				BOOST_THROW_EXCEPTION(logic_error("initiate_changePassword called but isAlreadyGettingExistingOrNewPWFromUser == true. This should be precluded in the UI"));
-				// only need to wait for it to be obtained
+		if (auto inner_spt = weak_this.lock()) {
+			if (inner_spt->hasUserEnteredValidPasswordYet() == false) {
+				BOOST_THROW_EXCEPTION(logic_error("initiate_verifyUserAuthenticationForAction called but hasUserEnteredValidPasswordYet == false. This should be disallowed in the UI"));
 				return;
 			}
-			_isAlreadyGettingExistingOrNewPWFromUser = true;
+			{ // guard
+				if (inner_spt->_isAlreadyGettingExistingOrNewPWFromUser == true) {
+					BOOST_THROW_EXCEPTION(logic_error("initiate_changePassword called but isAlreadyGettingExistingOrNewPWFromUser == true. This should be precluded in the UI"));
+					// only need to wait for it to be obtained
+					return;
+				}
+				inner_spt->_isAlreadyGettingExistingOrNewPWFromUser = true;
+			}
+			inner_spt->_waitingForAuth_customNavigationBarTitle_orNone = customNavigationBarTitle_orNone;
+			inner_spt->_waitingForAuth_canceled_fn = canceled_fn;
+			inner_spt->_waitingForAuth_entryAttempt_succeeded_fn = entryAttempt_succeeded_fn;
+			//
+			// ^-- we're relying on having checked above that user has entered a valid pw already
+			// now see if we can use biometrics
+			if (tryBiometrics == false) {
+				inner_spt->_proceedTo_authenticateVia_passphrase();
+				return; // so we don't have to wrap the whole following branch in an if
+			}
+			inner_spt->duringAuthentication_tryBiometrics_signal(); // then wait for reply
 		}
-		_waitingForAuth_customNavigationBarTitle_orNone = customNavigationBarTitle_orNone;
-		_waitingForAuth_canceled_fn = canceled_fn;
-		_waitingForAuth_entryAttempt_succeeded_fn = entryAttempt_succeeded_fn;
-		//
-		// ^-- we're relying on having checked above that user has entered a valid pw already
-		// now see if we can use biometrics
-		if (tryBiometrics == false) {
-			_proceedTo_authenticateVia_passphrase();
-			return; // so we don't have to wrap the whole following branch in an if
-		}
-		duringAuthentication_tryBiometrics_signal(); // then wait for reply
 	});
 }
 void Controller::_proceedTo_authenticateVia_passphrase()
 {
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
    _getUserToEnterTheirExistingPassword(
 		false,
 		true, // isForAuthorizingAppActionOnly
 		_waitingForAuth_customNavigationBarTitle_orNone,
-		[this] (
+		[weak_this] (
 			optional<bool> didCancel_orNone,
 			optional<EnterPW_Fn_ValidationErr_Code> validationErrCode_orNone,
 			optional<Password> entered_existingPassword
 		) {
-			if (validationErrCode_orNone != none) { // takes precedence over cancel
-				unguard_getNewOrExistingPassword(); // TODO: is this correct?
-				errorWhileAuthorizingForAppAction_signal(*validationErrCode_orNone);
-				// no clear of callbacks here since user can still enter - they have to succeed or cancel
-				return;
+			if (auto inner_spt = weak_this.lock()) {
+				if (validationErrCode_orNone != none) { // takes precedence over cancel
+					inner_spt->unguard_getNewOrExistingPassword(); // TODO: is this correct?
+					inner_spt->errorWhileAuthorizingForAppAction_signal(*validationErrCode_orNone);
+					// no clear of callbacks here since user can still enter - they have to succeed or cancel
+					return;
+				}
+				if (didCancel_orNone != none && *didCancel_orNone == true) {
+					inner_spt->_authentication__callBackWithEntryAttempt_canceled();
+					//
+					return; // just silently exit after unguarding
+				}
+				if (inner_spt->withExistingPassword_isCorrect(*entered_existingPassword) == false) {
+					inner_spt->unguard_getNewOrExistingPassword();
+					inner_spt->errorWhileAuthorizingForAppAction_signal(incorrectPassword);
+					// no clear of callbacks here since user can still enter - they have to succeed or cancel
+					return;
+				}
+				inner_spt->successfullyAuthenticatedForAppAction_signal(); // this must be posted so the PresentationController can dismiss the entry modal
+				inner_spt->_authentication__callBackWithEntryAttempt_succeeded();
 			}
-			if (didCancel_orNone != none && *didCancel_orNone == true) {
-				_authentication__callBackWithEntryAttempt_canceled();
-				//
-				return; // just silently exit after unguarding
-			}
-			if (withExistingPassword_isCorrect(*entered_existingPassword) == false) {
-				unguard_getNewOrExistingPassword();
-				errorWhileAuthorizingForAppAction_signal(incorrectPassword);
-				// no clear of callbacks here since user can still enter - they have to succeed or cancel
-				return;
-			}
-			successfullyAuthenticatedForAppAction_signal(); // this must be posted so the PresentationController can dismiss the entry modal
-			_authentication__callBackWithEntryAttempt_succeeded();
 		}
 	);
 };
@@ -599,13 +617,17 @@ void Controller::__cancelAnyAndRebuildUnlockTimer()
 		_pw_entry_unlock_timer_handle = nullptr; // release / free
 	}
 	MDEBUG("Passwords: Too many password entry attempts within " << pwEntrySpamming_unlockInT_s << "s. " << (!wasAlreadyLockedOut ? "Locking out" : "Extending lockout.") << ".");
-	_pw_entry_unlock_timer_handle = this->dispatch_ptr->after(pwEntrySpamming_unlockInT_ms, [this]()
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	_pw_entry_unlock_timer_handle = this->dispatch_ptr->after(pwEntrySpamming_unlockInT_ms, [weak_this]()
 	{
-		_pw_entry_unlock_timer_handle = nullptr; // clear ... TODO: do we need a mutex around this to prevent race condition?
-		//
-		MDEBUG("Passwords:  Unlocking password entry.");
-		_isCurrentlyLockedOutFromPWEntryAttempts = false;
-		(*enterExistingPassword_final_fn)(none, clearValidationErrorAndAllowRetry, none); 
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->_pw_entry_unlock_timer_handle = nullptr; // clear ... TODO: do we need a mutex around this to prevent race condition?
+			//
+			MDEBUG("Passwords:  Unlocking password entry.");
+			inner_spt->_isCurrentlyLockedOutFromPWEntryAttempts = false;
+			(*(inner_spt->enterExistingPassword_final_fn))(none, clearValidationErrorAndAllowRetry, none);
+		}
 	});
 }
 void Controller::enterExistingPassword_cb(boost::optional<bool> didCancel_orNone, boost::optional<Password> obtainedPasswordString)
@@ -859,59 +881,65 @@ void Controller::removeRegistrantForChangePassword(ChangePasswordRegistrant &reg
 }
 void Controller::initiate_changePassword()
 {
-	onceBooted([this]()
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	onceBooted([weak_this]()
 	{
-		if (hasUserEnteredValidPasswordYet() == false) {
-			BOOST_THROW_EXCEPTION(logic_error("initiate_changePassword called but hasUserEnteredValidPasswordYet == false. This should be disallowed in the UI"));
-			return;
-		}
-		{ // guard
-			if (_isAlreadyGettingExistingOrNewPWFromUser == true) {
-				BOOST_THROW_EXCEPTION(logic_error("initiate_changePassword called but _isAlreadyGettingExistingOrNewPWFromUser == true. This should be precluded in the UI"));
-				// only need to wait for it to be obtained
+		if (auto inner_spt = weak_this.lock()) {
+			if (inner_spt->hasUserEnteredValidPasswordYet() == false) {
+				BOOST_THROW_EXCEPTION(logic_error("initiate_changePassword called but hasUserEnteredValidPasswordYet == false. This should be disallowed in the UI"));
 				return;
 			}
-			_isAlreadyGettingExistingOrNewPWFromUser = true;
-		}
-		// ^-- we're relying on having checked above that user has entered a valid pw already
-		bool isForChangePassword = true; // we'll use this in a couple places
-		_getUserToEnterTheirExistingPassword(
-			isForChangePassword,
-			false, // isForAuthorizingAppActionOnly
-			none, // customNavigationBarTitle
-			[this, isForChangePassword] (
-				optional<bool> didCancel_orNone,
-				optional<EnterPW_Fn_ValidationErr_Code> validationErr_orNone,
-				optional<Password> obtainedPasswordString
-			) -> void {
-				if (validationErr_orNone != none) { // takes precedence over cancel
-					unguard_getNewOrExistingPassword();
-					errorWhileChangingPassword_signal(*validationErr_orNone);
+			{ // guard
+				if (inner_spt->_isAlreadyGettingExistingOrNewPWFromUser == true) {
+					BOOST_THROW_EXCEPTION(logic_error("initiate_changePassword called but _isAlreadyGettingExistingOrNewPWFromUser == true. This should be precluded in the UI"));
+					// only need to wait for it to be obtained
 					return;
 				}
-				if (didCancel_orNone != none && *didCancel_orNone == true) {
-					{ // these must be cleared since it's a cancelation
-						isWaitingFor_enterExistingPassword_cb = false;
-						enterExistingPassword_final_fn = none;
-					}
-					unguard_getNewOrExistingPassword();
-					canceledWhileChangingPassword_signal();
-					return; // just silently exit after unguarding
-				}
-				if (withExistingPassword_isCorrect(*obtainedPasswordString) == false) {
-					unguard_getNewOrExistingPassword();
-					errorWhileChangingPassword_signal(incorrectPassword);
-					return;
-				}
-				{ // these must be cleared since we can proceed and it's not a cancelation
-					isWaitingFor_enterExistingPassword_cb = false;
-					enterExistingPassword_final_fn = none;
-				}
-				//
-				// passwords match checked as necessary, we can proceed
-				obtainNewPasswordFromUser(isForChangePassword);
+				inner_spt->_isAlreadyGettingExistingOrNewPWFromUser = true;
 			}
-		);
+			// ^-- we're relying on having checked above that user has entered a valid pw already
+			bool isForChangePassword = true; // we'll use this in a couple places
+			inner_spt->_getUserToEnterTheirExistingPassword(
+				isForChangePassword,
+				false, // isForAuthorizingAppActionOnly
+				none, // customNavigationBarTitle
+				[weak_this, isForChangePassword] (
+					optional<bool> didCancel_orNone,
+					optional<EnterPW_Fn_ValidationErr_Code> validationErr_orNone,
+					optional<Password> obtainedPasswordString
+				) -> void {
+					if (auto inner_inner_spt = weak_this.lock()) {
+						if (validationErr_orNone != none) { // takes precedence over cancel
+							inner_inner_spt->unguard_getNewOrExistingPassword();
+							inner_inner_spt->errorWhileChangingPassword_signal(*validationErr_orNone);
+							return;
+						}
+						if (didCancel_orNone != none && *didCancel_orNone == true) {
+							{ // these must be cleared since it's a cancelation
+								inner_inner_spt->isWaitingFor_enterExistingPassword_cb = false;
+								inner_inner_spt->enterExistingPassword_final_fn = none;
+							}
+							inner_inner_spt->unguard_getNewOrExistingPassword();
+							inner_inner_spt->canceledWhileChangingPassword_signal();
+							return; // just silently exit after unguarding
+						}
+						if (inner_inner_spt->withExistingPassword_isCorrect(*obtainedPasswordString) == false) {
+							inner_inner_spt->unguard_getNewOrExistingPassword();
+							inner_inner_spt->errorWhileChangingPassword_signal(incorrectPassword);
+							return;
+						}
+						{ // these must be cleared since we can proceed and it's not a cancelation
+							inner_inner_spt->isWaitingFor_enterExistingPassword_cb = false;
+							inner_inner_spt->enterExistingPassword_final_fn = none;
+						}
+						//
+						// passwords match checked as necessary, we can proceed
+						inner_inner_spt->obtainNewPasswordFromUser(isForChangePassword);
+					}
+				}
+			);
+		}
 	});
 }
 optional<EnterPW_Fn_ValidationErr_Code> Controller::_changePassword_tellRegistrants_doChangePassword()
@@ -957,36 +985,40 @@ void Controller::initiateDeleteEverything()
 		BOOST_THROW_EXCEPTION(logic_error("initiateDeleteEverything() called but hasUserSavedAPassword != true. This should be disallowed in the UI."));
 		return;
 	}
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
 	_deconstructBootedStateAndClearPassword(
 		true, // isForADeleteEverything
-		[this](std::function<void(optional<string> err_str)> cb) {
-			// reset state cause we're going all the way back to pre-boot
-			hasBooted = false; // require this pw controller to boot
-			_password = none; // this is redundant but is here for clarity
-			_id = none;
-			_messageAsEncryptedDataForUnlockChallenge_base64String = none;
-			//
-			// first have registrants delete everything
-			for (std::vector<DeleteEverythingRegistrant *>::iterator it = ptrsTo_deleteEverythingRegistrants.begin(); it != ptrsTo_deleteEverythingRegistrants.end(); ++it) {
-				optional<string> registrant__err_str = (*it)->passwordController_DeleteEverything();
-				if (registrant__err_str != none) {
-					cb(registrant__err_str);
+		[weak_this](std::function<void(optional<string> err_str)> cb) {
+			if (auto inner_spt = weak_this.lock()) {
+				// reset state cause we're going all the way back to pre-boot
+				inner_spt->hasBooted = false; // require this pw controller to boot
+				inner_spt->_password = none; // this is redundant but is here for clarity
+				inner_spt->_id = none;
+				inner_spt->_messageAsEncryptedDataForUnlockChallenge_base64String = none;
+				//
+				// first have registrants delete everything
+				for (std::vector<DeleteEverythingRegistrant *>::iterator it = inner_spt->ptrsTo_deleteEverythingRegistrants.begin(); it != inner_spt->ptrsTo_deleteEverythingRegistrants.end(); ++it) {
+					optional<string> registrant__err_str = (*it)->passwordController_DeleteEverything();
+					if (registrant__err_str != none) {
+						cb(registrant__err_str);
+						return;
+					}
+				}
+				//
+				// then delete pw record
+				errOr_numRemoved result = document_persister::removeAllDocuments(*(inner_spt->documentsPath), collectionName);
+				if (result.err_str != none) {
+					cb(std::move(*result.err_str));
 					return;
 				}
+				MDEBUG("Passwords: Deleted password record.");
+				//
+				inner_spt->initializeRuntimeAndBoot(); // now trigger a boot before we call cb (tho we could do it after - consumers will wait for boot)
+				cb(none);
 			}
-			//
-			// then delete pw record
-			errOr_numRemoved result = document_persister::removeAllDocuments(*documentsPath, collectionName);
-			if (result.err_str != none) {
-				cb(std::move(*result.err_str));
-				return;
-			}
-			MDEBUG("Passwords: Deleted password record.");
-			//
-			initializeRuntimeAndBoot(); // now trigger a boot before we call cb (tho we could do it after - consumers will wait for boot)
-			cb(none);
 		},
-		[this](optional<string> err_str) {
+		[weak_this](optional<string> err_str) {
 			if (err_str != none) {
 				MERROR("Passwords: Error while deleting everything: " << *err_str);
 				BOOST_THROW_EXCEPTION(logic_error("Error while deleting everything"));
@@ -994,7 +1026,9 @@ void Controller::initiateDeleteEverything()
 //				fatalError("Error while deleting everything");
 				return;
 			}
-			havingDeletedEverything_didDeconstructBootedStateAndClearPassword_signal();
+			if (auto inner_spt = weak_this.lock()) {
+				inner_spt->havingDeletedEverything_didDeconstructBootedStateAndClearPassword_signal();
+			}
 		}
 	);
 }
@@ -1028,22 +1062,26 @@ void Controller::_deconstructBootedStateAndClearPassword(
 	// TODO:? do we need to cancel any waiting functions here? not sure it would be possible to have any (unless code fault)…… we'd only deconstruct the booted state and pop the enter pw screen here if we had already booted before - which means there shouldn't be such waiting functions - so maybe assert that here - which requires hanging onto those functions somehow
 	willDeconstructBootedStateAndClearPassword_signal(isForADeleteEverything); // indicate to consumers they should tear down and await the "did" event to re-request
 	//
-	hasFiredWill_fn([fn = std::move(fn), this](optional<string> err_str) {
-		if (err_str != none) {
-			fn(std::move(*err_str));
-			return;
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	hasFiredWill_fn([fn = std::move(fn), weak_this](optional<string> err_str) {
+		if (auto inner_spt = weak_this.lock()) {
+			if (err_str != none) {
+				fn(std::move(*err_str));
+				return;
+			}
+			{ // trigger deconstruction of booted state and require password
+				inner_spt->_password = none; // clear pw in memory
+				inner_spt->hasBooted = false; // require this pw controller to boot
+				inner_spt->_id = none;
+				inner_spt->_messageAsEncryptedDataForUnlockChallenge_base64String = none;
+			}
+			{ // we're not going to call WhenBootedAndPasswordObtained_PasswordAndType because consumers will call it for us after they tear down their booted state with the "will" event and try to boot/decrypt again when they get this "did" event
+				inner_spt->didDeconstructBootedStateAndClearPassword_signal();
+			}
+			inner_spt->initializeRuntimeAndBoot(); // now trigger a boot before we call cb (tho we could do it after - consumers will wait for boot)
+			fn(none);
 		}
-		{ // trigger deconstruction of booted state and require password
-			_password = none; // clear pw in memory
-			hasBooted = false; // require this pw controller to boot
-			_id = none;
-			_messageAsEncryptedDataForUnlockChallenge_base64String = none;
-		}
-		{ // we're not going to call WhenBootedAndPasswordObtained_PasswordAndType because consumers will call it for us after they tear down their booted state with the "will" event and try to boot/decrypt again when they get this "did" event
-			didDeconstructBootedStateAndClearPassword_signal();
-		}
-		initializeRuntimeAndBoot(); // now trigger a boot before we call cb (tho we could do it after - consumers will wait for boot)
-		fn(none);
 	});
 }
 //

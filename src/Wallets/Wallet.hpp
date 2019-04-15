@@ -160,7 +160,7 @@ namespace Wallets
 	static const CollectionName collectionName = "Wallets";
 	//
 	//
-	class Object: public Persistable::Object
+	class Object: public Persistable::Object, std::enable_shared_from_this<Object>
 	{
 	public:
 		Object(
@@ -233,7 +233,7 @@ namespace Wallets
 		// Accessors - Properties
 		Wallets::Currency currency() { return _currency; }
 		string walletLabel() { return _walletLabel; }
-		SwatchColor swatchColor() { return _swatchColor; };
+		SwatchColor swatchColor() { return _swatchColor; }
 		//
 		// Signals
 		boost::signals2::signal<void()> didChange_isFetchingAnyUpdates_signal;
@@ -327,12 +327,13 @@ namespace Wallets
 		//
 		// Properties - Objects
 		// TODO: key image cache
-		//
 		std::unique_ptr<HTTPRequests::Handle> _logIn_requestHandle;
 		std::unique_ptr<Wallets::HostPollingController> _hostPollingController; // strong; can be nullptr
 		std::unique_ptr<Wallets::TxCleanupController> _txCleanupController; // strong; can be nullptr
 		std::unique_ptr<HTTPRequests::Handle> _current_sendFunds_request;
 //		var submitter: SendFundsFormSubmissionHandle?
+		//
+		// Accessors
 		//
 		// Imperatives
 		void _setStateThatFailedToBoot(optional<string> err_str);

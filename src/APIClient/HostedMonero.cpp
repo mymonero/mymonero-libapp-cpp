@@ -74,6 +74,7 @@ std::unique_ptr<HTTPRequests::Handle> APIClient::logIn(
 	)> fn
 ) {
 	// TODO
+	// TODO: capture weak this
 	return requestFactory->new_request("login", []() {
 		
 	});

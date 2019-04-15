@@ -1755,7 +1755,7 @@ public:
 	}
 	const CollectionName &collectionName() const { return mockedListObjects__CollectionName; }
 };
-class MockedListController: public Lists::Controller
+class MockedListController: public Lists::Controller, std::enable_shared_from_this<MockedListController>
 {
 public:
 	MockedListController(
@@ -1772,6 +1772,10 @@ public:
 			passwordProvider,
 			plaintext_documentJSON
 		);
+	}
+	std::shared_ptr<Lists::Controller> get_shared_ptr_from_this() override
+	{
+		return shared_from_this();
 	}
 	//
 	// Imperatives - Public - Adding

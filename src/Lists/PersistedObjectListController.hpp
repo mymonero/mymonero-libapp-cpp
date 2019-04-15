@@ -94,6 +94,8 @@ namespace Lists
 		// Then call:
 		void setup();
 		//
+		virtual std::shared_ptr<Lists::Controller> get_shared_ptr_from_this() = 0; // Child classes must override and implement this with shared_from_this() and by inheriting std::enabled_shared_from_this<Child>
+		//
 		virtual void overridable_deferBootUntil( // overridable
 			std::function<void(optional<string> err_str)> fn
 		) {

@@ -301,8 +301,12 @@ bool Controller::_locked_set_save_and_emit(Settings_DictKey key, prop_val_arg_ty
 		// TODO? revert member var value here?
 		return false;
 	}
-	dispatch_ptr->async([this, key]() {
-		_onAsync_invokeEmitterFor_changed(key);
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	dispatch_ptr->async([weak_this, key]() {
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->_onAsync_invokeEmitterFor_changed(key);
+		}
 	});
 	return true;
 }
@@ -478,8 +482,12 @@ optional<string> Controller::passwordController_DeleteEverything()
 	}
 	property_mutex.unlock();
 	//
-	dispatch_ptr->async([this]() {
-		_onAsync_invokeEmitterFor_changed__all(); // so UI et al. may update
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	dispatch_ptr->async([weak_this]() {
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->_onAsync_invokeEmitterFor_changed__all(); // so UI et al. may update
+		}
 	});
 	//
 	return err_str;

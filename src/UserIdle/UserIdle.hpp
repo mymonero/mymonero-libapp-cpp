@@ -47,7 +47,7 @@ namespace UserIdle
 	using namespace boost;
 	//
 	// Controllers
-	class Controller
+	class Controller: std::enable_shared_from_this<Controller>
 	{
 	public:
 		//

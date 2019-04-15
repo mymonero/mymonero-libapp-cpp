@@ -61,13 +61,17 @@ void Controller::setup_startObserving()
 }
 void Controller::setup_tryToBoot()
 {
-	overridable_deferBootUntil([this](optional<string> err_str)
+	std::shared_ptr<Controller> shared_this = get_shared_ptr_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	overridable_deferBootUntil([weak_this](optional<string> err_str)
 	{
 		if (err_str != none) {
 			BOOST_THROW_EXCEPTION(logic_error(*err_str));
 			return;
 		}
-		setup_fetchAndReconstituteExistingRecords();
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->setup_fetchAndReconstituteExistingRecords();
+		}
 	});
 }
 void Controller::startObserving_passwordController()
@@ -99,64 +103,74 @@ void Controller::setup_fetchAndReconstituteExistingRecords()
 		_setup_didBoot();
 		return;
 	}
-	passwordController->onceBootedAndPasswordObtained(
-		[this](Passwords::Password password, Passwords::Type type)
-		{
-			// now we actually want to load the ids again after we have the password - or we'll have stale ids on having deleted all data in the app and subsequently adding a record!
-			// now proceed to load and boot all extant records
-			//
-			auto inner_err_orIds = _new_idsOfPersistedRecords();
+	std::shared_ptr<Controller> shared_this = get_shared_ptr_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	passwordController->onceBootedAndPasswordObtained([ // this will 'block' until we have access to the pw
+		weak_this
+	] (
+		Passwords::Password password, Passwords::Type type
+	) {
+		// now we actually want to load the ids again after we have the password - or we'll have stale ids on having deleted all data in the app and subsequently adding a record!
+		// now proceed to load and boot all extant records
+		if (auto inner_spt = weak_this.lock()) {
+			auto inner_err_orIds = inner_spt->_new_idsOfPersistedRecords();
 			if (inner_err_orIds.err_str != boost::none) {
-				_setup_didFailToBoot(*inner_err_orIds.err_str);
+				inner_spt->_setup_didFailToBoot(*inner_err_orIds.err_str);
 				return;
 			}
 			if (inner_err_orIds.ids->size() == 0) { // we must check before requesting password so pw entry not enforced when not necessary
-				_setup_didBoot();
+				inner_spt->_setup_didBoot();
 				return;
 			}
-			auto err_orJSONStrings = document_persister::documentsWith(*documentsPath, _listedObjectTypeCollectionName, *inner_err_orIds.ids);
+			auto err_orJSONStrings = document_persister::documentsWith(
+				*(inner_spt->documentsPath),
+				inner_spt->_listedObjectTypeCollectionName,
+				*inner_err_orIds.ids
+			);
 			if (err_orJSONStrings.err_str != boost::none) {
-				_setup_didFailToBoot(*err_orJSONStrings.err_str);
+				inner_spt->_setup_didFailToBoot(*err_orJSONStrings.err_str);
 				return;
 			}
 			if (err_orJSONStrings.content_strings->size() == 0) { // just in case
-				_setup_didBoot();
+				inner_spt->_setup_didBoot();
 				return;
 			}
 			for (auto it = (*(err_orJSONStrings.content_strings)).begin(); it != (*(err_orJSONStrings.content_strings)).end(); it++) {
 				optional<string> plaintext_documentContentString = Persistable::new_plaintextStringFrom(
 					*it,
-					*(passwordController->getPassword())
+					*(inner_spt->passwordController->getPassword())
 				);
 				if (plaintext_documentContentString == none) {
-					_setup_didFailToBoot("ListController: Incorrect password");
+					inner_spt->_setup_didFailToBoot("ListController: Incorrect password");
 					return; // sort of a fatal condition, though
 				}
 				property_tree::ptree plaintext_documentJSON;
 				try {
-					plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(*plaintext_documentContentString);
+					plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
+						*plaintext_documentContentString
+					);
 				} catch (const std::exception & e) {
-					_setup_didFailToBoot(e.what());
+					inner_spt->_setup_didFailToBoot(e.what());
 					return;
 				}
-				std::shared_ptr<Persistable::Object> listedObjectInstance = new_record(
-					documentsPath,
-					passwordController,
+				std::shared_ptr<Persistable::Object> listedObjectInstance = inner_spt->new_record(
+					inner_spt->documentsPath,
+					inner_spt->passwordController,
 					plaintext_documentJSON
 				);
-				_records_mutex.lock();
+				inner_spt->_records_mutex.lock();
 				{ // TODO: should we lock outside of the for loop?
-					_records.push_back(listedObjectInstance);
+					inner_spt->_records.push_back(listedObjectInstance);
 				}
-				_records_mutex.unlock();
-				overridable_booting_didReconstitute(listedObjectInstance);
+				inner_spt->_records_mutex.unlock();
+				inner_spt->overridable_booting_didReconstitute(listedObjectInstance);
 			}
-			_setup_didBoot();
-		},
-		[](void) {
-			// canceled function
+			inner_spt->_setup_didBoot();
 		}
-	); // this will 'block' until we have access to the pw
+	},
+	[](void) {
+		// canceled function
+	});
 }
 void Controller::_setup_didBoot()
 {
@@ -164,18 +178,28 @@ void Controller::_setup_didBoot()
 	overridable_finalizeAndSortRecords(); // finalize on every boot - so that overriders can opt to do CRUD even with 0 extant records
 	_hasBooted = true; // all done!
 	_callAndFlushAllBlocksWaitingForBootToExecute(); // after hasBooted=true; this can probably go in the ->async
-	dispatch_ptr->async([this]()
+	//
+	std::shared_ptr<Controller> shared_this = get_shared_ptr_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	dispatch_ptr->async([weak_this]()
 	{ // on next tick to avoid instantiator missing this
-		boot__did_signal();
-		_listUpdated_records(); // notify every boot, after did-boot notification
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->boot__did_signal();
+			inner_spt->_listUpdated_records(); // notify every boot, after did-boot notification
+		}
 	});
 }
 void Controller::_setup_didFailToBoot(const string &err_str)
 {
 	MERROR("Lists: ListController " << this << " failed to boot with err: " << err_str);
-	dispatch_ptr->async([this]()
+	//
+	std::shared_ptr<Controller> shared_this = get_shared_ptr_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	dispatch_ptr->async([weak_this]()
 	{ // on next tick to avoid instantiator missing this
-		boot__failed_signal();
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->boot__failed_signal();
+		}
 	});
 }
 //
@@ -320,9 +344,13 @@ void Controller::_listUpdated_records()
 }
 void Controller::__dispatchAsync_listUpdated_records()
 {
-	dispatch_ptr->async([this]()
+	std::shared_ptr<Controller> shared_this = get_shared_ptr_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	dispatch_ptr->async([weak_this]()
 	{
-		_listUpdated_records();
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->_listUpdated_records();
+		}
 	});
 }
 //

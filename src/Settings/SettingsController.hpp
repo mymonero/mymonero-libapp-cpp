@@ -87,7 +87,8 @@ namespace Settings
 	class Controller:
 		public IdleTimeoutAfterS_SettingsProvider,
 		public Passwords::DeleteEverythingRegistrant,
-		public Passwords::ChangePasswordRegistrant
+		public Passwords::ChangePasswordRegistrant,
+		std::enable_shared_from_this<Controller>
 	{
 	public:
 		//

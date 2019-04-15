@@ -138,17 +138,21 @@ void Controller::__givenLocked_create_repeating_timer()
 		BOOST_THROW_EXCEPTION(logic_error("__givenLocked_create_repeating_timer: Expected isTornDown == false"));
 		return;
 	}
-	_userIdle_intervalTimer = dispatch_ptr->after(1 * 1000, [this]()
+	std::shared_ptr<Controller> shared_this = shared_from_this();
+	std::weak_ptr<Controller> weak_this = shared_this;
+	_userIdle_intervalTimer = dispatch_ptr->after(1 * 1000, [weak_this]()
 	{
-		checkIdleTimeout();
-		//
-		// we will never get this callback called if the timer is canceled, so it's safe to just re-enter (recreate) here
-		timer_mutex.lock();
-		{
-			_userIdle_intervalTimer = nullptr; // since we're finished with it
-			__givenLocked_create_repeating_timer();
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->checkIdleTimeout();
+			//
+			// we will never get this callback called if the timer is canceled, so it's safe to just re-enter (recreate) here
+			inner_spt->timer_mutex.lock();
+			{
+				inner_spt->_userIdle_intervalTimer = nullptr; // since we're finished with it
+				inner_spt->__givenLocked_create_repeating_timer();
+			}
+			inner_spt->timer_mutex.unlock();
 		}
-		timer_mutex.unlock();
 	});
 }
 //

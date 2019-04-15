@@ -52,7 +52,7 @@ namespace Wallets
 	using namespace boost;
 	//
 	// Controllers
-	class ListController_Base: public Lists::Controller
+	class ListController_Base: public Lists::Controller, std::enable_shared_from_this<ListController_Base>
 	{
 	public:
 		ListController_Base(cryptonote::network_type nettype):
@@ -107,6 +107,10 @@ namespace Wallets
 				_records.begin(), _records.end(),
 				Lists::comparePersistableObjectSharedPtrBy_insertedAt_asc
 			);
+		}
+		std::shared_ptr<Lists::Controller> get_shared_ptr_from_this() override
+		{
+			return shared_from_this();
 		}
 		//
 		// Accessors
