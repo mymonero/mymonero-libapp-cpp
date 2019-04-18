@@ -186,7 +186,7 @@ namespace Passwords
 	};
 	//
 	// Controllers
-	class Controller: public PasswordProvider, std::enable_shared_from_this<Controller>
+	class Controller: public PasswordProvider, public std::enable_shared_from_this<Controller>
 	{
 	public:
 		//

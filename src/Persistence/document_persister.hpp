@@ -88,7 +88,10 @@ namespace document_persister
    }
    static inline string new_filename(const DocumentFileDescription &description)
    {
-       return (new_fileKey_ss(description) << filenameExt).str();
+	   auto ss = new_fileKey_ss(description);
+	   ss << filenameExt;
+	   //
+	   return ss.str();
    }
 }
 namespace document_persister

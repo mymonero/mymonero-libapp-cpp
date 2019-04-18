@@ -44,6 +44,7 @@
 #include "./Wallet.hpp"
 #include "../APIClient/HostedMonero.hpp"
 #include "cryptonote_config.h"
+#include "../UserIdle/UserIdle.hpp"
 //
 //
 namespace Wallets
@@ -52,7 +53,7 @@ namespace Wallets
 	using namespace boost;
 	//
 	// Controllers
-	class ListController_Base: public Lists::Controller, std::enable_shared_from_this<ListController_Base>
+	class ListController_Base: public Lists::Controller, public std::enable_shared_from_this<ListController_Base>
 	{
 	public:
 		ListController_Base(cryptonote::network_type nettype):
@@ -77,12 +78,16 @@ namespace Wallets
 				plaintext_documentJSON,
 				_nettype,
 				apiClient,
-				dispatch_ptr
+				dispatch_ptr,
+				userIdleController,
+				ccyConversionRatesController
 			);
 		}
 		//
 		// Dependencies
 		std::shared_ptr<HostedMonero::APIClient> apiClient;
+		std::shared_ptr<UserIdle::Controller> userIdleController;
+		std::shared_ptr<Currencies::ConversionRatesController> ccyConversionRatesController;
 		//
 		// Lifecycle
 		void setup();
@@ -129,29 +134,48 @@ namespace Wallets
 			std::function<void(optional<string> err_str, std::shared_ptr<Wallets::Object> walletInstance)>&& fn,
 			std::function<void()>&& userCanceledPasswordEntry_fn = {} // default
 		);
+		void OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
+			string walletLabel,
+			Wallets::SwatchColor swatchColor,
+			string mnemonicString,
+			std::function<void(
+				optional<string> err_str,
+				optional<std::shared_ptr<Wallets::Object>> walletInstance,
+				optional<bool> wasWalletAlreadyInserted
+			)> fn,
+			std::function<void()> userCanceledPasswordEntry_fn = {} // default
+		);
+		void OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys(
+			string walletLabel,
+			Wallets::SwatchColor swatchColor,
+			string address,
+			string sec_view_key,
+			string sec_spend_key,
+			std::function<void(
+				optional<string> err_str,
+				optional<std::shared_ptr<Wallets::Object>> walletInstance,
+				optional<bool> wasWalletAlreadyInserted
+			)> fn,
+			std::function<void()> userCanceledPasswordEntry_fn = {}
+		);
 		//
 		// Delegation - Overrides - Booting reconstitution - Instance setup
 		void overridable_booting_didReconstitute(
 			std::shared_ptr<Persistable::Object> listedObjectInstance
 		) override {
-			//
-			// TODO:
-			//
-//			let wallet = listedObjectInstance as! Wallet
-//			if wallet.isLoggedIn {
-//				wallet.Boot_havingLoadedDecryptedExistingInitDoc(
-//																 { err_str in
-//																	 if let err_str = err_str {
-//																		 DDLog.Error("Wallets", "Error while booting wallet: \(err_str)")
-//																	 }
-//																 }
-//																 )
-//			} else {
-//				assert(wallet.isLoggingIn == false) // jic
-//				DDLog.Do("Wallets", "Wallet which was unable to log in was loaded. Attempting to reboot.")
-//				// going to treat this as a wallet which was saved but which failed to log in
-//				wallet.logOutThenSaveAndLogIn() // this method can handle being called when the wallet is not logged in
-//			}
+			auto wallet = std::dynamic_pointer_cast<Wallets::Object>(listedObjectInstance);
+			if (wallet->isLoggedIn()) {
+				wallet->Boot_havingLoadedDecryptedExistingInitDoc([] (optional<string> err_str)
+				{
+					if (err_str != none) {
+						MERROR("Wallets: Error while booting wallet: " << *err_str);
+					}
+				});
+			} else {
+				MDEBUG("Wallets: Wallet which was unable to log in was loaded. Attempting to reboot.");
+				// going to treat this as a wallet which was saved but which failed to log in
+				wallet->logOutThenSaveAndLogIn(); // this method can handle being called when the wallet is not logged in
+			}
 		}
 	private:
 		//

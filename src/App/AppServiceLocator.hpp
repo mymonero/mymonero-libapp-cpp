@@ -110,6 +110,8 @@ namespace App
 				walletsListController->dispatch_ptr = dispatch_ptr;
 				walletsListController->passwordController = ServiceLocator::instance().passwordController;
 				walletsListController->apiClient = apiClient;
+				walletsListController->userIdleController = userIdleController;
+				walletsListController->ccyConversionRatesController = ccyConversionRatesController;
 				walletsListController->setup();
 				//
 				built = true;

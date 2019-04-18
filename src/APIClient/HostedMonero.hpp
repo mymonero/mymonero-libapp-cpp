@@ -40,18 +40,11 @@
 //
 #include "../Settings/SettingsController.hpp"
 #include "./HTTPRequests_Interface.hpp"
+#include "./parsing.hpp"
 //
 namespace HostedMonero
 {
 	using namespace std;
-	//
-	// Accessory Types
-	struct ParsedResult_Login
-	{
-		bool isANewAddressToServer;
-		optional<bool> generated_locally; // may be nil if the server doesn't support it yet (pre summer 18)
-		optional<uint64_t> start_height; // may be nil if the server doesn't support it yet (pre summer 18)
-	};
 	//
 	// Principal Types
 	class APIClient

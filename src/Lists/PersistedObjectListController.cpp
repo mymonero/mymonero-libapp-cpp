@@ -71,6 +71,8 @@ void Controller::setup_tryToBoot()
 		}
 		if (auto inner_spt = weak_this.lock()) {
 			inner_spt->setup_fetchAndReconstituteExistingRecords();
+		} else {
+			return;
 		}
 	});
 }
@@ -166,6 +168,8 @@ void Controller::setup_fetchAndReconstituteExistingRecords()
 				inner_spt->overridable_booting_didReconstitute(listedObjectInstance);
 			}
 			inner_spt->_setup_didBoot();
+		} else {
+			return; // for debug breakpoint
 		}
 	},
 	[](void) {
@@ -186,6 +190,8 @@ void Controller::_setup_didBoot()
 		if (auto inner_spt = weak_this.lock()) {
 			inner_spt->boot__did_signal();
 			inner_spt->_listUpdated_records(); // notify every boot, after did-boot notification
+		} else {
+			return; // for debug breakpoint
 		}
 	});
 }
@@ -199,6 +205,8 @@ void Controller::_setup_didFailToBoot(const string &err_str)
 	{ // on next tick to avoid instantiator missing this
 		if (auto inner_spt = weak_this.lock()) {
 			inner_spt->boot__failed_signal();
+		} else {
+			return; // for debug breakpoint
 		}
 	});
 }
@@ -350,6 +358,8 @@ void Controller::__dispatchAsync_listUpdated_records()
 	{
 		if (auto inner_spt = weak_this.lock()) {
 			inner_spt->_listUpdated_records();
+		} else {
+			return; // for debug breakpoint
 		}
 	});
 }

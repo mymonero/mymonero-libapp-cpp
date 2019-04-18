@@ -41,6 +41,9 @@
 #include "../APIClient/HostedMonero.hpp"
 #include "./Wallet_HostPollingController.hpp"
 #include "./Wallet_TxCleanupController.hpp"
+#include "../APIClient/parsing.hpp"
+#include "../UserIdle/UserIdle.hpp"
+#include "../Currencies/Currencies.hpp"
 //
 namespace Wallets
 {
@@ -160,7 +163,7 @@ namespace Wallets
 	static const CollectionName collectionName = "Wallets";
 	//
 	//
-	class Object: public Persistable::Object, std::enable_shared_from_this<Object>
+	class Object: public Persistable::Object, public std::enable_shared_from_this<Object>
 	{
 	public:
 		Object(
@@ -169,7 +172,9 @@ namespace Wallets
 			optional<monero_wallet_utils::WalletDescription> ifGeneratingNewWallet_walletDescription,
 			const cryptonote::network_type nettype,
 			std::shared_ptr<HostedMonero::APIClient> apiClient,
-			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
+			std::shared_ptr<UserIdle::Controller> userIdleController,
+			std::shared_ptr<Currencies::ConversionRatesController> ccyConversionRatesController
 		): Persistable::Object(
 			std::move(documentsPath),
 			std::move(passwordProvider)
@@ -177,6 +182,8 @@ namespace Wallets
 		_nettype(nettype),
 		_apiClient(apiClient),
 		_dispatch_ptr(dispatch_ptr),
+		_userIdleController(userIdleController),
+		_ccyConversionRatesController(ccyConversionRatesController),
 		_generatedOnInit_walletDescription(ifGeneratingNewWallet_walletDescription)
 		{
 			_currency = Wallets::Currency::Monero;
@@ -190,7 +197,9 @@ namespace Wallets
 			const property_tree::ptree &plaintextData,
 			const cryptonote::network_type nettype,
 			std::shared_ptr<HostedMonero::APIClient> apiClient,
-			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
+			std::shared_ptr<UserIdle::Controller> userIdleController,
+			std::shared_ptr<Currencies::ConversionRatesController> ccyConversionRatesController
 		): Persistable::Object(
 			std::move(documentsPath),
 			std::move(passwordProvider),
@@ -198,7 +207,9 @@ namespace Wallets
 		),
 		_nettype(nettype),
 		_apiClient(apiClient),
-		_dispatch_ptr(dispatch_ptr)
+		_dispatch_ptr(dispatch_ptr),
+		_userIdleController(userIdleController),
+		_ccyConversionRatesController(ccyConversionRatesController)
 		{
 			if (this->_id != boost::none) {
 				BOOST_THROW_EXCEPTION(logic_error("Didn't expect this->_id == boost::none"));
@@ -231,11 +242,128 @@ namespace Wallets
 		const CollectionName &collectionName() const override { return Wallets::collectionName; }
 		//
 		// Accessors - Properties
+		// TODO: use mutex on accessing these
 		Wallets::Currency currency() { return _currency; }
 		string walletLabel() { return _walletLabel; }
 		SwatchColor swatchColor() { return _swatchColor; }
+		bool isLoggedIn() { return _isLoggedIn; }
+		optional<string> mnemonicString() { return _mnemonicString; } // TODO: is this the correct way to return an optional?
+		string public_address() { return _public_address; }
 		//
-		// Signals
+		// TODO
+//		var isFetchingAnyUpdates: Bool {
+//			if self.hostPollingController == nil {
+//				return false
+//			}
+//			return self.hostPollingController!.isFetchingAnyUpdates
+//		}
+//		var hasEverFetched_accountInfo: Bool
+//		{
+//			return self.dateThatLast_fetchedAccountInfo != nil
+//		}
+//		var hasEverFetched_transactions: Bool
+//		{
+//			return self.dateThatLast_fetchedAccountTransactions != nil
+//		}
+//		var isAccountScannerCatchingUp: Bool
+//		{
+//			if self.didFailToInitialize_flag == true || self.didFailToBoot_flag == true {
+//				assert(false, "not strictly illegal but accessing isAccountScannerCatching up before logged in")
+//				return false
+//			}
+//			if self.blockchain_height == nil || self.blockchain_height == 0 {
+//				DDLog.Warn("Wallets", ".isScannerCatchingUp called while nil/0 blockchain_height")
+//				return true
+//			}
+//			if self.account_scanned_block_height == nil || self.account_scanned_block_height == 0  {
+//				DDLog.Warn("Wallets", ".isScannerCatchingUp called while nil/0 account_scanned_block_height")
+//				return true
+//			}
+//			let nBlocksBehind = self.blockchain_height! - self.account_scanned_block_height!
+//			if nBlocksBehind >= 10 { // grace interval, i believe
+//				return true
+//			}
+//			return false
+//		}
+//		var nBlocksBehind: UInt64
+//		{
+//			if self.blockchain_height == nil || self.blockchain_height == 0 {
+//				DDLog.Warn("Wallets", ".nBlocksBehind called while nil/0 blockchain_height")
+//				return 0
+//			}
+//			if self.account_scanned_block_height == nil || self.account_scanned_block_height == 0  {
+//				DDLog.Warn("Wallets", ".nBlocksBehind called while nil/0 account_scanned_block_height")
+//				return 0
+//			}
+//			let nBlocksBehind = self.blockchain_height! - self.account_scanned_block_height!
+//			//
+//			return nBlocksBehind
+//		}
+//			var catchingUpPercentageFloat: Double // btn 0 and 1.0
+//		{
+//			if self.account_scanned_height == nil || self.account_scanned_height == 0 {
+//				DDLog.Warn("Wallets", ".catchingUpPercentageFloat accessed while nil/0 self.account_scanned_height. Bailing.")
+//				return 0
+//			}
+//			if self.transaction_height == nil || self.transaction_height == 0 {
+//				DDLog.Warn("Wallets", ".catchingUpPercentageFloat accessed while nil/0 self.transaction_height. Bailing.")
+//				return 0
+//			}
+//			let pct: Double = Double(self.account_scanned_height!) / Double(self.transaction_height!)
+//			DDLog.Info("Wallets", "CatchingUpPercentageFloat \(self.account_scanned_height!)/\(self.transaction_height!) = \(pct)%")
+//			return pct
+//		}
+//		//
+//		var balanceAmount: MoneroAmount {
+//			let balanceAmount = (self.totalReceived ?? MoneroAmount(0)) - (self.totalSent ?? MoneroAmount(0))
+//			if balanceAmount < 0 {
+//				return MoneroAmount("0")!
+//			}
+//			return balanceAmount
+//		}
+//		var lockedBalanceAmount: MoneroAmount {
+//			return (self.lockedBalance ?? MoneroAmount(0))
+//		}
+//		var hasLockedFunds: Bool {
+//			if self.lockedBalance == nil {
+//				return false
+//			}
+//			if self.lockedBalance == MoneroAmount(0) {
+//				return false
+//			}
+//			return true
+//		}
+//		var unlockedBalance: MoneroAmount {
+//			let lb = self.lockedBalanceAmount
+//			let b = self.balanceAmount
+//			if b < lb {
+//				return 0
+//			}
+//			return b - lb
+//		}
+//		var new_pendingBalanceAmount: MoneroAmount {
+//			var amount = MoneroAmount(0)
+//			(self.transactions ?? [MoneroHistoricalTransactionRecord]()).forEach { (tx) in
+//				if tx.cached__isConfirmed != true {
+//					if tx.isFailed != true /* nil -> false */{ // just filtering these out
+//						// now, adding both of these (positive) values to contribute to the total
+//						let abs_mag = (tx.totalSent - tx.totalReceived).magnitude // throwing away the sign
+//						amount += MoneroAmount(abs_mag)
+//					}
+//				}
+//			}
+//			return amount
+//		}
+		
+		//
+		boost::signals2::signal<void()> labelChanged_signal;
+		boost::signals2::signal<void()> swatchColorChanged_signal;
+		boost::signals2::signal<void()> balanceChanged_signal;
+		//
+		boost::signals2::signal<void()> spentOutputsChanged_signal;
+		boost::signals2::signal<void()> heightsUpdated_signal;
+		boost::signals2::signal<void()> transactionsChanged_signal;
+		//
 		boost::signals2::signal<void()> didChange_isFetchingAnyUpdates_signal;
 		//
 		// Imperatives
@@ -267,6 +395,10 @@ namespace Wallets
 		//
 		void requestManualUserRefresh();
 		//
+		optional<string/*err_str*/> SetValuesAndSave(
+			string walletLabel,
+			SwatchColor swatchColor
+		);
 	private:
 		//
 		// Lifecycle / Initialization
@@ -281,6 +413,8 @@ namespace Wallets
 		cryptonote::network_type _nettype;
 		std::shared_ptr<HostedMonero::APIClient> _apiClient;
 		std::shared_ptr<Dispatch::Dispatch> _dispatch_ptr;
+		std::shared_ptr<UserIdle::Controller> _userIdleController;
+		std::shared_ptr<Currencies::ConversionRatesController> _ccyConversionRatesController;
 		//
 		Wallets::Currency _currency;
 		string _walletLabel;
@@ -297,28 +431,28 @@ namespace Wallets
 		string _spend_pub_key;
 		string _public_address;
 		//
-//		var totalReceived: MoneroAmount?
-//		var totalSent: MoneroAmount?
-//		var lockedBalance: MoneroAmount?
-//		//
+		optional<uint64_t> _totalReceived;
+		optional<uint64_t> _totalSent;
+		optional<uint64_t> _lockedBalance;
+		//
 		optional<uint64_t> _account_scanned_tx_height;
 		optional<uint64_t> _account_scanned_height; // TODO: it would be good to resolve account_scanned_height vs account_scanned_tx_height
 		optional<uint64_t> _account_scanned_block_height;
 		optional<uint64_t> _account_scan_start_height;
 		optional<uint64_t> _transaction_height;
 		optional<uint64_t> _blockchain_height;
-//		//
-//		var spentOutputs: [MoneroSpentOutputDescription]?
-//		var transactions: [MoneroHistoricalTransactionRecord]?
-//		//
-//		var dateThatLast_fetchedAccountInfo: Date?
-//		var dateThatLast_fetchedAccountTransactions: Date?
+		//
+		optional<std::vector<HostedMonero::SpentOutputDescription>> _spentOutputs;
+		optional<std::vector<HostedMonero::HistoricalTxRecord>> _transactions;
+		//
+		optional<time_t> _dateThatLast_fetchedAccountInfo;
+		optional<time_t> _dateThatLast_fetchedAccountTransactions;
 		//
 		// Properties - Boolean State
 		// persisted
 		bool _isLoggedIn = false;
 		optional<bool> _isInViewOnlyMode;
-//		// transient/not persisted
+		// transient/not persisted
 		bool _isBooted = false;
 		optional<bool> _shouldDisplayImportAccountOption;
 		bool _isLoggingIn = false;
@@ -357,8 +491,28 @@ namespace Wallets
 			bool persistEvenIfLoginFailed_forServerChange,
 			std::function<void(optional<string> err_str)>&& fn
 		);
+		void _manuallyInsertTransactionRecord(
+			const HostedMonero::HistoricalTxRecord &transaction
+		);
+		//
+		void __lock_sending();
+		void __unlock_sending();
 		//
 		void regenerate_shouldDisplayImportAccountOption();
+		//
+		// Delegation
+		void ___didReceiveActualChangeTo_balance();
+		void ___didReceiveActualChangeTo_spentOutputs();
+		void ___didReceiveActualChangeTo_heights();
+		void ___didReceiveActualChangeTo_transactions();
+		//
+		// HostPollingController - Delegation / Protocol
+		void _HostPollingController_didFetch_addressInfo(
+			const HostedMonero::ParsedResult_AddressInfo &parsedResult
+		);
+		void _HostPollingController_didFetch_addressTransactions(
+			const HostedMonero::ParsedResult_AddressTransactions &parsedResult
+		);
 	};
 }
 

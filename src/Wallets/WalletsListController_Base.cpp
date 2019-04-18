@@ -36,12 +36,19 @@
 #include "misc_log_ex.h"
 #include "../mymonero-core-cpp/src/monero_wallet_utils.hpp"
 using namespace Wallets;
+using namespace monero_wallet_utils;
 //
 // Lifecycle - Init
 void ListController_Base::setup()
 {
 	if (documentsPath == nullptr) {
 		BOOST_THROW_EXCEPTION(logic_error("ListController: expected documentsPath != nullptr"));
+	}
+	if (userIdleController == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("ListController: expected userIdleController != nullptr"));
+	}
+	if (ccyConversionRatesController == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("ListController: expected ccyConversionRatesController != nullptr"));
 	}
 	// check deps *first* before calling on super
 	Lists::Controller::setup();
@@ -102,7 +109,9 @@ void ListController_Base::CreateNewWallet_NoBootNoListAdd(
 		std::move(*(retVals.optl__desc)),
 		_nettype,
 		apiClient,
-		dispatch_ptr
+		dispatch_ptr,
+		userIdleController,
+		ccyConversionRatesController
 	));
 }
 void ListController_Base::OnceBooted_ObtainPW_AddNewlyGeneratedWallet(
@@ -164,124 +173,162 @@ void ListController_Base::OnceBooted_ObtainPW_AddNewlyGeneratedWallet(
 		}
 	});
 }
-//void OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
-//															walletLabel: String,
-//															swatchColor: Wallet.SwatchColor,
-//															mnemonicString: MoneroSeedAsMnemonic,
-//															_ fn: @escaping (
-//																			 _ err_str: String?,
-//																			 _ walletInstance: Wallet?,
-//																			 _ wasWalletAlreadyInserted: Bool?
-//																			 ) -> Void,
-//															userCanceledPasswordEntry_fn: (() -> Void)? = {}
-//															) -> Void {
-//	self.onceBooted({ [unowned self] in
-//		PasswordController.shared.OnceBootedAndPasswordObtained( // this will 'block' until we have access to the pw
-//																{ [unowned self] (password, passwordType) in
-//																	do { // check if wallet already entered
-//																		for (_, record) in self.records.enumerated() {
-//																			let wallet = record as! Wallet
-//																			guard let wallet_mnemonicString = wallet.mnemonicString else {
-//																				// TODO: solve limitation of this code - check if wallet with same address (but no mnemonic) was already added
-//																				continue
-//																			}
-//																			let areMnemonicsEqual = MyMoneroCore.shared_objCppBridge.areEqualMnemonics(
-//																																					   wallet_mnemonicString,
-//																																					   mnemonicString
-//																																					   )
-//																			if areMnemonicsEqual { // must use this comparator to support partial-word mnemomnic strings
-//																				fn(nil, wallet, true) // wasWalletAlreadyInserted: true
-//																				return
-//																			}
-//																		}
-//																	}
-//																	do {
-//																		guard let wallet = try Wallet(ifGeneratingNewWallet_walletDescription: nil) else {
-//																			fn("Unknown error while adding wallet.", nil, nil)
-//																			return
-//																		}
-//																		wallet.Boot_byLoggingIn_existingWallet_withMnemonic(
-//																															walletLabel: walletLabel,
-//																															swatchColor: swatchColor,
-//																															mnemonicString: mnemonicString,
-//																															persistEvenIfLoginFailed_forServerChange: false, // not forServerChange
-//																															{ [unowned self] (err_str) in
-//																																if err_str != nil {
-//																																	fn(err_str, nil, nil)
-//																																	return
-//																																}
-//																																self._atRuntime__record_wasSuccessfullySetUp(wallet)
-//																																fn(nil, wallet, false) // wasWalletAlreadyInserted: false
-//																															}
-//																															)
-//																	} catch let e {
-//																		fn(e.localizedDescription, nil, nil)
-//																		return
-//																	}
-//																},
-//																{ // user canceled
-//																	(userCanceledPasswordEntry_fn ?? {})()
-//																}
-//																)
-//	})
-//}
-//void OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys(
-//															walletLabel: String,
-//															swatchColor: Wallet.SwatchColor,
-//															address: MoneroAddress,
-//															privateKeys: MoneroKeyDuo,
-//															_ fn: @escaping (
-//																			 _ err_str: String?,
-//																			 _ wallet: Wallet?,
-//																			 _ wasWalletAlreadyInserted: Bool?
-//																			 ) -> Void,
-//															userCanceledPasswordEntry_fn: (() -> Void)? = {}
-//															) {
-//	self.onceBooted({ [unowned self] in
-//		PasswordController.shared.OnceBootedAndPasswordObtained( // this will 'block' until we have access to the pw
-//																{ [unowned self] (password, passwordType) in
-//																	do {
-//																		for (_, record) in self.records.enumerated() {
-//																			let wallet = record as! Wallet
-//																			if wallet.public_address == address {
-//																				// simply return existing wallet; note: this wallet might have mnemonic and thus seed
-//																				// so might not be exactly what consumer of GivenBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys is expecting
-//																				fn(nil, wallet, true) // wasWalletAlreadyInserted: true
-//																				return
-//																			}
-//																		}
-//																	}
-//																	do {
-//																		guard let wallet = try Wallet(ifGeneratingNewWallet_walletDescription: nil) else {
-//																			fn("Unknown error while adding wallet.", nil, nil)
-//																			return
-//																		}
-//																		wallet.Boot_byLoggingIn_existingWallet_withAddressAndKeys(
-//																																  walletLabel: walletLabel,
-//																																  swatchColor: swatchColor,
-//																																  address: address,
-//																																  privateKeys: privateKeys,
-//																																  persistEvenIfLoginFailed_forServerChange: false, // not forServerChange
-//																																  { [unowned self] (err_str) in
-//																																	  if err_str != nil {
-//																																		  fn(err_str, nil, nil)
-//																																		  return
-//																																	  }
-//																																	  self._atRuntime__record_wasSuccessfullySetUp(wallet)
-//																																	  fn(nil, wallet, false) // wasWalletAlreadyInserted: false
-//																																  }
-//																																  )
-//																	} catch let e {
-//																		fn(e.localizedDescription, nil, nil)
-//																		return
-//																	}
-//																},
-//																{ // user canceled
-//																	(userCanceledPasswordEntry_fn ?? {})()
-//																}
-//																)
-//	})
-//}
+void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
+	string walletLabel,
+	Wallets::SwatchColor swatchColor,
+	string mnemonicString,
+	std::function<void(
+		optional<string> err_str,
+		optional<std::shared_ptr<Wallets::Object>> walletInstance,
+		optional<bool> wasWalletAlreadyInserted
+	)> fn,
+	std::function<void()> userCanceledPasswordEntry_fn
+) {
+	std::shared_ptr<ListController_Base> shared_this = shared_from_this();
+	std::weak_ptr<ListController_Base> weak_this = shared_this;
+	onceBooted([
+		weak_this, walletLabel, mnemonicString, swatchColor,
+		fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
+	] () {
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->passwordController->onceBootedAndPasswordObtained([
+				weak_this, walletLabel, mnemonicString, swatchColor,
+				fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
+			] (Passwords::Password password, Passwords::Type type) {
+				if (auto inner_inner_spt = weak_this.lock()) {
+					{ // check if wallet already entered
+						for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = inner_inner_spt->_records.begin(); it != inner_inner_spt->_records.end(); ++it) {
+							auto wallet = std::dynamic_pointer_cast<Wallets::Object>(*it);
+							if (wallet->mnemonicString() != none && wallet->mnemonicString()->size()) {
+								// TODO: solve limitation of this code - check if wallet with same address (but no mnemonic) was already added
+								continue;
+							}
+							bool equal;
+							try {
+								equal = are_equal_mnemonics(*(wallet->mnemonicString()), mnemonicString);
+							} catch (std::exception const& e) {
+								fn(string(e.what()), none, none);
+								return;
+							}
+							if (equal) { // would be rather odd; NOTE: must use this comparator instead of string comparison to support partial-word mnemonic strings
+								fn(none, wallet, true); // wasWalletAlreadyInserted: true
+								return;
+							}
+						}
+					}
+					auto wallet = std::make_shared<Wallets::Object>(
+						inner_inner_spt->documentsPath,
+						inner_inner_spt->passwordController,
+						none,
+						inner_inner_spt->_nettype,
+						inner_inner_spt->apiClient,
+						inner_inner_spt->dispatch_ptr,
+						inner_inner_spt->userIdleController,
+						inner_inner_spt->ccyConversionRatesController
+					);
+					wallet->Boot_byLoggingIn_existingWallet_withMnemonic(
+						walletLabel,
+						swatchColor,
+						mnemonicString,
+						false, // persistEvenIfLoginFailed_forServerChange
+						[wallet, weak_this, fn = std::move(fn)] (optional<string> err_str) {
+							if (auto inner_inner_inner_spt = weak_this.lock()) {
+								if (err_str != none) {
+									fn(err_str, none, none);
+									return;
+								}
+								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(wallet);
+								fn(none, wallet, false); // wasWalletAlreadyInserted: false
+							}
+						}
+					);
+				} else {
+					return; // for debugger
+				}
+			},
+			[userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)] (void)
+			{ // user canceled
+				userCanceledPasswordEntry_fn();
+			});
+		} else {
+			return; // for debugger
+		}
+	});
+}
+void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys(
+	string walletLabel,
+	Wallets::SwatchColor swatchColor,
+	string address,
+	string sec_view_key,
+	string sec_spend_key,
+	std::function<void(
+		optional<string> err_str,
+		optional<std::shared_ptr<Wallets::Object>> walletInstance,
+		optional<bool> wasWalletAlreadyInserted
+	)> fn,
+	std::function<void()> userCanceledPasswordEntry_fn
+) {
+	std::shared_ptr<ListController_Base> shared_this = shared_from_this();
+	std::weak_ptr<ListController_Base> weak_this = shared_this;
+	onceBooted([
+		weak_this, walletLabel, address, sec_view_key, sec_spend_key, swatchColor,
+		fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
+	] () {
+		if (auto inner_spt = weak_this.lock()) {
+			inner_spt->passwordController->onceBootedAndPasswordObtained([
+				weak_this, walletLabel, address, sec_view_key, sec_spend_key, swatchColor,
+				fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
+			] (Passwords::Password password, Passwords::Type type) {
+				if (auto inner_inner_spt = weak_this.lock()) {
+					{ // check if wallet already entered
+						for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = inner_inner_spt->_records.begin(); it != inner_inner_spt->_records.end(); ++it) {
+							auto wallet = std::dynamic_pointer_cast<Wallets::Object>(*it);
+							if (wallet->public_address() == address) {
+								// simply return existing wallet; note: this wallet might have mnemonic and thus seed
+								// so might not be exactly what consumer of GivenBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys is expecting
+								fn(none, wallet, true); // wasWalletAlreadyInserted: true
+								return;
+							}
+						}
+					}
+					auto wallet = std::make_shared<Wallets::Object>(
+						inner_inner_spt->documentsPath,
+						inner_inner_spt->passwordController,
+						none,
+						inner_inner_spt->_nettype,
+						inner_inner_spt->apiClient,
+						inner_inner_spt->dispatch_ptr,
+						inner_inner_spt->userIdleController,
+						inner_inner_spt->ccyConversionRatesController
+					);
+					wallet->Boot_byLoggingIn_existingWallet_withAddressAndKeys(
+						walletLabel,
+						swatchColor,
+						address,
+						sec_view_key,
+						sec_spend_key,
+						false, // persistEvenIfLoginFailed_forServerChange
+						[wallet, weak_this, fn = std::move(fn)] (optional<string> err_str)
+						{
+							if (auto inner_inner_inner_spt = weak_this.lock()) {
+								if (err_str != none) {
+									fn(err_str, none, none);
+									return;
+								}
+								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(wallet);
+								fn(none, wallet, false); // wasWalletAlreadyInserted: false
+							}
+						}
+					);
+				}
+			},
+			[userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)] (void)
+			{ // user canceled
+				userCanceledPasswordEntry_fn();
+			});
+		}
+	});
+}
 //
 // Delegation - Signals
 void ListController_Base::HostedMonero_initializedWithNewServerURL()

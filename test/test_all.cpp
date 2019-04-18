@@ -1755,7 +1755,7 @@ public:
 	}
 	const CollectionName &collectionName() const { return mockedListObjects__CollectionName; }
 };
-class MockedListController: public Lists::Controller, std::enable_shared_from_this<MockedListController>
+class MockedListController: public Lists::Controller, public std::enable_shared_from_this<MockedListController>
 {
 public:
 	MockedListController(
@@ -1786,29 +1786,35 @@ public:
 			std::shared_ptr<MockedListObject> instance
 		)> fn
 	) {
-		onceBooted([this, addtlVal, fn = std::move(fn)]() {
-			this->passwordController->onceBootedAndPasswordObtained(
-				[this, addtlVal, fn = std::move(fn)](Passwords::Password password, Passwords::Type type)
-				{
-					std::shared_ptr<MockedListObject> instance = std::make_shared<MockedListObject>(documentsPath, passwordController);
-					instance->addtlVal = addtlVal;
-					optional<string> err_str = instance->saveToDisk(); // now we must save (insert) manually
-					if (err_str != none) {
-						fn(err_str, nullptr);
-						return;
+		std::shared_ptr<MockedListController> shared_this = shared_from_this();
+		std::weak_ptr<MockedListController> weak_this = shared_this;
+		onceBooted([weak_this, addtlVal, fn = std::move(fn)]() {
+			if (auto inner_spt = weak_this.lock()) {
+				inner_spt->passwordController->onceBootedAndPasswordObtained(
+					[weak_this, addtlVal, fn = std::move(fn)](Passwords::Password password, Passwords::Type type)
+					{
+						if (auto inner_inner_spt = weak_this.lock()) {
+							std::shared_ptr<MockedListObject> instance = std::make_shared<MockedListObject>(inner_inner_spt->documentsPath, inner_inner_spt->passwordController);
+							instance->addtlVal = addtlVal;
+							optional<string> err_str = instance->saveToDisk(); // now we must save (insert) manually
+							if (err_str != none) {
+								fn(err_str, nullptr);
+								return;
+							}
+							inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(instance);
+							fn(none, instance);
+						}
+					},
+					[]() {
+						// cancelled
+						BOOST_REQUIRE_MESSAGE(false, "Didn't expect to see cancel in onceBooted_addRecord()");
 					}
-					_atRuntime__record_wasSuccessfullySetUp(instance);
-					fn(none, instance);
-				},
-				[]() {
-					// cancelled
-					BOOST_REQUIRE_MESSAGE(false, "Didn't expect to see cancel in onceBooted_addRecord()");
-				}
-			);
+				);
+			}
 		});
 	}
 };
-std::shared_ptr<MockedListController> new_constructed_mockedListController()
+std::shared_ptr<MockedListController> new_mockedListController_withDeps_noSetup()
 {
 	using namespace App;
 	//
@@ -1818,7 +1824,6 @@ std::shared_ptr<MockedListController> new_constructed_mockedListController()
 	listController->documentsPath = ServiceLocator::instance().documentsPath;
 	listController->dispatch_ptr = ServiceLocator::instance().dispatch_ptr;
 	listController->passwordController = ServiceLocator::instance().passwordController;
-	listController->setup();
 	//
 	return listController;
 }
@@ -1830,13 +1835,15 @@ BOOST_AUTO_TEST_CASE(listController_construction, *utf::depends_on("moneroAmount
 	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
 	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
 	//
-	auto listController = new_constructed_mockedListController();
+	auto listController = new_mockedListController_withDeps_noSetup();
 	//
 	bool sawBoot = false;
 	listController->onceBooted([&sawBoot, listController]() {
 		sawBoot = true;
 		BOOST_REQUIRE_MESSAGE(listController->records().size() == 0, "Expected number of records to be 0");
 	});
+	listController->setup();
+	//
 	BOOST_REQUIRE(sawBoot);
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies so that we don't get an exception when calling the signal … though technically this should not be possible and indicates a flaw in the controller … some sort of GC/capture issue
 	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
@@ -1850,7 +1857,7 @@ BOOST_AUTO_TEST_CASE(listController_addRecord, *utf::depends_on("listController_
 	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
 	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
 	//
-	auto listController = new_constructed_mockedListController();
+	auto listController = new_mockedListController_withDeps_noSetup();
 	bool sawListUpdated = false;
 	bool hasAddedRecord = false;
 	size_t numberOfListUpdatedsSeen = 0;
@@ -1876,7 +1883,8 @@ BOOST_AUTO_TEST_CASE(listController_addRecord, *utf::depends_on("listController_
 			hasAddedRecord = true; // use this to modulate number of expected records
 		}
 	);
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
+	listController->setup();
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait for async notifies
 	BOOST_REQUIRE_MESSAGE(hasAddedRecord, "Expected to have seen record added");
 	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected to have seen list updated");
 	BOOST_REQUIRE_MESSAGE(numberOfListUpdatedsSeen == 2, "Expected to see 2 list_updated events calls");
@@ -1892,10 +1900,11 @@ BOOST_AUTO_TEST_CASE(listController_loadedAddedRecords, *utf::depends_on("listCo
 	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
 	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
 	//
-	auto listController = new_constructed_mockedListController();
+	auto listController = new_mockedListController_withDeps_noSetup();
 	listController->onceBooted([listController]() {
 		BOOST_REQUIRE_MESSAGE(listController->records().size() == 1, "Expected number of records to be 1");
 	});
+	listController->setup();
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
 	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
@@ -1910,19 +1919,24 @@ BOOST_AUTO_TEST_CASE(listController_deleteExistingRecord, *utf::depends_on("list
 	//
 	bool sawListUpdated = false;
 	bool hasDeleted = false;
+	bool sawAListUpdatedWhereRecordsCountWas0 = false;
 	size_t nthCallOfListUpdated = 0;
-	auto listController = new_constructed_mockedListController();
+	auto listController = new_mockedListController_withDeps_noSetup();
 	auto connection = listController->list__updated_signal.connect(
-		[&sawListUpdated, &hasDeleted, &nthCallOfListUpdated, listController]()
+		[&sawListUpdated, &hasDeleted, &nthCallOfListUpdated, listController, &sawAListUpdatedWhereRecordsCountWas0]()
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
 			//
 			nthCallOfListUpdated += 1;
 			sawListUpdated = true;
 			size_t expectingNumRecords = hasDeleted ? 0 : 1; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
+			if (listController->records().size() == 0) {
+				sawAListUpdatedWhereRecordsCountWas0 = true;
+			}
 			BOOST_REQUIRE_MESSAGE(listController->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of listController_deleteExistingRecord but it was " << listController->records().size());
 		}
 	);
+	listController->setup();
 	//
 	BOOST_REQUIRE(listController->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
 	BOOST_REQUIRE_MESSAGE(listController->records().size() == 1, "Expected number of records to be 1");
@@ -1933,12 +1947,64 @@ BOOST_AUTO_TEST_CASE(listController_deleteExistingRecord, *utf::depends_on("list
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // wait for async notifies
 	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected true sawListUpdated");
+	BOOST_REQUIRE_MESSAGE(sawAListUpdatedWhereRecordsCountWas0, "Expected true sawAListUpdatedWhereRecordsCountWas0");
 	//
 	connection.disconnect();
 	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 //
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("listController_deleteExistingRecord"))
+BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("listController_deleteExistingRecord"))
+{
+	cout << "walletsListController_addWallet" << endl;
+	using namespace App;
+	//
+	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
+	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
+	//
+	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	bool sawListUpdated = false;
+	bool hasAdded = false;
+	size_t nthCallOfListUpdated = 0;
+	auto connection = wlc_spt->list__updated_signal.connect(
+		[&sawListUpdated, &nthCallOfListUpdated, &hasAdded, wlc_spt]()
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
+			//
+			sawListUpdated = true;
+			nthCallOfListUpdated += 1;
+			size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
+			BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of walletsListController_addWallet but it was " << wlc_spt->records().size());
+		}
+	);
+	//
+	BOOST_REQUIRE(wlc_spt->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
+	BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() == 0, "Expected number of records to be 0");
+	//
+	wlc_spt->OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
+		string("Dark grey"), Wallets::SwatchColor::darkGrey,
+		string("fox sel hum nex juv dod pep emb bis ela jaz vib bis"),
+		[&hasAdded] (
+			optional<string> err_str,
+			optional<std::shared_ptr<Wallets::Object>> wallet_spt,
+			optional<bool> wasWalletAlreadyInserted
+		) {
+			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
+			if (err_str == none) {
+				hasAdded = true;
+			}
+			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
+			BOOST_REQUIRE(wasWalletAlreadyInserted != none);
+			BOOST_REQUIRE(*wasWalletAlreadyInserted == false);
+		}
+	);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait for async notifies
+	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected sawListUpdated");
+	//
+	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
+}
+//
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_addWallet"))
 {
 	cout << "teardownRuntime" << endl;
 	using namespace App;

@@ -107,6 +107,7 @@ set(
     src/APIClient/HTTPRequests.dummy.hpp
     src/APIClient/HostedMonero.cpp
     src/APIClient/HostedMonero.hpp
+	src/APIClient/parsing.hpp
 	src/OpenAlias/OpenAlias.hpp
 	src/OpenAlias/OpenAlias.cpp
     src/RNCryptor-C/rncryptor_c.h
