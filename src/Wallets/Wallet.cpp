@@ -1000,6 +1000,12 @@ void Object::_HostPollingController_didFetch_addressTransactions(
 					final_incoming_tx.mixin = (existing_tx__it->second).mixin; // if the tx lost it.. say, while it's being scanned, keep mixin
 				}
 			}
+			if ((*incoming_tx__it).mempool == true) { // since the server has an issue sending the spent outputs at present, and only sends the (positive) change amount, this is a workaround to always prefer the existing cached tx's amounts rather than the ones sent by the server 
+				final_incoming_tx.totalSent = (existing_tx__it->second).totalSent;
+				final_incoming_tx.totalReceived = (existing_tx__it->second).totalReceived;
+				final_incoming_tx.amount = (existing_tx__it->second).amount;
+				final_incoming_tx.approxFloatAmount = (existing_tx__it->second).approxFloatAmount;
+			}
 		}
 		// always overwrite existing ones:
 		txs_by_hash[(*incoming_tx__it).hash] = final_incoming_tx;
