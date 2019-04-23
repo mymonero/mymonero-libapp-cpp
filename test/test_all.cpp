@@ -187,7 +187,7 @@ public:
 	MockedSavedObject(
 		std::shared_ptr<std::string> documentsPath,
 		std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
-		const property_tree::ptree &plaintextData
+		const document_persister::DocumentJSON &plaintextData
 	): Persistable::Object(
 		std::move(documentsPath),
 		std::move(passwordProvider),
@@ -196,14 +196,16 @@ public:
 		BOOST_REQUIRE(this->_id != boost::none);
 		BOOST_REQUIRE(this->insertedAt_sSinceEpoch != boost::none);
 		//
-		this->addtlVal = plaintextData.get<std::string>("addtlVal");
+		this->addtlVal = string(plaintextData["addtlVal"].GetString(), plaintextData["addtlVal"].GetStringLength());
 		BOOST_REQUIRE(this->addtlVal != boost::none);
 	}
-	virtual property_tree::ptree new_dictRepresentation() const
+	virtual document_persister::DocumentJSON new_dictRepresentation() const
 	{
-		property_tree::ptree dict = Persistable::Object::new_dictRepresentation();
+		auto dict = Persistable::Object::new_dictRepresentation();
 		if (this->addtlVal) {
-			dict.put("addtlVal", *(this->addtlVal));
+			Value k("addtlVal", dict.GetAllocator());
+			Value v(*(this->addtlVal), dict.GetAllocator()); // copy value
+			dict.AddMember(k, v, dict.GetAllocator());
 		}
 		//
 		return dict;
@@ -267,9 +269,9 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting, *utf::depends_on("mockedSa
 			*(passwordProvider->getPassword())
 		);
 		BOOST_REQUIRE(plaintext_documentContentString != none);
-		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
+		auto plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
 			*plaintext_documentContentString
-		);
+		); // move semantics, not copy
 		MockedSavedObject listedObjectInstance{
 			documentsPath_ptr,
 			passwordProvider,
@@ -304,9 +306,9 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_deleteExisting, *utf::depends_on("mocked
 			*(passwordProvider->getPassword())
 		);
 		BOOST_REQUIRE(plaintext_documentContentString != none);
-		property_tree::ptree plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
+		auto plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
 			*plaintext_documentContentString
-		);
+		); // move semantics, not copy
 		MockedSavedObject listedObjectInstance{
 			documentsPath_ptr,
 			passwordProvider,
@@ -1732,7 +1734,7 @@ public:
 	MockedListObject(
 		std::shared_ptr<std::string> documentsPath,
 		std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
-		const property_tree::ptree &plaintextData
+		const document_persister::DocumentJSON &plaintextData
 	): Persistable::Object(
 		std::move(documentsPath),
 		std::move(passwordProvider),
@@ -1741,14 +1743,16 @@ public:
 		BOOST_REQUIRE(this->_id != boost::none);
 		BOOST_REQUIRE(this->insertedAt_sSinceEpoch != boost::none);
 		//
-		this->addtlVal = plaintextData.get<std::string>("addtlVal");
+		this->addtlVal = string(plaintextData["addtlVal"].GetString(), plaintextData["addtlVal"].GetStringLength());
 		BOOST_REQUIRE(this->addtlVal != boost::none);
 	}
-	virtual property_tree::ptree new_dictRepresentation() const
+	virtual document_persister::DocumentJSON new_dictRepresentation() const
 	{
-		property_tree::ptree dict = Persistable::Object::new_dictRepresentation();
+		auto dict = Persistable::Object::new_dictRepresentation();
 		if (this->addtlVal) {
-			dict.put("addtlVal", *(this->addtlVal));
+			Value k("addtlVal", dict.GetAllocator());
+			Value v(*(this->addtlVal), dict.GetAllocator());
+			dict.AddMember(k, v, dict.GetAllocator());
 		}
 		//
 		return dict;

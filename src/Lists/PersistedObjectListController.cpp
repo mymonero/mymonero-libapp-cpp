@@ -146,11 +146,11 @@ void Controller::setup_fetchAndReconstituteExistingRecords()
 					inner_spt->_setup_didFailToBoot("ListController: Incorrect password");
 					return; // sort of a fatal condition, though
 				}
-				property_tree::ptree plaintext_documentJSON;
+				Document plaintext_documentJSON;
 				try {
 					plaintext_documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(
 						*plaintext_documentContentString
-					);
+					); // move semantics, not copy
 				} catch (const std::exception & e) {
 					inner_spt->_setup_didFailToBoot(e.what());
 					return;

@@ -188,7 +188,6 @@ void Object::_trampolineFor_successfullyBooted(
 		*_account_seed,
 		*_mnemonic_wordsetName
 	);
-	boost::property_tree::ptree root;
 	if (retVals.err_string != none) {
 		__trampolineFor_failedToBootWith_fnAndErrStr(std::move(fn), std::move(*(retVals.err_string)));
 		return;
@@ -1001,6 +1000,7 @@ void Object::_HostPollingController_didFetch_addressTransactions(
 				}
 			}
 			if ((*incoming_tx__it).mempool == true) { // since the server has an issue sending the spent outputs at present, and only sends the (positive) change amount, this is a workaround to always prefer the existing cached tx's amounts rather than the ones sent by the server 
+				// NOTE: This will also apply to *incoming* txs just due to the naiveness of the logic
 				final_incoming_tx.totalSent = (existing_tx__it->second).totalSent;
 				final_incoming_tx.totalReceived = (existing_tx__it->second).totalReceived;
 				final_incoming_tx.amount = (existing_tx__it->second).amount;

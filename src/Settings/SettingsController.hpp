@@ -168,7 +168,7 @@ namespace Settings
 		// Accessors
 		optional<string> _givenLocked_existing_saved_documentContentString() const;
 		bool shouldInsertNotUpdate() const;
-		property_tree::ptree _givenLocked_new_dictRepresentation() const;
+		document_persister::DocumentJSON _givenLocked_new_dictRepresentation() const;
 		//
 		// Imperatives
 		void startObserving();

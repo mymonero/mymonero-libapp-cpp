@@ -42,8 +42,6 @@
 #include <cstdlib>
 #include <iostream>
 //#include <mutex> // TODO: use mutex? (see _property_mutex below)
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
@@ -62,6 +60,7 @@ using namespace boost;
 #include "../RNCryptor-C/mutils.h"
 #include "../base64/base64.hpp"
 //
+#include "rapidjson/writer.h"
 #include "document_persister.hpp"
 using namespace document_persister;
 #include "../Passwords/PasswordController.hpp"
@@ -82,18 +81,16 @@ namespace Persistable
 			explicit Object(
 				std::shared_ptr<const string> documentsPath,
 				std::shared_ptr<const Passwords::PasswordProvider> passwordProvider,
-				const property_tree::ptree &plaintextData
+				const document_persister::DocumentJSON &plaintextData
 			): documentsPath(std::move(documentsPath)),
 				passwordProvider(std::move(passwordProvider))
 			{
-				this->_id = plaintextData.get<DocumentId>("_id");
-				boost::optional<std::string> insertedAt_sSinceEpoch_string = plaintextData.get_optional<std::string>("insertedAt_sSinceEpoch");
-				if (insertedAt_sSinceEpoch_string) {
-					this->insertedAt_sSinceEpoch = strtoul( // must parse from string to u long
-						(*insertedAt_sSinceEpoch_string).c_str(),
-						NULL,
-						0
-					);
+				this->_id = string(plaintextData["_id"].GetString(), plaintextData["_id"].GetStringLength());
+				{
+					Value::ConstMemberIterator itr = plaintextData.FindMember("insertedAt_sSinceEpoch");
+					if (itr != plaintextData.MemberEnd()) {
+						this->insertedAt_sSinceEpoch = strtoul(itr->value.GetString(), NULL, 0); // must parse from string to u long
+					}
 				}
 				//
 				// Subclassers: Override and extract data but call on super
@@ -109,7 +106,7 @@ namespace Persistable
 			//
 			// Properties - State
 			boost::optional<std::string> _id;
-			boost::optional<long> insertedAt_sSinceEpoch;
+			boost::optional<unsigned long> insertedAt_sSinceEpoch;
 			//
 			optional<bool> didFailToInitialize_flag;
 			optional<bool> didFailToBoot_flag;
@@ -125,14 +122,22 @@ namespace Persistable
 			//
 			// Accessors - Overridable - Required
 			virtual const CollectionName &collectionName() const = 0;
-			virtual property_tree::ptree new_dictRepresentation() const
+			virtual document_persister::DocumentJSON new_dictRepresentation() const
 			{ // override and implement but call on Persistable::Object
-				property_tree::ptree dict;
-				dict.put("_id", *(this->_id));
-				if (this->insertedAt_sSinceEpoch) {
+				
+				Document dict;
+				dict.SetObject();
+				{
+					Value k("_id", dict.GetAllocator());
+					Value v(*(this->_id), dict.GetAllocator()); // copy string
+					dict.AddMember(k, v, dict.GetAllocator());
+				}
+				if (this->insertedAt_sSinceEpoch != none) {
 					ostringstream convert_ss;
-					convert_ss << insertedAt_sSinceEpoch;
-					dict.put("insertedAt_sSinceEpoch", convert_ss.str()); // store as string and decode on parse b/c Long gets converted to double
+					convert_ss << *(this->insertedAt_sSinceEpoch);
+					Value k("insertedAt_sSinceEpoch", dict.GetAllocator());
+					Value v(convert_ss.str(), dict.GetAllocator()); // TODO: copy is unnecessary
+					dict.AddMember(k, v, dict.GetAllocator()); // store as string and decode on parse b/c Long gets converted to double
 				}
 				//
 				return dict;
@@ -159,21 +164,20 @@ namespace Persistable
 
 namespace Persistable
 { // Serialization
-	static inline property_tree::ptree new_plaintextDocumentDictFromJSONString(const string &plaintextJSONString)
+	static inline rapidjson::Document new_plaintextDocumentDictFromJSONString(const string &plaintextJSONString)
 	{
-		stringstream ss;
-		ss << plaintextJSONString;
-		property_tree::ptree pt;
-        property_tree::read_json(ss, pt);
-        //
-		return pt;
+		rapidjson::Document document;
+		document.Parse(plaintextJSONString.c_str());
+		
+		return document; // move semantics
 	}
-	static inline string new_plaintextJSONStringFromDocumentDict(const property_tree::ptree &dict)
+	static inline string new_plaintextJSONStringFrom_movedDocumentDict(const document_persister::DocumentJSON &dict)
 	{
-	    std::stringstream ss;
-    	boost::property_tree::json_parser::write_json(ss, dict, false/*pretty*/);
+		StringBuffer buffer;
+		Writer<StringBuffer> writer(buffer);
+		dict.Accept(writer);
 		//
-		return ss.str();
+		return string(buffer.GetString());
 	}
 	//
 	static inline optional<string> new_plaintextStringFrom(

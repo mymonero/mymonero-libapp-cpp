@@ -35,11 +35,15 @@
 #ifndef document_persister_hpp
 #define document_persister_hpp
 
+#define RAPIDJSON_HAS_STDSTRING 1
+#define RAPIDJSON_ASSERT(x) if (!(x)) throw \
+	std::invalid_argument("request object is invalid");
+
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <boost/atomic.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/uuid/uuid.hpp>            // uuid class
 #include <boost/uuid/uuid_generators.hpp> // generators
@@ -48,16 +52,18 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/algorithm/string.hpp>
+#include "rapidjson/document.h"
 using namespace std;
 using namespace boost;
-
+using namespace rapidjson;
+//
+//
 namespace document_persister
 {
    typedef string DocumentId;
    typedef string CollectionName;
    typedef string DocumentContentString;
-   typedef property_tree::ptree DocumentJSON;
-   typedef property_tree::ptree MutableDocumentJSON;
+   typedef Document DocumentJSON;
 }
 namespace document_persister
 {
@@ -93,6 +99,58 @@ namespace document_persister
 	   //
 	   return ss.str();
    }
+}
+namespace document_persister
+{
+	//
+	// Shared - Parsing - Values
+	static inline optional<string> none_or_string_from(
+		const DocumentJSON &json,
+		const string &key
+	) {
+		Value::ConstMemberIterator itr = json.FindMember(key);
+		if (itr != json.MemberEnd()) {
+			return string(itr->value.GetString(), itr->value.GetStringLength());
+		}
+		return none;
+	}
+	static inline optional<double> none_or_double_from(
+		const DocumentJSON &json,
+		const string &key
+	) {
+		Value::ConstMemberIterator itr = json.FindMember(key);
+		if (itr != json.MemberEnd()) {
+			if (itr->value.IsString()) {
+				return stod(itr->value.GetString()); // this may throw an exception - allowing it to bubble up here
+			} else if (itr->value.IsNumber()) {
+				assert(itr->value.IsDouble());
+				return itr->value.GetDouble();
+			}
+		}
+		return none;
+	}
+	static inline optional<bool> none_or_bool_from(
+		const document_persister::DocumentJSON &json,
+		const string &key
+	) {
+		Value::ConstMemberIterator itr = json.FindMember(key);
+		if (itr != json.MemberEnd()) {
+			if (itr->value.IsString()) {
+				string str = string(itr->value.GetString(), itr->value.GetStringLength());
+				if (str == "true" || str == "1") {
+					return true;
+				} else if (str == "false" || str == "0") {
+					return false;
+				} else {
+					BOOST_THROW_EXCEPTION(logic_error("Unable to parse bool string"));
+					return none;
+				}
+			} else if (itr->value.IsBool()) {
+				return itr->value.GetBool();
+			}
+		}
+		return none;
+	}
 }
 namespace document_persister
 {

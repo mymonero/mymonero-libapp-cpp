@@ -50,8 +50,8 @@ std::string Persistable::Object::new_encrypted_serializedFileRepresentation() co
 		BOOST_THROW_EXCEPTION(logic_error("new_encrypted_serializedFileRepresentation called with nil password"));
 		// nothing more should be executed... is there any need to ensure that?
 	}
-	const property_tree::ptree plaintextDict = this->new_dictRepresentation();
-	const std::string plaintextString = new_plaintextJSONStringFromDocumentDict(plaintextDict);
+	const document_persister::DocumentJSON plaintextDict = this->new_dictRepresentation();
+	const std::string plaintextString = new_plaintextJSONStringFrom_movedDocumentDict(plaintextDict);
 	//
 	return Persistable::new_encryptedBase64StringFrom(
 		plaintextString,
@@ -127,7 +127,7 @@ optional<std::string> Persistable::Object::_saveToDisk_insert()
 	// only generate _id here after checking shouldInsertNotUpdate since that relies on _id
 	this->_id = document_persister::new_documentId(); // generating a new UUID
 	{ // and since we know this is an insertion, let's any other initial centralizable data
-		posix_time::ptime t0(gregorian::date(1970,1,1));
+		posix_time::ptime t0(gregorian::date(1970, 1, 1));
 		posix_time::ptime t(posix_time::second_clock::universal_time());
 		posix_time::time_duration dur = t - t0; // s since epoch
 		this->insertedAt_sSinceEpoch = (dur.total_milliseconds() / 1000);

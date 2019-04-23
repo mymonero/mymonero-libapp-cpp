@@ -194,7 +194,7 @@ namespace Wallets
 		Object(
 			std::shared_ptr<std::string> documentsPath,
 			std::shared_ptr<Passwords::PasswordProvider> passwordProvider,
-			const property_tree::ptree &plaintextData,
+			const document_persister::DocumentJSON &plaintextData,
 			const cryptonote::network_type nettype,
 			std::shared_ptr<HostedMonero::APIClient> apiClient,
 			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
@@ -227,9 +227,9 @@ namespace Wallets
 		void teardown() override; // override
 		//
 		// Accessors
-		virtual property_tree::ptree new_dictRepresentation() const override
+		virtual document_persister::DocumentJSON new_dictRepresentation() const override
 		{
-			property_tree::ptree dict = Persistable::Object::new_dictRepresentation();
+			auto dict = Persistable::Object::new_dictRepresentation();
 			//
 			// TODO:
 			//

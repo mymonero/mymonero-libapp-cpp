@@ -43,23 +43,30 @@ using namespace Settings;
 //
 // Constants - Persistence
 static string collectionName = string("Settings");
-std::string _dictKey(Settings_DictKey fromKey)
+static string _dictKey_id = "_id";
+static string _dictKey_specificAPIAddressURLAuthority = "specificAPIAddressURLAuthority";
+static string _dictKey_appTimeoutAfterS_nilForDefault_orNeverValue = "appTimeoutAfterS_nilForDefault_orNeverValue";
+static string _dictKey_displayCurrencySymbol = "displayCurrencySymbol";
+static string _dictKey_authentication__requireWhenSending = "authentication__requireWhenSending";
+static string _dictKey_authentication__requireToShowWalletSecrets = "authentication__requireToShowWalletSecrets";
+static string _dictKey_authentication__tryBiometric = "authentication__tryBiometric";
+const std::string &_dictKey(Settings_DictKey fromKey)
 {
 	switch (fromKey) {
 		case Settings_DictKey::_id:
-			return "_id";
+			return _dictKey_id;
 		case Settings_DictKey::specificAPIAddressURLAuthority:
-			return "specificAPIAddressURLAuthority";
+			return _dictKey_specificAPIAddressURLAuthority;
 		case Settings_DictKey::appTimeoutAfterS_nilForDefault_orNeverValue:
-			return "appTimeoutAfterS_nilForDefault_orNeverValue";
+			return _dictKey_appTimeoutAfterS_nilForDefault_orNeverValue;
 		case Settings_DictKey::displayCurrencySymbol:
-			return "displayCurrencySymbol";
+			return _dictKey_displayCurrencySymbol;
 		case Settings_DictKey::authentication__requireWhenSending:
-			return "authentication__requireWhenSending";
+			return _dictKey_authentication__requireWhenSending;
 		case Settings_DictKey::authentication__requireToShowWalletSecrets:
-			return "authentication__requireToShowWalletSecrets";
+			return _dictKey_authentication__requireToShowWalletSecrets;
 		case Settings_DictKey::authentication__tryBiometric:
-			return "authentication__tryBiometric";
+			return _dictKey_authentication__tryBiometric;
 		case __max: case __min:
 			BOOST_THROW_EXCEPTION(logic_error("Never expected _dictKey() to be called on __min, __max"));
 			return "";
@@ -95,14 +102,14 @@ void Controller::_setup_loadState()
 		if (documentContentString == none) {
 			_givenLocked_initWithDefaults();
 		} else { // rather than returning directly from the if, so as to share the mutex.unlock()
-			property_tree::ptree documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(*documentContentString);
-			DocumentId this_id = documentJSON.get<DocumentId>(_dictKey(Settings_DictKey::_id));
-			optional<string> specificAPIAddressURLAuthority = documentJSON.get_optional<string>(_dictKey(Settings_DictKey::specificAPIAddressURLAuthority));
-			optional<double> existingValueFor_appTimeoutAfterS = serial_bridge_utils::none_or_double_from(documentJSON, _dictKey(Settings_DictKey::appTimeoutAfterS_nilForDefault_orNeverValue));
-			optional<bool> authentication__requireWhenSending = serial_bridge_utils::none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__requireWhenSending));
-			optional<bool> authentication__requireToShowWalletSecrets = serial_bridge_utils::none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__requireToShowWalletSecrets));
-			optional<bool> authentication__tryBiometric = serial_bridge_utils::none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__tryBiometric));
-			optional<Currencies::CurrencySymbol> displayCurrencySymbol = documentJSON.get_optional<Currencies::CurrencySymbol>(_dictKey(Settings_DictKey::displayCurrencySymbol));
+			auto documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(*documentContentString); // move semantics, not copy
+			DocumentId this_id = string(documentJSON[_dictKey(Settings_DictKey::_id)].GetString());
+			optional<string> specificAPIAddressURLAuthority = none_or_string_from(documentJSON, _dictKey(Settings_DictKey::specificAPIAddressURLAuthority));
+			optional<double> existingValueFor_appTimeoutAfterS = none_or_double_from(documentJSON, _dictKey(Settings_DictKey::appTimeoutAfterS_nilForDefault_orNeverValue));
+			optional<bool> authentication__requireWhenSending = none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__requireWhenSending));
+			optional<bool> authentication__requireToShowWalletSecrets = none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__requireToShowWalletSecrets));
+			optional<bool> authentication__tryBiometric = none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__tryBiometric));
+			optional<Currencies::CurrencySymbol> displayCurrencySymbol = none_or_string_from(documentJSON, _dictKey(Settings_DictKey::displayCurrencySymbol));
 			//
 			_givenLocked_setup_loadState(
 				this_id,
@@ -243,20 +250,41 @@ bool Controller::shouldInsertNotUpdate() const
 {
 	return _id == none;
 }
-property_tree::ptree Controller::_givenLocked_new_dictRepresentation() const
+document_persister::DocumentJSON Controller::_givenLocked_new_dictRepresentation() const
 {
-	property_tree::ptree dict;
-	dict.put(_dictKey(Settings_DictKey::_id), *(_id));
+	document_persister::DocumentJSON dict;
+	dict.SetObject();
+	{
+		Value k(StringRef(_dictKey(Settings_DictKey::_id)));
+		Value v(*_id, dict.GetAllocator()); // copy string
+		dict.AddMember(k, v, dict.GetAllocator());
+	}
 	if (_specificAPIAddressURLAuthority != none) {
-		dict.put(_dictKey(Settings_DictKey::specificAPIAddressURLAuthority), *_specificAPIAddressURLAuthority);
+		Value k(StringRef(_dictKey(Settings_DictKey::specificAPIAddressURLAuthority)));
+		Value v(*_specificAPIAddressURLAuthority, dict.GetAllocator()); // copy string
+		dict.AddMember(k, v, dict.GetAllocator());
 	}
 	if (_appTimeoutAfterS_noneForDefault_orNeverValue != none) {
-		dict.put(_dictKey(Settings_DictKey::appTimeoutAfterS_nilForDefault_orNeverValue), *_appTimeoutAfterS_noneForDefault_orNeverValue);
+		Value k(StringRef(_dictKey(Settings_DictKey::appTimeoutAfterS_nilForDefault_orNeverValue)));
+		dict.AddMember(k, Value(*_appTimeoutAfterS_noneForDefault_orNeverValue).Move(), dict.GetAllocator());
 	}
-	dict.put(_dictKey(Settings_DictKey::authentication__requireWhenSending), _authentication__requireWhenSending);
-	dict.put(_dictKey(Settings_DictKey::authentication__tryBiometric), _authentication__tryBiometric);
-	dict.put(_dictKey(Settings_DictKey::authentication__requireToShowWalletSecrets), _authentication__requireToShowWalletSecrets);
-	dict.put(_dictKey(Settings_DictKey::displayCurrencySymbol), _displayCurrencySymbol);
+	{
+		Value k(StringRef(_dictKey(Settings_DictKey::authentication__requireWhenSending)));
+		dict.AddMember(k, Value(_authentication__requireWhenSending).Move(), dict.GetAllocator());
+	}
+	{
+		Value k(StringRef(_dictKey(Settings_DictKey::authentication__tryBiometric)));
+		dict.AddMember(k, Value(_authentication__tryBiometric).Move(), dict.GetAllocator());
+	}
+	{
+		Value k(StringRef(_dictKey(Settings_DictKey::authentication__requireToShowWalletSecrets)));
+		dict.AddMember(k, Value(_authentication__requireToShowWalletSecrets).Move(), dict.GetAllocator());
+	}
+	{
+		Value k(StringRef(_dictKey(Settings_DictKey::displayCurrencySymbol)));
+		Value v(_displayCurrencySymbol, dict.GetAllocator()); // copy string
+		dict.AddMember(k, v, dict.GetAllocator());
+	}
 	//
 	return dict;
 }
@@ -455,7 +483,7 @@ bool Controller::___givenLocked_saveToDisk_write()
 	//
 	optional<string> err_str = document_persister::write(
 		*documentsPath,
-		Persistable::new_plaintextJSONStringFromDocumentDict(_givenLocked_new_dictRepresentation()),
+		Persistable::new_plaintextJSONStringFrom_movedDocumentDict(_givenLocked_new_dictRepresentation()),
 		*_id,
 		collectionName
 	);

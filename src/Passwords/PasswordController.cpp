@@ -51,15 +51,19 @@ enum class DictKey
 	passwordType,
 	messageAsEncryptedDataForUnlockChallenge_base64String
 };
-std::string _dictKey(DictKey fromKey)
+static string _dictKey_id = string("_id");
+static string _dictKey_passwordType = string("passwordType");
+static string _dictKey_messageAsEncryptedDataForUnlockChallenge_base64String = string("messageAsEncryptedDataForUnlockChallenge_base64String");
+//
+const std::string &_dictKey(DictKey fromKey)
 {
 	switch (fromKey) {
 		case DictKey::_id:
-			return "_id";
+			return _dictKey_id;
 		case DictKey::passwordType:
-			return "passwordType";
+			return _dictKey_passwordType;
 		case DictKey::messageAsEncryptedDataForUnlockChallenge_base64String:
-			return "messageAsEncryptedDataForUnlockChallenge_base64String";
+			return _dictKey_messageAsEncryptedDataForUnlockChallenge_base64String;
 	}
 }
 //
@@ -219,28 +223,33 @@ void Controller::initializeRuntimeAndBoot()
 		return;
 	}
 	if (numDocuments == 0) {
-		property_tree::ptree fabricated_documentJSON;
-		fabricated_documentJSON.put(_dictKey(DictKey::passwordType), Type::password); // default (at least for now)
-		_proceedTo_load(fabricated_documentJSON);
+		DocumentJSON fabr_docJSON;
+		fabr_docJSON.SetObject();
+		{
+			Value k(StringRef(_dictKey(DictKey::passwordType)));
+			fabr_docJSON.AddMember(
+			   k,
+			   Value(Type::password).Move(), // default (at least for now)
+			   fabr_docJSON.GetAllocator()
+		   );
+		}
+		_proceedTo_load(fabr_docJSON); // move semantics!!
 		return;
 	}
 	_proceedTo_load(
 		Persistable::new_plaintextDocumentDictFromJSONString((*(result.content_strings))[0])
 	);
 }
-void Controller::_proceedTo_load(const DocumentJSON &documentJSON)
+void Controller::_proceedTo_load(const DocumentJSON &document)
 {
-	optional<DocumentId> id = documentJSON.get_optional<DocumentId>(_dictKey(DictKey::_id));
-	if (id != none) {
-		_id = std::move(*id);
-	}
-	int raw_passwordType_val = documentJSON.get<int>(_dictKey(DictKey::passwordType));
+	_id = none_or_string_from(document, _dictKey(DictKey::_id));
+	int raw_passwordType_val = document[_dictKey(DictKey::passwordType)].GetInt();
 	if (raw_passwordType_val <= Passwords::Type::minBound || raw_passwordType_val >= Passwords::Type::maxBound) {
 		BOOST_THROW_EXCEPTION(logic_error("Found undefined encrypted msg for unlock challenge in saved password model document"));
 		return;
 	}
 	_passwordType = (Passwords::Type)raw_passwordType_val;
-	_messageAsEncryptedDataForUnlockChallenge_base64String = documentJSON.get_optional<string>(_dictKey(DictKey::messageAsEncryptedDataForUnlockChallenge_base64String));
+	_messageAsEncryptedDataForUnlockChallenge_base64String = none_or_string_from(document, _dictKey(DictKey::messageAsEncryptedDataForUnlockChallenge_base64String));
 	if (_id != none) { // existing doc
 		if (_messageAsEncryptedDataForUnlockChallenge_base64String == none || _messageAsEncryptedDataForUnlockChallenge_base64String->empty()) {
 			// ^-- but it was saved w/o an encrypted challenge str
@@ -829,11 +838,23 @@ optional<string>/*err_str*/ Controller::saveToDisk()
 	if (_id == none) {
 		_id = document_persister::new_documentId();
 	}
-	property_tree::ptree persistableDocument;
-	persistableDocument.put(_dictKey(DictKey::_id), *_id);
-	persistableDocument.put(_dictKey(DictKey::passwordType), _passwordType);
-	persistableDocument.put(_dictKey(DictKey::messageAsEncryptedDataForUnlockChallenge_base64String), *_messageAsEncryptedDataForUnlockChallenge_base64String);
-	const std::string plaintextString = Persistable::new_plaintextJSONStringFromDocumentDict(persistableDocument);
+	document_persister::DocumentJSON persistableDocument;
+	persistableDocument.SetObject();
+	{
+		Value k(StringRef(_dictKey(DictKey::_id)));
+		Value v(*_id, persistableDocument.GetAllocator()); // copy string
+		persistableDocument.AddMember(k, v, persistableDocument.GetAllocator());
+	}
+	{
+		Value k(StringRef(_dictKey(DictKey::passwordType)));
+		persistableDocument.AddMember(k, Value(_passwordType).Move(), persistableDocument.GetAllocator());
+	}
+	{
+		Value k(StringRef(_dictKey(DictKey::messageAsEncryptedDataForUnlockChallenge_base64String)));
+		Value v(*_messageAsEncryptedDataForUnlockChallenge_base64String, persistableDocument.GetAllocator()); // copy string
+		persistableDocument.AddMember(k, v, persistableDocument.GetAllocator());
+	}
+	const std::string plaintextString = Persistable::new_plaintextJSONStringFrom_movedDocumentDict(persistableDocument);
 	optional<string> err_str = document_persister::write(*documentsPath, plaintextString, *_id, collectionName);
 	if (err_str != none) {
 		MERROR("Passwords: Error while persisting " << *err_str);
