@@ -34,12 +34,7 @@
 
 #ifndef document_persister_hpp
 #define document_persister_hpp
-
-#define RAPIDJSON_HAS_STDSTRING 1
-#define RAPIDJSON_ASSERT(x) if (!(x)) throw \
-	std::invalid_argument("request object is invalid");
-
-
+//
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -52,6 +47,8 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/algorithm/string.hpp>
+//
+#include "rapidjson_defines.hpp" // must be included before rapidjson include
 #include "rapidjson/document.h"
 using namespace std;
 using namespace boost;

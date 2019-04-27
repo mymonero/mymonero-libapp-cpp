@@ -1,5 +1,7 @@
 //
-//  HTTPRequests_Interface.hpp
+//  rapidjson_defines.hpp
+//  MyMonero
+//
 //  Copyright (c) 2014-2019, MyMonero.com
 //
 //  All rights reserved.
@@ -8,15 +10,15 @@
 //  permitted provided that the following conditions are met:
 //
 //  1. Redistributions of source code must retain the above copyright notice, this list of
-//	conditions and the following disclaimer.
+//  conditions and the following disclaimer.
 //
 //  2. Redistributions in binary form must reproduce the above copyright notice, this list
-//	of conditions and the following disclaimer in the documentation and/or other
-//	materials provided with the distribution.
+//  of conditions and the following disclaimer in the documentation and/or other
+//  materials provided with the distribution.
 //
 //  3. Neither the name of the copyright holder nor the names of its contributors may be
-//	used to endorse or promote products derived from this software without specific
-//	prior written permission.
+//  used to endorse or promote products derived from this software without specific
+//  prior written permission.
 //
 //  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 //  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -28,38 +30,12 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+//
+//
+#pragma once
 
-#ifndef HTTPRequests_dummy_hpp
-#define HTTPRequests_dummy_hpp
-
-#include "./HTTPRequests_Interface.hpp"
-
-namespace HTTPRequests
-{
-	struct Handle_dummy: public Handle
-	{
-		Handle_dummy() {}
-		~Handle_dummy() {}
-		//
-		void cancel()
-		{
-			cout << "Canceling a HTTPRequests::Handle_dummy" << endl;
-		}
-	private:
-	};
-	//
-	struct RequestFactory_dummy: public RequestFactory
-	{
-		RequestFactory_dummy() {}
-		~RequestFactory_dummy() {}
-		//
-		std::unique_ptr<Handle> new_request(string endpoint_url, std::function<void()>&& fn)
-		{
-			// TODO…
-			return std::make_unique<Handle_dummy>();
-		}
-	private:
-	};
-}
-
-#endif /* HTTPRequests_dummy_hpp */
+#define RAPIDJSON_HAS_STDSTRING 1
+#define RAPIDJSON_ASSERT(x) if (!(x)) throw \
+	std::invalid_argument("Object is invalid");
+#define RAPIDJSON_ASSERT_THROWS
+#define RAPIDJSON_NOEXCEPT_ASSERT(x) assert(x)

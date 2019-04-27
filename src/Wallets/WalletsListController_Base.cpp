@@ -114,7 +114,7 @@ void ListController_Base::CreateNewWallet_NoBootNoListAdd(
 		ccyConversionRatesController
 	));
 }
-void ListController_Base::OnceBooted_ObtainPW_AddNewlyGeneratedWallet(
+void ListController_Base::OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained(
 	std::shared_ptr<Wallets::Object> walletInstance,
 	string walletLabel,
 	Wallets::SwatchColor swatchColor,
@@ -226,19 +226,23 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 						inner_inner_spt->userIdleController,
 						inner_inner_spt->ccyConversionRatesController
 					);
+					string retained_wallet_instance_id = wallet->instance_uuid_string; // copy
+ 					inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id] = wallet; // must temporarily retain this!
 					wallet->Boot_byLoggingIn_existingWallet_withMnemonic(
 						walletLabel,
 						swatchColor,
 						mnemonicString,
 						false, // persistEvenIfLoginFailed_forServerChange
-						[wallet, weak_this, fn = std::move(fn)] (optional<string> err_str) {
+						[weak_this, fn = std::move(fn), retained_wallet_instance_id] (optional<string> err_str) {
 							if (auto inner_inner_inner_spt = weak_this.lock()) {
+								auto retained_wallet =  inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id];
+								inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.erase(retained_wallet_instance_id); // important
 								if (err_str != none) {
 									fn(err_str, none, none);
 									return;
 								}
-								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(wallet);
-								fn(none, wallet, false); // wasWalletAlreadyInserted: false
+								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(retained_wallet);
+								fn(none, retained_wallet, false); // wasWalletAlreadyInserted: false
 							}
 						}
 					);
@@ -301,6 +305,9 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys
 						inner_inner_spt->userIdleController,
 						inner_inner_spt->ccyConversionRatesController
 					);
+					string retained_wallet_instance_id = wallet->instance_uuid_string; // copy
+					cout << " .. retained_wallet_instance_id " << retained_wallet_instance_id << endl;
+					inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id] = wallet; // must temporarily retain this!
 					wallet->Boot_byLoggingIn_existingWallet_withAddressAndKeys(
 						walletLabel,
 						swatchColor,
@@ -308,15 +315,17 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys
 						sec_view_key,
 						sec_spend_key,
 						false, // persistEvenIfLoginFailed_forServerChange
-						[wallet, weak_this, fn = std::move(fn)] (optional<string> err_str)
+						[weak_this, fn = std::move(fn), retained_wallet_instance_id] (optional<string> err_str)
 						{
 							if (auto inner_inner_inner_spt = weak_this.lock()) {
+								auto retained_wallet =  inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id];
+								inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.erase(retained_wallet_instance_id); // important
 								if (err_str != none) {
 									fn(err_str, none, none);
 									return;
 								}
-								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(wallet);
-								fn(none, wallet, false); // wasWalletAlreadyInserted: false
+								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(retained_wallet);
+								fn(none, retained_wallet, false); // wasWalletAlreadyInserted: false
 							}
 						}
 					);

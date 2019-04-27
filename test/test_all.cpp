@@ -78,11 +78,6 @@ inline std::shared_ptr<string> new_documentsPath()
 		_new_documentsPathString()
 	);
 }
-#include "../src/APIClient/HTTPRequests.dummy.hpp"
-inline std::shared_ptr<HTTPRequests::RequestFactory_dummy> new_httpRequestFactory__dummy()
-{
-	return std::make_shared<HTTPRequests::RequestFactory_dummy>();
-}
 //
 // Test suites - document_persister
 #include "../src/Persistence/document_persister.hpp"
@@ -441,8 +436,7 @@ App::ServiceLocator &builtSingleton(cryptonote::network_type nettype)
 	using namespace App;
 	return ServiceLocator::instance().build(
 		new_documentsPath(),
-		nettype,
-		new_httpRequestFactory__dummy()
+		nettype
 	);
 }
 BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submission_manualAddrPID"))
@@ -917,7 +911,7 @@ BOOST_AUTO_TEST_CASE(passwords_controller_biometric_authentication, *utf::depend
 //
 #include "../src/Currencies/Currencies.hpp"
 //
-auto to_specificAPIAddressURLAuthority = string("myserver.com");
+auto to_specificAPIAddressURLAuthority = string("someotherdomain.com");
 double to_appTimeoutAfterS = 60;
 bool to_authentication__requireWhenSending = !Settings::default_authentication__requireWhenSending;
 bool to_authentication__requireToShowWalletSecrets = !Settings::default_authentication__requireToShowWalletSecrets;
@@ -972,7 +966,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	);
 	//
 	bool saw_specificAPIAddressURLAuthority_signal = false;
-	controller->specificAPIAddressURLAuthority_signal.connect([&saw_specificAPIAddressURLAuthority_signal] {
+	auto c1 = controller->specificAPIAddressURLAuthority_signal.connect([&saw_specificAPIAddressURLAuthority_signal] {
 		BOOST_REQUIRE_MESSAGE(saw_specificAPIAddressURLAuthority_signal == false, "Expected saw to be false");
 		saw_specificAPIAddressURLAuthority_signal = true;
 	});
@@ -980,7 +974,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE_MESSAGE(controller->specificAPIAddressURLAuthority() == to_specificAPIAddressURLAuthority, "Expected controller->specificAPIAddressURLAuthority of " << controller->specificAPIAddressURLAuthority() << " to equal " << to_specificAPIAddressURLAuthority);
 	//
 	bool saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal = false;
-	controller->appTimeoutAfterS_noneForDefault_orNeverValue_signal.connect(
+	auto c2 = controller->appTimeoutAfterS_noneForDefault_orNeverValue_signal.connect(
 	[&saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal]
 	{
 		BOOST_REQUIRE_MESSAGE(saw_appTimeoutAfterS_noneForDefault_orNeverValue_signal == false, "Expected saw to be false");
@@ -990,7 +984,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE_MESSAGE(controller->appTimeoutAfterS_noneForDefault_orNeverValue() == to_appTimeoutAfterS, "Expected controller->appTimeoutAfterS_noneForDefault_orNeverValue of " << controller->appTimeoutAfterS_noneForDefault_orNeverValue() << " to equal " << to_appTimeoutAfterS);
 	//
 	bool saw_authentication__requireWhenSending_signal = false;
-	controller->authentication__requireWhenSending_signal.connect(
+	auto c3 = controller->authentication__requireWhenSending_signal.connect(
 	[&saw_authentication__requireWhenSending_signal]
 	{
 		BOOST_REQUIRE_MESSAGE(saw_authentication__requireWhenSending_signal == false, "Expected saw to be false");
@@ -1000,7 +994,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE_MESSAGE(controller->authentication__requireWhenSending() == to_authentication__requireWhenSending, "Expected controller->authentication__requireWhenSending of " << controller->authentication__requireWhenSending() << " to equal " << to_authentication__requireWhenSending);
 	//
 	bool saw_authentication__requireToShowWalletSecrets_signal = false;
-	controller->authentication__requireToShowWalletSecrets_signal.connect([&saw_authentication__requireToShowWalletSecrets_signal] {
+	auto c4 = controller->authentication__requireToShowWalletSecrets_signal.connect([&saw_authentication__requireToShowWalletSecrets_signal] {
 		BOOST_REQUIRE_MESSAGE(saw_authentication__requireToShowWalletSecrets_signal == false, "Expected saw to be false");
 		saw_authentication__requireToShowWalletSecrets_signal = true;
 	});
@@ -1008,7 +1002,7 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE_MESSAGE(controller->authentication__requireToShowWalletSecrets() == to_authentication__requireToShowWalletSecrets, "Expected controller->authentication__requireToShowWalletSecrets of " << controller->authentication__requireToShowWalletSecrets() << " to equal " << to_authentication__requireToShowWalletSecrets);
 	//
 	bool saw_authentication__tryBiometric_signal = false;
-	controller->authentication__tryBiometric_signal.connect([&saw_authentication__tryBiometric_signal] {
+	auto c5 = controller->authentication__tryBiometric_signal.connect([&saw_authentication__tryBiometric_signal] {
 		BOOST_REQUIRE_MESSAGE(saw_authentication__tryBiometric_signal == false, "Expected saw to be false");
 		saw_authentication__tryBiometric_signal = true;
 	});
@@ -1030,6 +1024,13 @@ BOOST_AUTO_TEST_CASE(settingsController_settingAndGetting, *utf::depends_on("pas
 	BOOST_REQUIRE_MESSAGE(saw_authentication__requireToShowWalletSecrets_signal, "Expected to see authentication__requireToShowWalletSecrets_signal");
 	BOOST_REQUIRE_MESSAGE(saw_authentication__tryBiometric_signal, "Expected to see authentication__tryBiometric_signal");
 	BOOST_REQUIRE_MESSAGE(saw_displayCurrencySymbol_signal, "Expected to see displayCurrencySymbol_signal");
+	//
+	// must disconnect so subsequent tests don't trigger the callbacks and asserts
+	c1.disconnect();
+	c2.disconnect();
+	c3.disconnect();
+	c4.disconnect();
+	c5.disconnect();
 }
 BOOST_AUTO_TEST_CASE(settingsController_postSave, *utf::depends_on("settingsController_settingAndGetting"))
 { // this test has been added even though settingsController_settingAndGetting is equipped to check post-save expected values because a deleteEverything happens below, wiping out the save
@@ -1511,7 +1512,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBreakThenLockDown, *utf::depends_o
 					//
 					BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to still have been entered here");
 					userIdleController->breakIdle(); // simulate an Activity reporting a touch on the screen
-					
+
 					uint32_t checkStillNotYetLockedAfter_s = idleTimeoutAfterS_settingsProvider->default_appTimeoutAfterS() - 1; // 1s before idle kicks in
 					cout << "Test: Now waiting " << checkStillNotYetLockedAfter_s << " sec" << endl;
 					ServiceLocator::instance().dispatch_ptr->after(
@@ -1539,7 +1540,7 @@ BOOST_AUTO_TEST_CASE(userIdle_controller__idleBreakThenLockDown, *utf::depends_o
 											// ^-- as if the user entered their password - this would actually be best done in the password entry delegate
 											//
 											BOOST_REQUIRE_MESSAGE(passwordController->hasUserEnteredValidPasswordYet(), "Expected a password to have been entered after idle lockdown -> password re-entry");
-											
+
 											sawTestCompletion = true;
 										},
 										[](void) {
@@ -1633,7 +1634,6 @@ BOOST_AUTO_TEST_CASE(userIdle_controller_verifyUserIdleDisableReEnable, *utf::de
 	//
 	mockedUserIdle_passwordController = nullptr;
 }
-//
 BOOST_AUTO_TEST_CASE(currencies__conversions, *utf::depends_on("userIdle_controller_verifyUserIdleDisableReEnable"))
 {
 	cout << "currencies__conversions" << endl;
@@ -1962,6 +1962,10 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("listCont
 	cout << "walletsListController_addWallet" << endl;
 	using namespace App;
 	//
+	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+		string("api.mymonero.com:8443")
+	));
+	//
 	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
 	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
 	//
@@ -2002,7 +2006,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("listCont
 		}
 	);
 	//
-	std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // wait for async notifies
+	std::this_thread::sleep_for(std::chrono::milliseconds(6000)); // wait for login network request completion, async notifies……
 	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected sawListUpdated");
 	//
 	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);

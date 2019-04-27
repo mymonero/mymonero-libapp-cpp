@@ -454,6 +454,29 @@ namespace HostedMonero
 		optional<bool> generated_locally; // may be nil if the server doesn't support it yet (pre summer 18)
 		optional<uint64_t> start_height; // may be nil if the server doesn't support it yet (pre summer 18)
 	};
+	static inline ParsedResult_Login new_ParsedResult_Login(HTTPRequests::ResponseJSON res)
+	{
+		optional<bool> generated_locally = none;
+		{
+			Value::ConstMemberIterator itr = res.FindMember("generated_locally");
+			if (itr != res.MemberEnd()) {
+				generated_locally = itr->value.GetBool();
+			}
+		}
+		optional<uint64_t> start_height = none;
+		{
+			Value::ConstMemberIterator itr = res.FindMember("start_height");
+			if (itr != res.MemberEnd()) {
+				start_height = itr->value.GetUint64();
+			}
+		}
+		return ParsedResult_Login{
+			res["new_address"].GetBool(), // isANewAddressToServer
+			generated_locally,
+			start_height
+		};
+	}
+	//
 	struct ParsedResult_AddressInfo
 	{
 		uint64_t totalReceived;

@@ -47,7 +47,7 @@ namespace HostedMonero
 	using namespace std;
 	//
 	// Principal Types
-	class APIClient
+	class APIClient: public std::enable_shared_from_this<APIClient>
 	{
 	public:
 		APIClient() {}
@@ -66,14 +66,14 @@ namespace HostedMonero
 		boost::signals2::signal<void()> initializedWithNewServerURL_signal;
 		//
 		// Endpoints
-		std::unique_ptr<HTTPRequests::Handle> logIn(
+		std::shared_ptr<HTTPRequests::Handle> logIn(
 			const string &address,
-			const string &view_pub_key,
+			const string &sec_view_key,
 			bool generated_locally,
 			std::function<void(
 				optional<string> err_str,
 				optional<HostedMonero::ParsedResult_Login> result
-			)> fn
+			)>&& fn
 		);
 	private:
 		//
@@ -84,6 +84,9 @@ namespace HostedMonero
 		//
 		// Connections
 		boost::signals2::connection connection__SettingsController__specificAPIAddressURLAuthority_changed;
+		//
+		// Accessors
+		string final_apiAddress_authority();
 		//
 		// Delegation
 		void SettingsController__specificAPIAddressURLAuthority_changed();

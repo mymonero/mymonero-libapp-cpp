@@ -461,7 +461,7 @@ namespace Wallets
 		//
 		// Properties - Objects
 		// TODO: key image cache
-		std::unique_ptr<HTTPRequests::Handle> _logIn_requestHandle;
+		std::shared_ptr<HTTPRequests::Handle> _logIn_requestHandle;
 		std::unique_ptr<Wallets::HostPollingController> _hostPollingController; // strong; can be nullptr
 		std::unique_ptr<Wallets::TxCleanupController> _txCleanupController; // strong; can be nullptr
 		std::unique_ptr<HTTPRequests::Handle> _current_sendFunds_request;

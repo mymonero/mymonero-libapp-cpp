@@ -50,6 +50,7 @@ static string _dictKey_displayCurrencySymbol = "displayCurrencySymbol";
 static string _dictKey_authentication__requireWhenSending = "authentication__requireWhenSending";
 static string _dictKey_authentication__requireToShowWalletSecrets = "authentication__requireToShowWalletSecrets";
 static string _dictKey_authentication__tryBiometric = "authentication__tryBiometric";
+static string _dictKey_invalidKey = "----";
 const std::string &_dictKey(Settings_DictKey fromKey)
 {
 	switch (fromKey) {
@@ -69,7 +70,7 @@ const std::string &_dictKey(Settings_DictKey fromKey)
 			return _dictKey_authentication__tryBiometric;
 		case __max: case __min:
 			BOOST_THROW_EXCEPTION(logic_error("Never expected _dictKey() to be called on __min, __max"));
-			return "";
+			return _dictKey_invalidKey;
 	}
 }
 //

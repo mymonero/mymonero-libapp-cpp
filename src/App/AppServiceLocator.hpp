@@ -160,8 +160,7 @@ namespace App
 			// Lifecycle - Init
 			ServiceLocator &build(
 				std::shared_ptr<string> documentsPath,
-				network_type nettype,
-				std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
+				network_type nettype
 			); // simply returns the singleton for convenience
    };
 }

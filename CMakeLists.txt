@@ -105,7 +105,7 @@ set(
     src/SendFunds/Controllers/SendFundsFormSubmissionController.hpp
     src/SendFunds/Controllers/SendFundsFormSubmissionController.cpp
     src/APIClient/HTTPRequests_Interface.hpp
-    src/APIClient/HTTPRequests.dummy.hpp
+    src/APIClient/HTTPRequests.beast.hpp
     src/APIClient/HostedMonero.cpp
     src/APIClient/HostedMonero.hpp
 	src/APIClient/parsing.hpp
@@ -116,6 +116,8 @@ set(
     src/RNCryptor-C/mutils.h
     src/RNCryptor-C/mutils.c
     src/base64/base64.hpp
+    #
+    src/contrib/rapidjson_defines.hpp
 	#
 	${MYMONERO_CORE_CPP_SRC}/monero_address_utils.hpp
 	${MYMONERO_CORE_CPP_SRC}/monero_address_utils.cpp

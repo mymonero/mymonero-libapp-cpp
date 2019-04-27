@@ -38,6 +38,7 @@ using namespace App;
 using namespace boost::asio;
 #include "../Dispatch/Dispatch.asio.hpp"
 using namespace Dispatch;
+#include "../src/APIClient/HTTPRequests.beast.hpp"
 //
 //
 class App::ServiceLocator_SpecificImpl
@@ -57,11 +58,11 @@ ServiceLocator::~ServiceLocator()
 //
 ServiceLocator &ServiceLocator::build(
 	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory
+	network_type nettype
 ) {
 	_pImpl = new ServiceLocator_SpecificImpl();
 	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
+	auto httpRequestFactory = std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx);
 	//
 	return _shared_build(
 		documentsPath,

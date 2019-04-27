@@ -34,13 +34,33 @@
 
 #include <string>
 #include <functional>
+#include <boost/optional/optional.hpp>
+#include "rapidjson_defines.hpp" // must be included before rapidjson include
+#include "rapidjson/document.h"
+using namespace rapidjson;
 
 namespace HTTPRequests
 {
 	using namespace std;
+	using namespace boost;
 	//
 	// Accessory Types
-	typedef int ResponseJSON; // TODO: use rapidjson document type
+	typedef Document ReqParams;
+	typedef Document ResponseJSON;
+	enum Scheme
+	{
+		HTTP,
+		HTTPS
+	};
+	static inline string port_from_scheme(Scheme scheme)
+	{
+		switch (scheme) {
+			case HTTPS:
+				return "8080";
+			case HTTP:
+				return "80";
+		}
+	}
 	//
 	// Principal Types
 	struct Handle
@@ -54,7 +74,13 @@ namespace HTTPRequests
 	{
 		virtual ~RequestFactory() {}
 		//
-		virtual std::unique_ptr<Handle> new_request(string endpoint_url, std::function<void()>&& fn) = 0;
+		virtual std::shared_ptr<Handle> new_request(
+			Scheme scheme,
+			string authority, // host+':'+port
+			string endpoint_path,
+			ReqParams params,
+			std::function<void(optional<string> err_str, std::shared_ptr<ResponseJSON> res)>&& fn
+		) = 0;
 	private:
 	};
 }

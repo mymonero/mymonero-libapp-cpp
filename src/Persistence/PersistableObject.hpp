@@ -103,6 +103,7 @@ namespace Persistable
 			// Properties - Dependencies
 			std::shared_ptr<const string> documentsPath;
 			std::shared_ptr<const Passwords::PasswordProvider> passwordProvider;
+			std::string instance_uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // only the same per-instance - not persisted to disk - used by the walletsListController
 			//
 			// Properties - State
 			boost::optional<std::string> _id;

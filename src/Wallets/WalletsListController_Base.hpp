@@ -123,11 +123,11 @@ namespace Wallets
 		
 		//
 		// Imperatives
-		void CreateNewWallet_NoBootNoListAdd( // call this first, then call OnceBooted_ObtainPW_AddNewlyGeneratedWallet
+		void CreateNewWallet_NoBootNoListAdd( // call this first, then call OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained
 			string localeCode,
 			std::function<void(optional<string> err, std::shared_ptr<Wallets::Object> walletInstance)> fn
 		);
-		void OnceBooted_ObtainPW_AddNewlyGeneratedWallet(
+		void OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained(
 			std::shared_ptr<Wallets::Object> walletInstance,
 			string walletLabel,
 			Wallets::SwatchColor swatchColor,
@@ -182,6 +182,7 @@ namespace Wallets
 		// Properties
 		const cryptonote::network_type _nettype;
 		boost::signals2::connection connection__HostedMonero_initializedWithNewServerURL;
+		std::unordered_map<string, std::shared_ptr<Wallets::Object>> __retainedWalletsWaitingToLogIn_byInstanceId; // if the wallet goes out of scope, the network request coming back won't have a _fn to call
 		//
 		// Lifecycle
 		void setup_startObserving();

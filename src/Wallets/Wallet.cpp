@@ -322,7 +322,7 @@ void Object::_boot_byLoggingIn(
 	std::weak_ptr<Object> weak_this = shared_this;
 	_logIn_requestHandle = _apiClient->logIn(
 		_public_address,
-		_view_pub_key,
+		_view_sec_key,
 		*_local_wasAGeneratedWallet,
 		[
 			weak_this,
@@ -949,8 +949,7 @@ void Object::_HostPollingController_didFetch_addressTransactions(
 	}
 	//
 	// Always make sure to construct new array so we have the old set
-	std::unordered_map<string, HostedMonero::HistoricalTxRecord> txs_by_hash; // ok to use references here since scope of txs_by_hash is the same as existing_transactions
-	
+	std::unordered_map<string, HostedMonero::HistoricalTxRecord> txs_by_hash;
 	//
 	//
 	// TODO: optimize this by using raw ptrs or smart ptrs
