@@ -37,12 +37,12 @@
 #include <boost/optional/optional.hpp>
 #include "rapidjson_defines.hpp" // must be included before rapidjson include
 #include "rapidjson/document.h"
-using namespace rapidjson;
 
 namespace HTTPRequests
 {
 	using namespace std;
 	using namespace boost;
+	using namespace rapidjson;
 	//
 	// Accessory Types
 	typedef Document ReqParams;

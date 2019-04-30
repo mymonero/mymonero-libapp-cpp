@@ -47,6 +47,7 @@
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/optional/optional_io.hpp>
 #include "rapidjson/writer.h"
+#include "./root_certificates.hpp"
 //
 namespace HTTPRequests
 {
@@ -336,7 +337,7 @@ namespace HTTPRequests
 				: authority_components[1].c_str();
 			//
 			ssl::context ssl_ctx{ssl::context::tlsv12_client};
-//			load_root_certificates(ctx); // possible FIXME
+			load_root_certificates(ssl_ctx);
 			ssl_ctx.set_verify_mode(ssl::verify_peer);
 			//
 			auto verb = boost::beast::http::verb::post;

@@ -94,6 +94,7 @@ set(
 	src/Wallets/Wallet_HostPollingController.cpp
 	src/Wallets/Wallet_TxCleanupController.hpp
 	src/Wallets/Wallet_TxCleanupController.cpp
+    src/APIClient/root_certificates.hpp
     src/Currencies/Currencies.hpp
     src/Currencies/Currencies.cpp
     src/Persistence/document_persister.hpp
