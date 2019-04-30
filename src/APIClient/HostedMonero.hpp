@@ -73,7 +73,7 @@ namespace HostedMonero
 			std::function<void(
 				optional<string> err_str,
 				optional<HostedMonero::ParsedResult_Login> result
-			)>&& fn
+			)> fn
 		);
 	private:
 		//

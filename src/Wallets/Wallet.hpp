@@ -368,19 +368,19 @@ namespace Wallets
 		//
 		// Imperatives
 		void Boot_havingLoadedDecryptedExistingInitDoc(
-			std::function<void(optional<string> err_str)>&& fn
+			std::function<void(optional<string> err_str)> fn
 		);
 		void Boot_byLoggingIn_givenNewlyCreatedWallet(
 			const string &walletLabel,
 			Wallets::SwatchColor swatchColor,
-			std::function<void(optional<string> err_str)>&& fn
+			std::function<void(optional<string> err_str)> fn
 		);
 		void Boot_byLoggingIn_existingWallet_withMnemonic(
 			const string &walletLabel,
 			SwatchColor swatchColor,
 			const string &mnemonic_string,
 			bool persistEvenIfLoginFailed_forServerChange,
-			std::function<void(optional<string> err_str)>&& fn
+			std::function<void(optional<string> err_str)> fn
 		);
 		void Boot_byLoggingIn_existingWallet_withAddressAndKeys(
 			const string &walletLabel,
@@ -389,7 +389,7 @@ namespace Wallets
 			const string &sec_viewKey_string,
 			const string &sec_spendKey_string,
 			bool persistEvenIfLoginFailed_forServerChange,
-			std::function<void(optional<string> err_str)>&& fn
+			std::function<void(optional<string> err_str)> fn
 		);
 		void logOutThenSaveAndLogIn();
 		//
@@ -489,7 +489,7 @@ namespace Wallets
 			optional<string> seed_orNone,
 			bool wasAGeneratedWallet,
 			bool persistEvenIfLoginFailed_forServerChange,
-			std::function<void(optional<string> err_str)>&& fn
+			std::function<void(optional<string> err_str)> fn
 		);
 		void _manuallyInsertTransactionRecord(
 			const HostedMonero::HistoricalTxRecord &transaction

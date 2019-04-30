@@ -158,7 +158,7 @@ std::shared_ptr<HTTPRequests::Handle> APIClient::logIn(
 	std::function<void(
 		optional<string> err_str,
 		optional<HostedMonero::ParsedResult_Login> result
-	)>&& fn
+	)> fn
 ) {
 	auto params = new_parameters_forWalletRequest(address, sec_view_key);
 	{

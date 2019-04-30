@@ -69,7 +69,7 @@ namespace HTTPRequests
 			string host,
 			string port,
 			string endpoint_path,
-			std::function<void(optional<string> err_str, std::shared_ptr<ResponseJSON> res)>&& fn
+			std::function<void(optional<string> err_str, std::shared_ptr<ResponseJSON> res)> fn
 		):	_strand(io_ctx),
 			_stream(io_ctx, ssl_ctx),
 			_resolver(io_ctx),
@@ -154,7 +154,7 @@ namespace HTTPRequests
 		string _host;
 		string _port;
 		string _endpoint_path;
-		std::function<void(optional<string> err_str, std::shared_ptr<rapidjson::Document> res)>&& _fn;
+		std::function<void(optional<string> err_str, std::shared_ptr<rapidjson::Document> res)> _fn;
 		//
 		// Runtime
 		bool _isConnectionClosed = false;
@@ -308,7 +308,7 @@ namespace HTTPRequests
 			string authority, // host+':'+port
 			string endpoint_path,
 			ReqParams params,
-			std::function<void(optional<string> err_str, std::shared_ptr<ResponseJSON> res)>&& fn
+			std::function<void(optional<string> err_str, std::shared_ptr<ResponseJSON> res)> fn
 		) {
 			vector<string> authority_components;
 			string str = authority; // an undesired copy
