@@ -140,6 +140,10 @@ void Controller::_setup_loadState()
 void Controller::teardown()
 {
 	stopObserving();
+	//
+	documentsPath = nullptr;
+	dispatch_ptr = nullptr;
+	passwordController = nullptr;
 }
 void Controller::stopObserving()
 {

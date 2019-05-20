@@ -58,26 +58,7 @@ using namespace cryptonote;
 //
 namespace utf = boost::unit_test;
 //
-// Shared code
-inline std::string _new_documentsPathString()
-{
-	std::string thisfile_path = std::string(__FILE__);
-	std::string tests_dir = thisfile_path.substr(0, thisfile_path.find_last_of("\\/"));
-	std::string srcroot_dir = tests_dir.substr(0, tests_dir.find_last_of("\\/"));
-	boost::filesystem::path dir(srcroot_dir);
-	boost::filesystem::path file("build");
-    boost::filesystem::path full_path = dir / file;
-	//
-	boost::filesystem::create_directory(full_path); // in case it doesn't exist
-	//
-	return full_path.string();
-}
-inline std::shared_ptr<string> new_documentsPath()
-{
-	return std::make_shared<string>(
-		_new_documentsPathString()
-	);
-}
+#include "tests_common.hpp"
 //
 // Test suites - document_persister
 #include "../src/Persistence/document_persister.hpp"
@@ -431,12 +412,42 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 //
 // Test Suites - ServiceLocator
 #include "../src/App/AppServiceLocator.hpp"
+string changed_mock_password_string = string("a changed mock password");
+class Mocked_EnterCorrectChanged_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
+{
+public:
+	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
+	//
+	std::string identifier() const
+	{
+		return uuid_string;
+	}
+	void getUserToEnterExistingPassword(
+		bool isForChangePassword,
+		bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
+		boost::optional<std::string> customNavigationBarTitle
+	) {
+		BOOST_REQUIRE(isForChangePassword == false);
+		BOOST_REQUIRE(isForAuthorizingAppActionOnly == false);
+		BOOST_REQUIRE(customNavigationBarTitle == none);
+		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
+		//
+		App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, changed_mock_password_string);
+	}
+	void getUserToEnterNewPasswordAndType(
+		bool isForChangePassword
+	) {
+		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
+	}
+};
+auto initial_pwEntryDelegate_spt = nullptr; // since we expect there never to be any records on a fresh run, we'll set this to nullptr 
 App::ServiceLocator &builtSingleton(cryptonote::network_type nettype)
 {
 	using namespace App;
 	return ServiceLocator::instance().build(
 		new_documentsPath(),
-		nettype
+		nettype,
+		initial_pwEntryDelegate_spt
 	);
 }
 BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submission_manualAddrPID"))
@@ -1275,7 +1286,6 @@ BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_incorrect, *utf::depend
 	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 //
-string changed_mock_password_string = string("a changed mock password");
 class Mocked_ChangePassword_Correct_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
 public:
@@ -1374,33 +1384,6 @@ BOOST_AUTO_TEST_CASE(passwords_controller_changePassword_correct, *utf::depends_
 	ServiceLocator::instance().passwordController->removeRegistrantForChangePassword(changePWRegistrant);
 }
 //
-class Mocked_EnterCorrectChanged_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
-{
-public:
-	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
-	//
-	std::string identifier() const
-	{
-		return uuid_string;
-	}
-	void getUserToEnterExistingPassword(
-		bool isForChangePassword,
-		bool isForAuthorizingAppActionOnly, // normally no - this is for things like SendFunds
-		boost::optional<std::string> customNavigationBarTitle
-	) {
-		BOOST_REQUIRE(isForChangePassword == false);
-		BOOST_REQUIRE(isForAuthorizingAppActionOnly == false);
-		BOOST_REQUIRE(customNavigationBarTitle == none);
-		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
-		//
-		App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, changed_mock_password_string);
-	}
-	void getUserToEnterNewPasswordAndType(
-		bool isForChangePassword
-	) {
-		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
-	}
-};
 BOOST_AUTO_TEST_CASE(passwords_controller_enterCorrectChanged, *utf::depends_on("passwords_controller_changePassword_correct"))
 {
 	cout << "passwords_controller_enterCorrectChanged" << endl;
@@ -1957,62 +1940,7 @@ BOOST_AUTO_TEST_CASE(listController_deleteExistingRecord, *utf::depends_on("list
 	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
 //
-BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("listController_deleteExistingRecord"))
-{
-	cout << "walletsListController_addWallet" << endl;
-	using namespace App;
-	//
-	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
-		string("api.mymonero.com:8443")
-	));
-	//
-	Mocked_EnterCorrectChanged_PasswordEntryDelegate entryDelegate{};
-	ServiceLocator::instance().passwordController->setPasswordEntryDelegate(entryDelegate);
-	//
-	auto wlc_spt = ServiceLocator::instance().walletsListController;
-	bool sawListUpdated = false;
-	bool hasAdded = false;
-	size_t nthCallOfListUpdated = 0;
-	auto connection = wlc_spt->list__updated_signal.connect(
-		[&sawListUpdated, &nthCallOfListUpdated, &hasAdded, wlc_spt]()
-		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
-			//
-			sawListUpdated = true;
-			nthCallOfListUpdated += 1;
-			size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
-			BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of walletsListController_addWallet but it was " << wlc_spt->records().size());
-		}
-	);
-	//
-	BOOST_REQUIRE(wlc_spt->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
-	BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() == 0, "Expected number of records to be 0");
-	//
-	wlc_spt->OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
-		string("Dark grey"), Wallets::SwatchColor::darkGrey,
-		string("fox sel hum nex juv dod pep emb bis ela jaz vib bis"),
-		[&hasAdded] (
-			optional<string> err_str,
-			optional<std::shared_ptr<Wallets::Object>> wallet_spt,
-			optional<bool> wasWalletAlreadyInserted
-		) {
-			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
-			if (err_str == none) {
-				hasAdded = true;
-			}
-			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
-			BOOST_REQUIRE(wasWalletAlreadyInserted != none);
-			BOOST_REQUIRE(*wasWalletAlreadyInserted == false);
-		}
-	);
-	//
-	std::this_thread::sleep_for(std::chrono::milliseconds(6000)); // wait for login network request completion, async notifies……
-	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected sawListUpdated");
-	//
-	ServiceLocator::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
-}
-//
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_addWallet"))
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("listController_deleteExistingRecord"))
 {
 	cout << "teardownRuntime" << endl;
 	using namespace App;

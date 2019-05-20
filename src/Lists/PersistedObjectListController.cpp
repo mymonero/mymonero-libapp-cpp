@@ -221,6 +221,12 @@ errOr_documentIds Controller::_new_idsOfPersistedRecords()
 void Controller::tearDown()
 { // overridable but call on super obvs
 	stopObserving();
+	//
+	documentsPath = nullptr;
+	dispatch_ptr = nullptr;
+	passwordController = nullptr;
+	//
+	_records.clear();
 }
 void Controller::stopObserving()
 { // overridable but call on super obvs

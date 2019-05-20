@@ -34,12 +34,19 @@
 
 #include <string>
 #include <boost/optional/optional.hpp>
+#include <boost/foreach.hpp>
 #include "./HTTPRequests_Interface.hpp"
 #include "../Currencies/Currencies.hpp"
 
 namespace HostedMonero
 {
 	using namespace std;
+	using namespace rapidjson;
+	//
+	// Constants - TODO? maybe move this out to proper domain
+	static uint64_t txMinConfirms = 10; // Minimum number of confirmations for a transaction to show as confirmed
+	static uint64_t maxBlockNumber = 500000000; // Maximum block number, used for tx unlock time
+	//
 	//
 	struct SpentOutputDescription
 	{
@@ -72,10 +79,33 @@ namespace HostedMonero
 		{
 			return (*this == r) == false;
 		}
+		static SpentOutputDescription new_fromJSONRepresentation(const rapidjson::Value &dict)
+		{
+			assert(dict.IsObject());
+			uint64_t amount = stoull(dict["amount"].GetString()); // stored as a string
+			return SpentOutputDescription{
+				amount,
+				dict["tx_pub_key"].GetString(),
+				dict["key_image"].GetString(),
+				dict["mixin"].GetUint(),
+				dict["out_index"].GetUint64()
+			};
+		}
+		static std::vector<SpentOutputDescription> newArray_fromJSONRepresentations(
+			const rapidjson::Value &arrayValue
+		) {
+			std::vector<SpentOutputDescription> descs;
+			for (auto &dict: arrayValue.GetArray())
+			{
+				assert(dict.IsObject());
+				descs.push_back(SpentOutputDescription::new_fromJSONRepresentation(dict));
+			}
+			return descs;
+		}
 	};
-//	//
-//	// For API response parsing
-//	static inline std::vector<spent_output_description> newArrayFrom_spendOutputDescriptions(
+	//
+	// For API response parsing
+//	static inline std::vector<spent_output_description> newArrayFrom_spentOutputDescriptions(
 //		std::vector<ResponseJSON> api_json_dicts
 //	) {
 //		return dicts.map{ MoneroSpentOutputDescription.new(withAPIJSONDict: $0) }
@@ -91,38 +121,52 @@ namespace HostedMonero
 //		)
 //		return instance
 //	}
-//	//
-//	// In-Swift serialization
-//	static func newSerializedDictRepresentation(withArray array: [MoneroSpentOutputDescription]) -> [[String: Any]]
-//	{
-//		return array.map{ $0.jsonRepresentation }
-//	}
-//	var jsonRepresentation: [String: Any]
-//	{
-//		return [
-//			"amount": String(amount, radix: 10),
-//			"tx_pub_key": tx_pub_key,
-//			"key_image": key_image,
-//			"mixin": mixin,
-//			"out_index": out_index
-//		]
-//	}
-//	static func new(fromJSONRepresentation jsonRepresentation: [String: Any]) -> MoneroSpentOutputDescription
-//	{
-//		return self.init(
-//			amount: MoneroAmount(jsonRepresentation["amount"] as! String)!,
-//			tx_pub_key: jsonRepresentation["tx_pub_key"] as! MoneroTransactionPubKey,
-//			key_image: jsonRepresentation["key_image"] as! MoneroKeyImage,
-//			mixin: jsonRepresentation["mixin"] as! UInt,
-//			out_index: jsonRepresentation["out_index"] as! UInt64
-//		)
-//	}
-//	static func newArray(
-//		fromJSONRepresentations array: [[String: Any]]
-//	) -> [MoneroSpentOutputDescription] {
-//		return array.map{ MoneroSpentOutputDescription.new(fromJSONRepresentation: $0) }
-//	}
-
+	//
+	// Persistence serialization
+	static rapidjson::Value jsonRepresentation(const SpentOutputDescription &desc, Document::AllocatorType &allocator)
+	{
+		rapidjson::Value dict;
+		dict.SetObject();
+		{
+			ostringstream oss;
+			oss << desc.amount; // assume storing as a 'unsigned long long' in a string
+			Value v(oss.str(), allocator);
+			dict.AddMember("amount", v.Move(), allocator);
+		}
+		{
+			Value v(desc.tx_pub_key, allocator);
+			dict.AddMember("tx_pub_key", v.Move(), allocator);
+		}
+		{
+			Value v(desc.key_image, allocator);
+			dict.AddMember("key_image", v.Move(), allocator);
+		}
+		{
+			Value v;
+			v.SetUint(desc.mixin);
+			dict.AddMember("mixin", v.Move(), allocator);
+		}
+		{
+			Value v;
+			v.SetUint64(desc.out_index);
+			dict.AddMember("out_index", v.Move(), allocator);
+		}
+		//
+		return dict;
+	}
+	static rapidjson::Value new_arrayOfSerializedDicts(
+		const std::vector<SpentOutputDescription> &array,
+		Document::AllocatorType &allocator
+	) {
+		Value serialized_dicts(kArrayType);
+		BOOST_FOREACH(const SpentOutputDescription &desc, array)
+		{
+			serialized_dicts.PushBack(jsonRepresentation(desc, allocator).Move(), allocator);
+		}
+		return serialized_dicts;
+	}
+	//
+	// HistoricalTxRecord
 	class HistoricalTxRecord
 	{
 	public:
@@ -142,68 +186,16 @@ namespace HostedMonero
 		double unlock_time;
 		optional<uint64_t> height; // may not have made it into a block yet!
 		//
-		// these properties are made mutable so they can be updated conveniently during a merge/sync from remote
+		// Transient values
+		bool cached__isConfirmed;
+		bool cached__isUnlocked;
+//		optional<string> cached__lockedReason; // only calculated if isUnlocked=true
+		//
+		bool isJustSentTransientTransactionRecord; // allowed to be mutable for modification during tx cleanup
 		optional<string> tx_key;
 		optional<uint64_t> tx_fee;
 		optional<string> to_address;
 		optional<bool> isFailed; // set to mutable to allow changing in-place
-		//
-		// Transient values
-		bool cached__isConfirmed;
-		bool cached__isUnlocked;
-		optional<string> cached__lockedReason; // only calculated if isUnlocked=true
-		bool isJustSentTransientTransactionRecord; // allowed to be mutable for modification during tx cleanup
-		//
-		// Lifecycle - Init
-//		required init(
-//					  amount: MoneroAmount,
-//					  totalSent: MoneroAmount,
-//					  totalReceived: MoneroAmount,
-//					  approxFloatAmount: Double,
-//					  spent_outputs: [MoneroSpentOutputDescription]?,
-//					  timestamp: Date,
-//					  hash: MoneroTransactionHash,
-//					  paymentId: MoneroPaymentID?,
-//					  mixin: UInt?,
-//					  //
-//					  mempool: Bool,
-//					  unlock_time: Double,
-//					  height: UInt64?,
-//					  //
-//					  isFailed: Bool?,
-//					  cached__isConfirmed: Bool,
-//					  cached__isUnlocked: Bool,
-//					  cached__lockedReason: String?,
-//					  isJustSentTransientTransactionRecord: Bool,
-//					  //
-//					  tx_key: MoneroTransactionSecKey?,
-//					  tx_fee: MoneroAmount?,
-//					  to_address: MoneroAddress?
-//					  ) {
-//			self.amount = amount
-//			self.totalSent = totalSent
-//			self.totalReceived = totalReceived
-//			self.approxFloatAmount = approxFloatAmount
-//			self.spent_outputs = spent_outputs
-//			self.timestamp = timestamp
-//			self.hash = hash
-//			self.paymentId = paymentId
-//			self.mixin = mixin
-//			//
-//			self.mempool = mempool
-//			self.unlock_time = unlock_time
-//			self.height = height
-//			//
-//			self.isFailed = isFailed
-//			self.cached__isConfirmed = cached__isConfirmed
-//			self.cached__isUnlocked = cached__isUnlocked
-//			self.cached__lockedReason = cached__lockedReason
-//			self.isJustSentTransientTransactionRecord = isJustSentTransientTransactionRecord
-//			//
-//			self.tx_key = tx_key
-//			self.tx_fee = tx_fee
-//			self.to_address = to_address
-//		}
 		//
 		// Lifecycle - Deinit
 //		deinit
@@ -212,239 +204,335 @@ namespace HostedMonero
 //			//
 //			NotificationCenter.default.post(name: NotificationNames.willBeDeinitialized.notificationName, object: self)
 //		}
-//		//
-//		// Static - Accessors - Transforms
-//		static func isConfirmed(
-//								givenTransactionHeight height: UInt64?,
-//								andWalletBlockchainHeight blockchain_height: UInt64
-//								) -> Bool {
-//			if height == nil {
-//				return false // hasn't made it into a block yet
-//			}
-//			if height! > blockchain_height { // we'd get a negative number
-//				// this is probably a tx which is still pending
-//				return false
-//			}
-//			let differenceInHeight = blockchain_height - height!
-//			//
-//			return differenceInHeight > MoneroConstants.txMinConfirms
-//		}
-//		static func isUnlocked(
-//							   givenTransactionUnlockTime unlock_time: Double,
-//							   andWalletBlockchainHeight blockchain_height: UInt64
-//							   ) -> Bool {
-//			if unlock_time < Double(MoneroConstants.maxBlockNumber) { // then unlock time is block height
-//				return Double(blockchain_height) >= unlock_time
-//			} else { // then unlock time is s timestamp as TimeInterval
-//				let currentTime_s = round(Date().timeIntervalSince1970) // TODO: round was ported from cryptonote_utils.js; Do we need it?
-//				return currentTime_s >= unlock_time
-//			}
-//				}
-//				static func lockedReason(
-//										 givenTransactionUnlockTime unlock_time: Double,
-//										 andWalletBlockchainHeight blockchain_height: UInt64
-//										 ) -> String {
-//					func colloquiallyFormattedDate(_ date: Date) -> String
-//					{
-//						let date_DateInRegion = DateInRegion(absoluteDate: date)
-//						let date_fromNow_resultTuple = try! date_DateInRegion.colloquialSinceNow(style: .full) // is try! ok? (do we expect failures?)
-//						let date_fromNow_String = date_fromNow_resultTuple.colloquial
-//						//
-//						return date_fromNow_String
-//					}
-//					if (unlock_time < Double(MoneroConstants.maxBlockNumber)) { // then unlock time is block height
-//						let numBlocks = unlock_time - Double(blockchain_height)
-//						if (numBlocks <= 0) {
-//							return NSLocalizedString("Transaction is unlocked", comment: "")
-//						}
-//						let timeUntilUnlock_s = numBlocks * Double(MoneroConstants.avgBlockTime)
-//						let unlockPrediction_Date = Date().addingTimeInterval(timeUntilUnlock_s)
-//						let unlockPrediction_fromNow_String = colloquiallyFormattedDate(unlockPrediction_Date)
-//						//
-//						return String(format:
-//									  NSLocalizedString("Will be unlocked in %d blocks, about %@", comment: "Will be unlocked in {number} blocks, about {duration of time plus 'from now'}"),
-//									  numBlocks,
-//									  unlockPrediction_fromNow_String
-//									  )
-//					}
-//					let unlock_time_TimeInterval = TimeInterval(unlock_time)
-//					// then unlock time is s timestamp as TimeInterval
-//					let currentTime_s = round(Date().timeIntervalSince1970) // TODO: round was ported from cryptonote_utils.js; Do we need it?
-//					let time_difference = unlock_time_TimeInterval - currentTime_s
-//					if(time_difference <= 0) {
-//						return NSLocalizedString("Transaction is unlocked", comment: "")
-//					}
-//					let unlockTime_Date = Date(timeIntervalSince1970: unlock_time_TimeInterval)
-//					let unlockTime_fromNow_String = colloquiallyFormattedDate(unlockTime_Date)
-//					//
-//					return String(format: NSLocalizedString("Will be unlocked %@", comment: "Will be unlocked {duration of time plus 'from now'}"), unlockTime_fromNow_String)
-//				}
+		//
+		// Static - Accessors - Transforms
+		static bool isConfirmed(
+			optional<uint64_t> height,
+			uint64_t blockchain_height
+		) {
+			if (height == none) {
+				return false; // hasn't made it into a block yet
+			}
+			if (*height > blockchain_height) { // we'd get a negative number
+				// this is probably a tx which is still pending
+				return false;
+			}
+			uint64_t differenceInHeight = blockchain_height - *height;
+			//
+			return differenceInHeight > txMinConfirms;
+		}
+		static bool isUnlocked(
+			double unlock_time,
+			uint64_t blockchain_height
+		) {
+			if (unlock_time < (double)maxBlockNumber) { // then unlock time is block height
+				return (double)blockchain_height >= unlock_time;
+			} else { // then unlock time is s timestamp as TimeInterval
+				double s_since_epoch = (double)std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::steady_clock::now()).time_since_epoch().count(); // cryptonote_utils.js wrapped this in a round()… Do we need it?
 				//
-				bool operator==(const HistoricalTxRecord &r) const
-				{
-					if (amount != r.amount) {
-						return false;
-					}
-					if (totalSent != r.totalSent) {
-						return false;
-					}
-					if (totalReceived != r.totalReceived) {
-						return false;
-					}
-					if (((spent_outputs == none || spent_outputs->size() == 0) && (r.spent_outputs != none && r.spent_outputs->size() != 0))
-						|| (spent_outputs != none && spent_outputs->size() != 0 && (r.spent_outputs == none || r.spent_outputs->size() == 0))
-						|| *spent_outputs != *r.spent_outputs) {
-						return false;
-					}
-					if (timestamp != r.timestamp) {
-						return false;
-					}
-					if ((paymentId == none && r.paymentId != none)
-						|| (paymentId != none && r.paymentId == none) ||
-						*paymentId != *r.paymentId) {
-						return false;
-					}
-					if (hash != r.hash) {
-						return false;
-					}
-					if ((mixin == none && r.mixin != none)
-						|| (mixin != none && r.mixin == none) ||
-						*mixin != *r.mixin) {
-						return false;
-					}
-					if (mempool != r.mempool) {
-						return false;
-					}
-					if (unlock_time != r.unlock_time) {
-						return false;
-					}
-					if ((height == none && r.height != none)
-						|| (height != none && r.height == none) ||
-						*height != *r.height) {
-						return false;
-					}
-					if (isFailed != r.isFailed) {
-						return false;
-					}
-					return true;
-				}
-				bool operator!=(const HistoricalTxRecord &r) const
-				{
-					return (*this == r) == false;
-				}
-//				//
-//				static func newSerializedDictRepresentation(
-//															withArray array: [MoneroHistoricalTransactionRecord]
-//															) -> [[String: Any]] {
-//					return array.map{ $0.jsonRepresentation }
-//				}
-//				var jsonRepresentation: [String: Any]
+				return s_since_epoch >= unlock_time;
+			}
+		}
+		// NOTE: Probably keep this at application-level so that it can be localized
+//		static string lockedReason(
+//			 double unlock_time,
+//			 uint64_t blockchain_height
+//		 ) {
+//			func colloquiallyFormattedDate(_ date: Date) -> String
 //			{
-//				var dict: [String: Any] =
-//				[
-//				 "amount": String(amount, radix: 10),
-//				 "total_sent": String(totalSent, radix: 10),
-//				 "total_received": String(totalReceived, radix: 10),
-//				 //
-//				 "approx_float_amount": approxFloatAmount,
-//				 "spent_outputs": MoneroSpentOutputDescription.newSerializedDictRepresentation(
-//																							   withArray: spent_outputs ?? []
-//																							   ),
-//				 "timestamp": timestamp.timeIntervalSince1970,
-//				 "hash": hash,
-//				 "mempool": mempool,
-//				 "unlock_time": unlock_time
-//				 ]
-//				if mixin != nil {
-//					dict["mixin"] = mixin
-//				}
-//				if height != nil {
-//					dict["height"] = height
-//				}
-//				if let value = paymentId {
-//					dict["paymentId"] = value
-//				}
-//				if let value = tx_key {
-//					dict["tx_key"] = value
-//				}
-//				if let value = tx_fee {
-//					dict["tx_fee"] = String(value, radix: 10)
-//				}
-//				if let value = to_address {
-//					dict["to_address"] = value
-//				}
-//				if let value = isFailed {
-//					dict["isFailed"] = value
-//				}
+//				let date_DateInRegion = DateInRegion(absoluteDate: date)
+//				let date_fromNow_resultTuple = try! date_DateInRegion.colloquialSinceNow(style: .full) // is try! ok? (do we expect failures?)
+//				let date_fromNow_String = date_fromNow_resultTuple.colloquial
 //				//
-//				return dict
+//				return date_fromNow_String
 //			}
-//				static func new(
-//								fromJSONRepresentation jsonRepresentation: [String: Any],
-//								wallet__blockchainHeight: UInt64
-//								) -> MoneroHistoricalTransactionRecord {
-//					let height = jsonRepresentation["height"] as? UInt64
-//					let unlockTime = jsonRepresentation["unlock_time"] as! Double
-//					//
-//					let isFailed = jsonRepresentation["isFailed"] as? Bool
-//					let isConfirmed = MoneroHistoricalTransactionRecord.isConfirmed(
-//																					givenTransactionHeight: height,
-//																					andWalletBlockchainHeight: wallet__blockchainHeight
-//																					)
-//					let isUnlocked = MoneroHistoricalTransactionRecord.isUnlocked(
-//																				  givenTransactionUnlockTime: unlockTime,
-//																				  andWalletBlockchainHeight: wallet__blockchainHeight
-//																				  )
-//					let lockedReason: String? = !isUnlocked ? MoneroHistoricalTransactionRecord.lockedReason(
-//																											 givenTransactionUnlockTime: unlockTime,
-//																											 andWalletBlockchainHeight: wallet__blockchainHeight
-//																											 ) : nil
-//					var tx_fee: MoneroAmount? = nil
-//					if let tx_fee_string = jsonRepresentation["tx_fee"] as? String {
-//						tx_fee = MoneroAmount(tx_fee_string)!
-//					}
-//					//
-//					return self.init(
-//									 amount: MoneroAmount(jsonRepresentation["amount"] as! String)!,
-//									 totalSent: MoneroAmount(jsonRepresentation["total_sent"] as! String)!,
-//									 totalReceived: MoneroAmount(jsonRepresentation["total_received"] as! String)!,
-//									 //
-//									 approxFloatAmount: jsonRepresentation["approx_float_amount"] as! Double,
-//									 spent_outputs: MoneroSpentOutputDescription.newArray(
-//																						  fromJSONRepresentations: jsonRepresentation["spent_outputs"] as! [[String: Any]]
-//																						  ),
-//									 timestamp: Date(timeIntervalSince1970: jsonRepresentation["timestamp"] as! TimeInterval), // since we took .timeIntervalSince1970
-//									 hash: jsonRepresentation["hash"] as! MoneroTransactionHash,
-//									 paymentId: jsonRepresentation["paymentId"] as? MoneroPaymentID,
-//									 mixin: jsonRepresentation["mixin"] as! UInt,
-//									 mempool: jsonRepresentation["mempool"] as! Bool,
-//									 unlock_time: unlockTime,
-//									 height: height,
-//									 //
-//									 isFailed: isFailed,
-//									 cached__isConfirmed: isConfirmed,
-//									 cached__isUnlocked: isUnlocked,
-//									 cached__lockedReason: lockedReason,
-//									 //
-//									 isJustSentTransientTransactionRecord: false,
-//									 tx_key: jsonRepresentation["tx_key"] as? MoneroTransactionSecKey,
-//									 tx_fee: tx_fee,
-//									 to_address: jsonRepresentation["to_address"] as? String
-//									 )
+//			if (unlock_time < Double(MoneroConstants.maxBlockNumber)) { // then unlock time is block height
+//				let numBlocks = unlock_time - Double(blockchain_height)
+//				if (numBlocks <= 0) {
+//					return NSLocalizedString("Transaction is unlocked", comment: "")
 //				}
-//				static func newArray(
-//									 fromJSONRepresentations array: [[String: Any]],
-//									 wallet__blockchainHeight: UInt64
-//									 ) -> [MoneroHistoricalTransactionRecord] {
-//					return array.map
-//					{
-//						return MoneroHistoricalTransactionRecord.new(
-//																	 fromJSONRepresentation: $0,
-//																	 wallet__blockchainHeight: wallet__blockchainHeight
-//																	 )
-//					}
-//				}
+//				let timeUntilUnlock_s = numBlocks * Double(MoneroConstants.avgBlockTime)
+//				let unlockPrediction_Date = Date().addingTimeInterval(timeUntilUnlock_s)
+//				let unlockPrediction_fromNow_String = colloquiallyFormattedDate(unlockPrediction_Date)
+//				//
+//				return String(format:
+//							  NSLocalizedString("Will be unlocked in %d blocks, about %@", comment: "Will be unlocked in {number} blocks, about {duration of time plus 'from now'}"),
+//							  numBlocks,
+//							  unlockPrediction_fromNow_String
+//							  )
+//			}
+//			let unlock_time_TimeInterval = TimeInterval(unlock_time)
+//			// then unlock time is s timestamp as TimeInterval
+//			let currentTime_s = round(Date().timeIntervalSince1970) // TODO: round was ported from cryptonote_utils.js; Do we need it?
+//			let time_difference = unlock_time_TimeInterval - currentTime_s
+//			if(time_difference <= 0) {
+//				return NSLocalizedString("Transaction is unlocked", comment: "")
+//			}
+//			let unlockTime_Date = Date(timeIntervalSince1970: unlock_time_TimeInterval)
+//			let unlockTime_fromNow_String = colloquiallyFormattedDate(unlockTime_Date)
+//			//
+//			return String(format: NSLocalizedString("Will be unlocked %@", comment: "Will be unlocked {duration of time plus 'from now'}"), unlockTime_fromNow_String)
+//		}
+		//
+		bool operator==(const HistoricalTxRecord &r) const
+		{
+			if (amount != r.amount) {
+				return false;
+			}
+			if (totalSent != r.totalSent) {
+				return false;
+			}
+			if (totalReceived != r.totalReceived) {
+				return false;
+			}
+			if (((spent_outputs == none || spent_outputs->size() == 0) && (r.spent_outputs != none && r.spent_outputs->size() != 0))
+				|| (spent_outputs != none && spent_outputs->size() != 0 && (r.spent_outputs == none || r.spent_outputs->size() == 0))
+				|| *spent_outputs != *r.spent_outputs) {
+				return false;
+			}
+			if (timestamp != r.timestamp) {
+				return false;
+			}
+			if ((paymentId == none && r.paymentId != none)
+				|| (paymentId != none && r.paymentId == none) ||
+				*paymentId != *r.paymentId) {
+				return false;
+			}
+			if (hash != r.hash) {
+				return false;
+			}
+			if ((mixin == none && r.mixin != none)
+				|| (mixin != none && r.mixin == none) ||
+				*mixin != *r.mixin) {
+				return false;
+			}
+			if (mempool != r.mempool) {
+				return false;
+			}
+			if (unlock_time != r.unlock_time) {
+				return false;
+			}
+			if ((height == none && r.height != none)
+				|| (height != none && r.height == none) ||
+				*height != *r.height) {
+				return false;
+			}
+			if (isFailed != r.isFailed) {
+				return false;
+			}
+			return true;
+		}
+		bool operator!=(const HistoricalTxRecord &r) const
+		{
+			return (*this == r) == false;
+		}
+		static HistoricalTxRecord new_fromJSONRepresentation(
+			const rapidjson::Value &dict,
+			uint64_t wallet__blockchainHeight
+		) {
+			assert(dict.IsObject());
+			//
+			optional<uint64_t> height = none;
+			{
+				Value::ConstMemberIterator itr = dict.FindMember("height");
+				if (itr != dict.MemberEnd()) {
+					height = itr->value.GetUint64();
+				}
+			}
+			double unlock_time = dict["unlock_time"].GetDouble();
+			optional<bool> optl__isFailed = none;
+			{
+				Value::ConstMemberIterator itr = dict.FindMember("isFailed");
+				if (itr != dict.MemberEnd()) {
+					optl__isFailed = itr->value.GetBool();
+				}
+			}
+			//
+			bool isConfirmed = HistoricalTxRecord::isConfirmed(height, wallet__blockchainHeight);
+			bool isUnlocked = HistoricalTxRecord::isUnlocked(unlock_time, wallet__blockchainHeight);
+			//		let lockedReason: String? = !isUnlocked ? MoneroHistoricalTransactionRecord.lockedReason(
+			//																								 givenTransactionUnlockTime: unlockTime,
+			//																								 andWalletBlockchainHeight: wallet__blockchainHeight
+			//																								 ) : nil
+			optional<uint64_t> optl__tx_fee = none;
+			{
+				Value::ConstMemberIterator itr = dict.FindMember("tx_fee");
+				if (itr != dict.MemberEnd()) {
+					optl__tx_fee = stoull(itr->value.GetString());
+				}
+			}
+			optional<string> optl__paymentId = none;
+			{
+				Value::ConstMemberIterator itr = dict.FindMember("paymentId");
+				if (itr != dict.MemberEnd()) {
+					optl__paymentId = itr->value.GetString();
+				}
+			}
+			optional<string> optl__tx_key = none;
+			{
+				Value::ConstMemberIterator itr = dict.FindMember("tx_key");
+				if (itr != dict.MemberEnd()) {
+					optl__tx_key = itr->value.GetString();
+				}
+			}
+			optional<string> optl__to_address = none;
+			{
+				Value::ConstMemberIterator itr = dict.FindMember("to_address");
+				if (itr != dict.MemberEnd()) {
+					optl__to_address = itr->value.GetString();
+				}
+			}
+			//
+			return HistoricalTxRecord{
+				stoull(dict["amount"].GetString()),
+				stoull(dict["total_sent"].GetString()),
+				stoull(dict["total_received"].GetString()),
+				//
+				dict["approx_float_amount"].GetDouble(),
+				SpentOutputDescription::newArray_fromJSONRepresentations(dict["spent_outputs"]),
+				stol(dict["timestamp"].GetString()),
+				dict["hash"].GetString(),
+				optl__paymentId,
+				dict["mixin"].GetUint(),
+				dict["mempool"].GetBool(),
+				unlock_time,
+				height,
+				//
+				isConfirmed,
+				isUnlocked,
+				//			cached__lockedReason: lockedReason,
+				//
+				false, // isJustSentTransientTransactionRecord
+				optl__tx_key,
+				optl__tx_fee,
+				optl__to_address,
+				optl__isFailed
+			};
+		}
+		static std::vector<HistoricalTxRecord> newArray_fromJSONRepresentations(
+			const rapidjson::Value &arrayValue,
+			uint64_t wallet__blockchainHeight
+		) {
+			std::vector<HistoricalTxRecord> descs;
+			for (auto &dict: arrayValue.GetArray())
+			{
+				assert(dict.IsObject());
+				descs.push_back(
+					HistoricalTxRecord::new_fromJSONRepresentation(dict, wallet__blockchainHeight)
+				);
+			}
+			return descs;
+		}
 	};
+	//
+	// Persistence serialization
+	static rapidjson::Value jsonRepresentation(
+		const HistoricalTxRecord &desc,
+		Document::AllocatorType &allocator
+	) {
+		rapidjson::Value dict;
+		dict.SetObject();
+		{
+			ostringstream oss;
+			oss << desc.amount; // assume storing as a 'unsigned long long' in a string
+			Value v(oss.str(), allocator);
+			dict.AddMember("amount", v.Move(), allocator);
+		}
+		{
+			ostringstream oss;
+			oss << desc.totalSent; // assume storing as a 'unsigned long long' in a string
+			Value v(oss.str(), allocator);
+			dict.AddMember("total_sent", v.Move(), allocator);
+		}
+		{
+			ostringstream oss;
+			oss << desc.totalReceived; // assume storing as a 'unsigned long long' in a string
+			Value v(oss.str(), allocator);
+			dict.AddMember("total_received", v.Move(), allocator);
+		}
+		{
+			Value v;
+			v.SetDouble(desc.approxFloatAmount);
+			dict.AddMember("approx_float_amount", v.Move(), allocator);
+		}
+		{
+			Value k("spent_outputs", allocator);
+			std::vector<SpentOutputDescription> empty__spent_outputs;
+			dict.AddMember(
+				k,
+				new_arrayOfSerializedDicts(
+					desc.spent_outputs != none ? *(desc.spent_outputs) : empty__spent_outputs,
+					allocator
+				).Move(),
+				allocator
+			);
+		}
+		{
+			Value k("timestamp", allocator);
+			ostringstream oss;
+			oss << desc.timestamp; // assume storing as a 'long' in a string
+			Value v(oss.str(), allocator);
+			dict.AddMember(k, v.Move(), allocator);
+		}
+		{
+			Value v(desc.hash, allocator); // copy
+			dict.AddMember("hash", v.Move(), allocator);
+		}
+		{
+			Value v(desc.mempool);
+			dict.AddMember("mempool", v.Move(), allocator);
+		}
+		{
+			Value v;
+			v.SetDouble(desc.unlock_time);
+			dict.AddMember("unlock_time", v.Move(), allocator);
+		}
+		if (desc.mixin != none) {
+			Value v;
+			v.SetUint(*(desc.mixin));
+			dict.AddMember("mixin", v.Move(), allocator);
+		}
+		if (desc.height != none) {
+			Value v;
+			v.SetUint64(*(desc.height));
+			dict.AddMember("height", v.Move(), allocator);
+		}
+		{
+			Value v(*(desc.paymentId), allocator); // copy
+			dict.AddMember("paymentId", v.Move(), allocator);
+		}
+		{
+			Value v(*(desc.tx_key), allocator); // copy
+			dict.AddMember("tx_key", v.Move(), allocator);
+		}
+		if (desc.tx_fee != none) {
+			ostringstream oss;
+			oss << *(desc.tx_fee); // assume storing as a 'unsigned long long' in a string
+			Value v(oss.str(), allocator);
+			dict.AddMember("tx_fee", v.Move(), allocator);
+		}
+		if (desc.to_address != none) {
+			Value v(*(desc.to_address), allocator); // copy
+			dict.AddMember("to_address", v.Move(), allocator);
+		}
+		if (desc.isFailed != none) {
+			Value v(*(desc.isFailed));
+			dict.AddMember("isFailed", v.Move(), allocator);
+		}
+		//
+		return dict;
+	}
+	static rapidjson::Value new_arrayOfSerializedDicts(
+		const std::vector<HistoricalTxRecord> &array,
+		Document::AllocatorType &allocator
+	) {
+		Value serialized_dicts(kArrayType);
+		BOOST_FOREACH(const HistoricalTxRecord &desc, array)
+		{
+			serialized_dicts.PushBack(jsonRepresentation(desc, allocator).Move(), allocator);
+		}
+		return serialized_dicts;
+	}
 }
 namespace HostedMonero
 {

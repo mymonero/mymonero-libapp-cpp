@@ -177,6 +177,9 @@ namespace Wallets
 				wallet->logOutThenSaveAndLogIn(); // this method can handle being called when the wallet is not logged in
 			}
 		}
+	protected:
+		void tearDown();
+		//
 	private:
 		//
 		// Properties

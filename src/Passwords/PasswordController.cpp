@@ -270,6 +270,9 @@ void Controller::teardown()
 		_pw_entry_unlock_timer_handle->cancel();
 		_pw_entry_unlock_timer_handle = nullptr;
 	}
+	documentsPath = nullptr;
+	dispatch_ptr = nullptr;
+	userIdleController = nullptr;
 }
 //
 // Imperatives - Execution Deferment

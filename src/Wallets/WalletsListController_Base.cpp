@@ -53,6 +53,14 @@ void ListController_Base::setup()
 	// check deps *first* before calling on super
 	Lists::Controller::setup();
 }
+void ListController_Base::tearDown()
+{
+	Lists::Controller::tearDown();
+	//
+	apiClient = nullptr;
+	userIdleController = nullptr;
+	ccyConversionRatesController = nullptr;
+}
 void ListController_Base::setup_startObserving()
 {
 	Lists::Controller::setup_startObserving();

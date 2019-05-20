@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  test_all.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -30,48 +30,32 @@
 //  STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
+// Includes & namespaces
+#include <iostream>
+#include <iterator>
+#include <sstream>
+#include <boost/filesystem.hpp>
+#include <boost/optional/optional_io.hpp>
+using namespace std;
+using namespace boost;
 //
-
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
-#include "../src/APIClient/HTTPRequests.beast.hpp"
-//
-//
-class App::ServiceLocator_SpecificImpl
+// Shared code
+inline std::string _new_documentsPathString()
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	std::string thisfile_path = std::string(__FILE__);
+	std::string tests_dir = thisfile_path.substr(0, thisfile_path.find_last_of("\\/"));
+	std::string srcroot_dir = tests_dir.substr(0, tests_dir.find_last_of("\\/"));
+	boost::filesystem::path dir(srcroot_dir);
+	boost::filesystem::path file("build");
+    boost::filesystem::path full_path = dir / file;
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	delete _pImpl; // must free
+	boost::filesystem::create_directory(full_path); // in case it doesn't exist
+	//
+	return full_path.string();
 }
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
-) {
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	auto httpRequestFactory = std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx);
-	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr),
-		initial_passwordEntryDelegate_ptr
+inline std::shared_ptr<string> new_documentsPath()
+{
+	return std::make_shared<string>(
+		_new_documentsPathString()
 	);
 }
-
-

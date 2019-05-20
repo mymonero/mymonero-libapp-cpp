@@ -166,6 +166,7 @@ namespace Lists
 		//
 		// Lifecycle
 		void setup_startObserving();
+		void tearDown();
 		void stopObserving();
 		//
 		// Delegation
@@ -188,7 +189,6 @@ namespace Lists
 		void _setup_didBoot();
 		void _setup_didFailToBoot(const string &err_str);
 		//
-		void tearDown();
 		void _stopObserving_passwordController();
 		//
 		// Accessors

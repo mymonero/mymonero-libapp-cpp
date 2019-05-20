@@ -72,6 +72,8 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 set(
     SRC_FILES
     #
+    tests/tests_common.hpp
+    #
 	src/Dispatch/Dispatch_Interface.hpp
 	src/Dispatch/Dispatch.asio.hpp
 	src/UserIdle/UserIdle.hpp

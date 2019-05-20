@@ -124,6 +124,9 @@ void APIClient::startObserving()
 void APIClient::teardown()
 {
 	stopObserving();
+	//
+	requestFactory = nullptr;
+	settingsController = nullptr;
 }
 void APIClient::stopObserving()
 {

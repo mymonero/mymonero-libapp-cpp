@@ -41,6 +41,9 @@ Persistable::Object::~Object()
 void Persistable::Object::teardown()
 {
 	willBeDeinitialized_signal(*this);
+	//
+	documentsPath = nullptr;
+	passwordProvider = nullptr;
 }
 //
 // Private - Accessors

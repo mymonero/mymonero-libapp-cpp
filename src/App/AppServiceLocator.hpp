@@ -67,7 +67,8 @@ namespace App
 				std::shared_ptr<string> this_documentsPath,
 				network_type this_nettype,
 				std::shared_ptr<HTTPRequests::RequestFactory> this_httpRequestFactory,
-				std::shared_ptr<Dispatch::Dispatch> this_dispatch_ptr
+				std::shared_ptr<Dispatch::Dispatch> this_dispatch_ptr,
+				std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr__orNullptr
 			) {
 				//
 				// TODO: assert non-nullptr deps here?
@@ -88,6 +89,10 @@ namespace App
 				passwordController->documentsPath = documentsPath;
 				passwordController->dispatch_ptr = dispatch_ptr;
 				passwordController->userIdleController = userIdleController;
+				if (initial_passwordEntryDelegate_ptr__orNullptr != nullptr) {
+					initial_passwordEntryDelegate_ptr = initial_passwordEntryDelegate_ptr__orNullptr; // hang onto it so it doesn't get freed
+					passwordController->setPasswordEntryDelegate(*initial_passwordEntryDelegate_ptr); // this is required because the WLC, et al may have some initial records to load when `setup` is called
+				}
 				passwordController->setup();
 				//
 				userIdleController->documentsPath = documentsPath;
@@ -125,6 +130,7 @@ namespace App
 			{
 				documentsPath = nullptr;
 				httpRequestFactory = nullptr;
+				initial_passwordEntryDelegate_ptr = nullptr;
 				//
 				dispatch_ptr = nullptr;
 				apiClient = nullptr;
@@ -144,10 +150,13 @@ namespace App
 			//
 			// Properties - Initial: Status
 			bool built = false;
+			//
 			// Properties - Initial: Required for build()
 			std::shared_ptr<string> documentsPath;
 			network_type nettype;
 			std::shared_ptr<HTTPRequests::RequestFactory> httpRequestFactory;
+			std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr;
+			//
 			// Properties - Services: Built and retained dependencies
 			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr;
 			std::shared_ptr<HostedMonero::APIClient> apiClient;
@@ -160,7 +169,8 @@ namespace App
 			// Lifecycle - Init
 			ServiceLocator &build(
 				std::shared_ptr<string> documentsPath,
-				network_type nettype
+				network_type nettype,
+				std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
 			); // simply returns the singleton for convenience
    };
 }
