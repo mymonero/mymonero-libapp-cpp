@@ -72,7 +72,7 @@ file(GLOB TEST_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} test/test_*.cpp)
 set(
     SRC_FILES
     #
-    tests/tests_common.hpp
+    test/tests_common.hpp
     #
 	src/Dispatch/Dispatch_Interface.hpp
 	src/Dispatch/Dispatch.asio.hpp
@@ -96,6 +96,8 @@ set(
 	src/Wallets/Wallet_HostPollingController.cpp
 	src/Wallets/Wallet_TxCleanupController.hpp
 	src/Wallets/Wallet_TxCleanupController.cpp
+	src/Wallets/Wallet_KeyImageCache.hpp
+	src/Wallets/Wallet_KeyImageCache.cpp
     src/APIClient/root_certificates.hpp
     src/Currencies/Currencies.hpp
     src/Currencies/Currencies.cpp

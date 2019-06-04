@@ -84,6 +84,7 @@ void Object::tearDownRuntime()
 {
 	_hostPollingController = nullptr; // stop requests
 	_txCleanupController = nullptr; // stop timer
+	_keyImageCache = nullptr;
 	//
 	if (_logIn_requestHandle != nullptr) {
 		_logIn_requestHandle->cancel(); // in case wallet is being rebooted on API address change via settings
@@ -251,8 +252,10 @@ void Object::_atRuntime_setup_hostPollingController()
 {
 	std::shared_ptr<Object> shared_this = shared_from_this();
 	std::weak_ptr<Object> weak_this = shared_this;
-	_hostPollingController = std::make_unique<Wallets::HostPollingController>(
-		*this,
+	_hostPollingController = std::make_shared<Wallets::HostPollingController>(
+		weak_this,
+		_dispatch_ptr,
+		_apiClient,
 		[weak_this]()
 		{
 			if (auto inner_spt = weak_this.lock()) {
@@ -264,6 +267,7 @@ void Object::_atRuntime_setup_hostPollingController()
 			}
 		}
 	);
+	_hostPollingController->setup();
 }
 //
 //
@@ -991,7 +995,7 @@ void Object::_HostPollingController_didFetch_addressTransactions(
 			didActuallyChange_transactions = true;
 			numberOfTransactionsAdded += 1;
 		} else {
-			if (*incoming_tx__it != existing_tx__it->second) { // TODO: implement equal / not equal operator override
+			if (*incoming_tx__it != existing_tx__it->second) {
 				didActuallyChange_transactions = true; // this is likely to happen if tx.height changes while pending confirmation
 			}
 			// Check if existing tx has any cached info which we

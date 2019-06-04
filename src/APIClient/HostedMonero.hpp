@@ -41,6 +41,7 @@
 #include "../Settings/SettingsController.hpp"
 #include "./HTTPRequests_Interface.hpp"
 #include "./parsing.hpp"
+#include "../Wallets/Wallet_KeyImageCache.hpp"
 //
 namespace HostedMonero
 {
@@ -73,6 +74,28 @@ namespace HostedMonero
 			std::function<void(
 				optional<string> err_str,
 				optional<HostedMonero::ParsedResult_Login> result
+			)> fn
+		);
+		std::shared_ptr<HTTPRequests::Handle> addressInfo(
+			std::shared_ptr<Wallets::KeyImageCache> keyImageCache,
+			const string &address,
+			const string &sec_view_key,
+			const string &pub_spend_key,
+			const string &sec_spend_key,
+			std::function<void(
+				optional<string> err_str,
+				optional<HostedMonero::ParsedResult_AddressInfo> result
+			)> fn
+		);
+		std::shared_ptr<HTTPRequests::Handle> addressTransactions(
+			std::shared_ptr<Wallets::KeyImageCache> keyImageCache,
+			const string &address,
+			const string &sec_view_key,
+			const string &pub_spend_key,
+			const string &sec_spend_key,
+			std::function<void(
+				optional<string> err_str,
+				optional<HostedMonero::ParsedResult_AddressTransactions> result
 			)> fn
 		);
 	private:

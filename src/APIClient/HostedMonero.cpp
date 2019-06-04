@@ -149,7 +149,6 @@ string APIClient::final_apiAddress_authority()
 	//
 	return *settings_authorityValue;
 }
-
 //
 // Endpoints
 static string reqParams_key__createAccount = "create_account";
@@ -191,11 +190,115 @@ std::shared_ptr<HTTPRequests::Handle> APIClient::logIn(
 		}
 	);
 }
+std::shared_ptr<HTTPRequests::Handle> APIClient::addressInfo(
+	std::shared_ptr<Wallets::KeyImageCache> keyImageCache,
+	const string &address,
+	const string &sec_view_key,
+	const string &pub_spend_key,
+	const string &sec_spend_key,
+	std::function<void(
+		optional<string> err_str,
+		optional<HostedMonero::ParsedResult_AddressInfo> result
+	)> fn
+) {
+	auto params = new_parameters_forWalletRequest(address, sec_view_key);
+	std::shared_ptr<APIClient> shared_this = shared_from_this();
+	std::weak_ptr<APIClient> weak_this = shared_this;
+	return requestFactory->new_request(
+		HTTPRequests::HTTPS,
+		final_apiAddress_authority(),
+		_endpoint_path_from(AddressInfo),
+		std::move(params),
+		[
+			weak_this, fn = std::move(fn),
+			address, sec_view_key, pub_spend_key, sec_spend_key,
+			keyImageCache
+		] (
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> res
+		) {
+			if (auto inner_spt = weak_this.lock()) {
+				if (err_str != none) {
+					fn(std::move(*err_str), none);
+					return;
+				}
+				fn(none, new_ParsedResult_AddressInfo(
+					std::move(*res),
+					address,
+					sec_view_key,
+					pub_spend_key,
+					sec_spend_key,
+					keyImageCache
+				));
+			} else { /* if APIClient gone, can assume no need to call back */ }
+		}
+	);
+}
+std::shared_ptr<HTTPRequests::Handle> APIClient::addressTransactions(
+	std::shared_ptr<Wallets::KeyImageCache> keyImageCache,
+	const string &address,
+	const string &sec_view_key,
+	const string &pub_spend_key,
+	const string &sec_spend_key,
+	std::function<void(
+		optional<string> err_str,
+		optional<HostedMonero::ParsedResult_AddressTransactions> result
+	)> fn
+) {
+	auto params = new_parameters_forWalletRequest(address, sec_view_key);
+	std::shared_ptr<APIClient> shared_this = shared_from_this();
+	std::weak_ptr<APIClient> weak_this = shared_this;
+	return requestFactory->new_request(
+		HTTPRequests::HTTPS,
+		final_apiAddress_authority(),
+		_endpoint_path_from(AddressTransactions),
+		std::move(params),
+		[
+			weak_this, fn = std::move(fn),
+			address, sec_view_key, pub_spend_key, sec_spend_key,
+			keyImageCache
+		] (
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> res
+		) {
+		if (auto inner_spt = weak_this.lock()) {
+			if (err_str != none) {
+				fn(std::move(*err_str), none);
+				return;
+			}
+			fn(none, new_ParsedResult_AddressTransactions(
+				std::move(*res),
+				address,
+				sec_view_key,
+				pub_spend_key,
+				sec_spend_key,
+				keyImageCache
+			));
+		} else { /* if APIClient gone, can assume no need to call back */ }
+		}
+	);
+}
 //
 // Delegation
 void APIClient::SettingsController__specificAPIAddressURLAuthority_changed()
 {
+	
+	
+	
+	
+	
+	
 	// TODO: implement this as some sort of synchronous emit
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 //	initializeManagerWithFinalServerAuthority();
 	//
 	// Notify consumers to avoid race condition with anyone trying to make a request just before the manager gets de-initialized and re-initialized

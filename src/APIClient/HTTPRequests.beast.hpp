@@ -64,14 +64,13 @@ namespace HTTPRequests
 	public:
 		Handle_beast(
 			boost::asio::io_context &io_ctx,
-			boost::asio::ssl::context &ssl_ctx,
 			boost::beast::http::verb verb,
 			string host,
 			string port,
 			string endpoint_path,
 			std::function<void(optional<string> err_str, std::shared_ptr<ResponseJSON> res)> fn
 		):	_strand(io_ctx),
-			_stream(io_ctx, ssl_ctx),
+			_stream(io_ctx, callOnce_setupAndReturn__ssl_ctx()),
 			_resolver(io_ctx),
 			_verb(verb),
 			_host(host),
@@ -147,6 +146,7 @@ namespace HTTPRequests
 	private:
 		//
 		// Initialized
+		ssl::context _ssl_ctx{ssl::context::tlsv12_client};
 		boost::asio::io_context::strand _strand;
 		boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _stream;
 		tcp::resolver _resolver;
@@ -163,6 +163,15 @@ namespace HTTPRequests
 		boost::beast::http::request<boost::beast::http::string_body> _request;
 		boost::beast::http::response<boost::beast::http::string_body> _response;
 		std::shared_ptr<rapidjson::Document> _result;
+		//
+		// Accessors - Initialization
+		ssl::context &callOnce_setupAndReturn__ssl_ctx()
+		{
+			load_root_certificates(_ssl_ctx);
+			_ssl_ctx.set_verify_mode(ssl::verify_peer);
+			//
+			return _ssl_ctx;
+		}
 		//
 		// Imperatives
 		void _call_fn_with_success()
@@ -336,13 +345,9 @@ namespace HTTPRequests
 				? port_from_scheme(scheme).c_str()
 				: authority_components[1].c_str();
 			//
-			ssl::context ssl_ctx{ssl::context::tlsv12_client};
-			load_root_certificates(ssl_ctx);
-			ssl_ctx.set_verify_mode(ssl::verify_peer);
-			//
 			auto verb = boost::beast::http::verb::post;
 			auto handle_ptr = std::make_shared<Handle_beast>(
-				_io_ctx, ssl_ctx,
+				_io_ctx,
 				verb, string(host), string(port), endpoint_path,
 				std::move(fn)
 			);

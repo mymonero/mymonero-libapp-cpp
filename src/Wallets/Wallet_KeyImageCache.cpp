@@ -1,5 +1,5 @@
 //
-//  Wallet_TxCleanupController.cpp
+//  Wallet_KeyImageCache.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -31,8 +31,6 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-#include "Wallet_TxCleanupController.hpp"
-#include "./Wallet.hpp"
-using namespace Wallets;
+#include "Wallet_KeyImageCache.hpp"
 #include "misc_log_ex.h"
 //

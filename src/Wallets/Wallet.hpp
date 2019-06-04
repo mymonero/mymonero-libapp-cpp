@@ -648,13 +648,51 @@ namespace Wallets
 		const CollectionName &collectionName() const override { return Wallets::collectionName; }
 		//
 		// Accessors - Properties
+		
+		
+		
+		
+		
+		//
+		//
+		//
 		// TODO: use mutex on accessing these
+		//
+		//
+		//
+		//
+		
+		
+		
+		
+		
 		Wallets::Currency currency() { return _currency; }
 		string walletLabel() { return _walletLabel; }
 		SwatchColor swatchColor() { return _swatchColor; }
 		bool isLoggedIn() { return _isLoggedIn; }
 		optional<string> mnemonicString() { return _mnemonicString; } // TODO: is this the correct way to return an optional?
 		string public_address() { return _public_address; }
+		string view_sec_key() { return _view_sec_key; }
+		string spend_sec_key() { return _spend_sec_key; }
+		string spend_pub_key() { return _spend_pub_key; }
+		std::shared_ptr<Wallets::KeyImageCache> lazy_keyImageCache() {
+			if (_keyImageCache == nullptr) {
+				_keyImageCache = std::make_shared<Wallets::KeyImageCache>();
+			}
+			return _keyImageCache;
+		}
+
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		//
 		// TODO
 //		var isFetchingAnyUpdates: Bool {
@@ -760,8 +798,8 @@ namespace Wallets
 //			}
 //			return amount
 //		}
-		
 		//
+		// Properties - Signals
 		boost::signals2::signal<void()> labelChanged_signal;
 		boost::signals2::signal<void()> swatchColorChanged_signal;
 		boost::signals2::signal<void()> balanceChanged_signal;
@@ -805,6 +843,14 @@ namespace Wallets
 			string walletLabel,
 			SwatchColor swatchColor
 		);
+		//
+		// HostPollingController - Delegation / Protocol
+		void _HostPollingController_didFetch_addressInfo(
+			const HostedMonero::ParsedResult_AddressInfo &parsedResult
+		);
+		void _HostPollingController_didFetch_addressTransactions(
+			const HostedMonero::ParsedResult_AddressTransactions &parsedResult
+		);
 	private:
 		//
 		// Lifecycle / Initialization
@@ -821,6 +867,8 @@ namespace Wallets
 		std::shared_ptr<Dispatch::Dispatch> _dispatch_ptr;
 		std::shared_ptr<UserIdle::Controller> _userIdleController;
 		std::shared_ptr<Currencies::ConversionRatesController> _ccyConversionRatesController;
+		//
+		std::shared_ptr<Wallets::KeyImageCache> _keyImageCache; // initialized lazily ... do not access directly
 		//
 		Wallets::Currency _currency;
 		string _walletLabel;
@@ -866,9 +914,8 @@ namespace Wallets
 		bool _isSendingFunds = false;
 		//
 		// Properties - Objects
-		// TODO: key image cache
 		std::shared_ptr<HTTPRequests::Handle> _logIn_requestHandle;
-		std::unique_ptr<Wallets::HostPollingController> _hostPollingController; // strong; can be nullptr
+		std::shared_ptr<Wallets::HostPollingController> _hostPollingController; // strong; can be nullptr
 		std::unique_ptr<Wallets::TxCleanupController> _txCleanupController; // strong; can be nullptr
 		std::unique_ptr<HTTPRequests::Handle> _current_sendFunds_request;
 //		var submitter: SendFundsFormSubmissionHandle?
@@ -911,14 +958,6 @@ namespace Wallets
 		void ___didReceiveActualChangeTo_spentOutputs();
 		void ___didReceiveActualChangeTo_heights();
 		void ___didReceiveActualChangeTo_transactions();
-		//
-		// HostPollingController - Delegation / Protocol
-		void _HostPollingController_didFetch_addressInfo(
-			const HostedMonero::ParsedResult_AddressInfo &parsedResult
-		);
-		void _HostPollingController_didFetch_addressTransactions(
-			const HostedMonero::ParsedResult_AddressTransactions &parsedResult
-		);
 	};
 }
 

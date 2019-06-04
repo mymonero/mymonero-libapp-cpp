@@ -36,54 +36,96 @@
 #define HostPollingController_hpp
 //
 #include <functional>
+#include <mutex>
 #include "../APIClient/HTTPRequests_Interface.hpp"
+#include "../Dispatch/Dispatch_Interface.hpp"
+#include "../APIClient/HostedMonero.hpp"
 //
 namespace Wallets
 {
 	using namespace std;
-//	using namespace boost;
+	using namespace boost;
+	//
+	// Constants
+	static const size_t manualRefreshCoolDownMinimumTimeInterval = 10;
+	static const size_t pollingTimerPeriod = 30;
 	//
 	// Forward-declarations
 	class Object;
 	//
 	// Controllers
-	class HostPollingController
+	class HostPollingController: public std::enable_shared_from_this<HostPollingController>
 	{
 	public:
 		//
 		// Lifecycle - Init
 		HostPollingController(
-			const Object &wallet,
+			std::weak_ptr<Object> wallet,
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr,
+			std::shared_ptr<HostedMonero::APIClient> apiClient,
 			std::function<void()>&& didUpdate_factorOf_isFetchingAnyUpdates_fn
 		):
 		_wallet(wallet),
+		_dispatch_ptr(dispatch_ptr),
+		_apiClient(apiClient),
 		_didUpdate_factorOf_isFetchingAnyUpdates_fn(std::move(didUpdate_factorOf_isFetchingAnyUpdates_fn))
 		{
+			// you MUST call setup after you instantiate the HostPollingController
 		}
 		~HostPollingController()
 		{
+			tearDown();
 		}
 		//
 		// Dependencies
-
-
 		//
 		// Properties
-
+		bool isFetchingAnyUpdates()
+		{
+			return _requestHandleFor_addressInfo != nullptr || _requestHandleFor_addressTransactions != nullptr;
+		}
 		//
-		// Signals
-
-		//
-		// Imperatives
+		// Imperatives - Lifecycle / Instantiation
+		void setup();
+		// Imperatives - Runtime
 		void requestFromUI_manualRefresh();
+		//
 	private:
 		//
 		// Properties
-		const Object &_wallet;
+		std::weak_ptr<Object> _wallet;
+		std::shared_ptr<Dispatch::Dispatch> _dispatch_ptr;
+		std::shared_ptr<HostedMonero::APIClient> _apiClient;
 		std::function<void()> _didUpdate_factorOf_isFetchingAnyUpdates_fn;
 		//
-		// Imperatives
-
+		std::mutex timer_mutex;
+		std::unique_ptr<Dispatch::CancelableTimerHandle> _timer; // initialized to nullptr
+		//
+		std::shared_ptr<HTTPRequests::Handle> _requestHandleFor_addressInfo;
+		std::shared_ptr<HTTPRequests::Handle> _requestHandleFor_addressTransactions;
+		//
+		optional<time_t> _dateOfLast_fetch_addressInfo;
+		optional<time_t> _dateOfLast_fetch_addressTransactions;
+		optional<bool> _lastRecorded_isFetchingAnyUpdates;
+		//
+		// Imperatives - Lifecycle
+		void tearDown();
+		//
+		// Accessors - Utility
+		std::shared_ptr<Wallets::Object> __walletSPTIfAbleToPerformRequests();
+		//
+		// Imperatives - Timer
+		void startPollingTimer();
+		void invalidateTimer();
+		void __givenLocked_create_repeating_timer();
+		//
+		// Imperatives - Requests
+		void performRequests();
+		void _fetch_addressInfo();
+		void _fetch_addressTransactions();
+		//
+		// Delegation
+		void _didUpdate_factorOf_isFetchingAnyUpdates();
 	};
 }
 

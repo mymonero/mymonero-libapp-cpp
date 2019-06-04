@@ -37,6 +37,7 @@
 #include <boost/foreach.hpp>
 #include "./HTTPRequests_Interface.hpp"
 #include "../Currencies/Currencies.hpp"
+#include "../Wallets/Wallet_KeyImageCache.hpp"
 
 namespace HostedMonero
 {
@@ -542,8 +543,9 @@ namespace HostedMonero
 		optional<bool> generated_locally; // may be nil if the server doesn't support it yet (pre summer 18)
 		optional<uint64_t> start_height; // may be nil if the server doesn't support it yet (pre summer 18)
 	};
-	static inline ParsedResult_Login new_ParsedResult_Login(HTTPRequests::ResponseJSON res)
-	{
+	static inline ParsedResult_Login new_ParsedResult_Login(
+		const HTTPRequests::ResponseJSON &res
+	) {
 		optional<bool> generated_locally = none;
 		{
 			Value::ConstMemberIterator itr = res.FindMember("generated_locally");
@@ -581,73 +583,59 @@ namespace HostedMonero
 		//
 		std::unordered_map<Currencies::Currency, double> xmrToCcyRatesByCcy;
 	};
-	struct ParsedResult_AddressTransactions
-	{
-		uint64_t account_scanned_height;
-		uint64_t account_scanned_block_height;
-		uint64_t account_scan_start_height;
-		uint64_t transaction_height;
-		uint64_t blockchain_height;
+	static inline ParsedResult_AddressInfo new_ParsedResult_AddressInfo(
+		const HTTPRequests::ResponseJSON &res,
+		const string &address,
+		const string &view_key__private,
+		const string &spend_key__public,
+		const string &spend_key__private,
+		std::shared_ptr<Wallets::KeyImageCache> keyImageCache
+	) {
+		uint64_t total_received = stoull(res["total_received"].GetString());
+		uint64_t locked_balance = stoull(res["locked_funds"].GetString());
+		uint64_t total_sent = stoull(res["total_sent"].GetString()); // gets modified in-place
 		//
-		std::vector<HistoricalTxRecord> transactions;
-	};
-	struct ParsedResult_ImportRequestInfoAndStatus
-	{
-		string payment_id;
-		string payment_address;
-		uint64_t import_fee;
-		optional<string> feeReceiptStatus;
-	};
+		uint64_t account_scanned_tx_height = res["scanned_height"].GetUint64();
+		uint64_t account_scanned_block_height = res["scanned_block_height"].GetUint64();
+		uint64_t account_scan_start_height = res["start_height"].GetUint64();
+		uint64_t transaction_height = res["transaction_height"].GetUint64();
+		uint64_t blockchain_height = res["blockchain_height"].GetUint64();
+		//
+		std::vector<SpentOutputDescription> spentOutputs;
+		Value::ConstMemberIterator spent_outputs__itr = res.FindMember("spent_outputs");
+		
+		
+cout << "TODO" << endl;
 
-	
-	//
-//	static func newByParsing(
-//							 response_jsonDict: [String: Any],
-//							 address: MoneroAddress,
-//							 view_key__private: MoneroKey,
-//							 spend_key__public: MoneroKey,
-//							 spend_key__private: MoneroKey,
-//							 wallet_keyImageCache: MoneroUtils.KeyImageCache
-//							 ) -> (
-//								   err_str: String?,
-//								   result: ParsedResult_AddressInfo?
-//								   ) {
-//		let total_received = MoneroAmount(response_jsonDict["total_received"] as! String)!
-//		let locked_balance = MoneroAmount(response_jsonDict["locked_funds"] as! String)!
-//		var total_sent = MoneroAmount(response_jsonDict["total_sent"] as! String)! // will get modified in-place
-//		//
-//		let account_scanned_tx_height = response_jsonDict["scanned_height"] as! UInt64
-//		let account_scanned_block_height = response_jsonDict["scanned_block_height"] as! UInt64
-//		let account_scan_start_height = response_jsonDict["start_height"] as! UInt64
-//		let transaction_height = response_jsonDict["transaction_height"] as! UInt64
-//		let blockchain_height = response_jsonDict["blockchain_height"] as! UInt64
-//		let spent_outputs = response_jsonDict["spent_outputs"] as? [[String: Any]] ?? [[String: Any]]()
-//		//
-//		var mutable_spentOutputs: [MoneroSpentOutputDescription] = []
-//		for (_, spent_output) in spent_outputs.enumerated() {
-//			let generated__keyImage = wallet_keyImageCache.lazy_keyImage(
-//																		 tx_pub_key: spent_output["tx_pub_key"] as! MoneroTransactionPubKey,
-//																		 out_index: spent_output["out_index"] as! UInt64,
-//																		 public_address: address,
-//																		 sec_keys: MoneroKeyDuo(view: view_key__private, spend: spend_key__private),
-//																		 pub_spendKey: spend_key__public
-//																		 )
-//			let spent_output__keyImage = spent_output["key_image"] as! MoneroKeyImage
-//			if spent_output__keyImage != generated__keyImage { // not spent
-//				//				 DDLog.Info(
-//				//					"HostedMonero",
-//				//					"Output used as mixin \(spent_output__keyImage)/\(generated__keyImage))"
-//				//				)
-//				let spent_output__amount = MoneroAmount(spent_output["amount"] as! String)!
-//				total_sent -= spent_output__amount
-//			}
-//			// TODO: this is faithful to old web wallet code but is it really correct?
-//			mutable_spentOutputs.append( // but keep output regardless of whether spent or not
-//										MoneroSpentOutputDescription.new(withAPIJSONDict: spent_output)
-//										)
-//		}
-//		let final_spentOutputs = mutable_spentOutputs
-//		//
+		
+		if (spent_outputs__itr != res.MemberEnd()) {
+			for (auto &spent_output: spent_outputs__itr->value.GetArray())
+			{
+				assert(spent_output.IsObject());
+				auto generated__keyImage = keyImageCache->lazy_keyImage(
+					spent_output["tx_pub_key"].GetString(),
+					spent_output["out_index"].GetUint64(),
+					address,
+					view_key__private,
+					spend_key__private,
+					spend_key__public
+				);
+//				let spent_output__keyImage = spent_output["key_image"] as! MoneroKeyImage
+//				if spent_output__keyImage != generated__keyImage { // not spent
+//					//				 DDLog.Info(
+//					//					"HostedMonero",
+//					//					"Output used as mixin \(spent_output__keyImage)/\(generated__keyImage))"
+//					//				)
+//					let spent_output__amount = MoneroAmount(spent_output["amount"] as! String)!
+//					total_sent -= spent_output__amount
+//				}
+//				// TODO: this is faithful to old web wallet code but is it really correct?
+//				spentOutputs.push_back( // but keep output regardless of whether spent or not
+//											MoneroSpentOutputDescription.new(withAPIJSONDict: spent_output)
+//											)
+			}
+		}
+		//
 //		let xmrToCcyRatesByCcySymbol = response_jsonDict["rates"] as? [String: Double] ?? [String: Double]() // jic it's not there
 //		var final_xmrToCcyRatesByCcy: [CcyConversionRates.Currency: Double] = [:]
 //		for (_, keyAndValueTuple) in xmrToCcyRatesByCcySymbol.enumerated() {
@@ -671,24 +659,42 @@ namespace HostedMonero
 //											  transaction_height: transaction_height,
 //											  blockchain_height: blockchain_height,
 //											  //
-//											  spentOutputs: final_spentOutputs,
+//											  spentOutputs: spentOutputs,
 //											  //
 //											  xmrToCcyRatesByCcy: final_xmrToCcyRatesByCcy
 //											  )
 //		return (nil, result)
-//		}
+
+
+
+
+
+
+
+
+	}
+	//
+	struct ParsedResult_AddressTransactions
+	{
+		uint64_t account_scanned_height;
+		uint64_t account_scanned_block_height;
+		uint64_t account_scan_start_height;
+		uint64_t transaction_height;
+		uint64_t blockchain_height;
+		//
+		std::vector<HistoricalTxRecord> transactions;
+	};
 	
-//	static func newByParsing(
-//							 response_jsonDict: [String: Any],
-//							 address: MoneroAddress,
-//							 view_key__private: MoneroKey,
-//							 spend_key__public: MoneroKey,
-//							 spend_key__private: MoneroKey,
-//							 wallet_keyImageCache: MoneroUtils.KeyImageCache
-//							 ) -> (
-//								   err_str: String?,
-//								   result: ParsedResult_AddressTransactions?
-//								   ) {
+	static inline ParsedResult_AddressTransactions new_ParsedResult_AddressTransactions(
+		const HTTPRequests::ResponseJSON &res,
+		const string &address,
+		const string &view_key__private,
+		const string &spend_key__public,
+		const string &spend_key__private,
+		std::shared_ptr<Wallets::KeyImageCache> keyImageCache
+	) {
+		cout << "TODO" << endl;
+
 //		let account_scanned_tx_height = response_jsonDict["scanned_height"] as! UInt64
 //		let account_scanned_block_height = response_jsonDict["scanned_block_height"] as! UInt64
 //		let account_scan_start_height = response_jsonDict["start_height"] as! UInt64
@@ -803,13 +809,20 @@ namespace HostedMonero
 //													  transactions: final_transactions
 //													  )
 //		return (nil, result)
-//		}
+	}
 
 
 
 
 
 
+	struct ParsedResult_ImportRequestInfoAndStatus
+	{
+		string payment_id;
+		string payment_address;
+		uint64_t import_fee;
+		optional<string> feeReceiptStatus;
+	};
 
 
 

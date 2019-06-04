@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("serviceL
 		}
 	);
 	//
-	std::this_thread::sleep_for(std::chrono::milliseconds(6000)); // wait for login network request completion, async notifies……
+	std::this_thread::sleep_for(std::chrono::milliseconds(210000 /* 6000 */)); // wait for login network request completion, async notifies……
 	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected sawListUpdated");
 }
 //
