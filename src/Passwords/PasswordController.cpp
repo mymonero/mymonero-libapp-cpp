@@ -35,7 +35,6 @@
 #include <boost/foreach.hpp>
 #include "../UserIdle/UserIdle.hpp"
 #include "../Persistence/PersistableObject.hpp"
-#include "misc_log_ex.h"
 using namespace std;
 using namespace boost;
 using namespace document_persister;
@@ -300,41 +299,6 @@ void Controller::_callAndFlushAllBlocksWaitingForBootToExecute()
 }
 //
 // Accessors - Deferring execution convenience methods
-struct once_booted_callback_info_container
-{
-public:
-	bool guardAllCallBacks()
-	{
-		if (_hasCalledBack == true) {
-			auto err_str = string("Passwords::Controller::onceBootedAndPasswordObtained hasCalledBack already true");
-			MERROR(err_str);
-			BOOST_THROW_EXCEPTION(logic_error(err_str));
-			return false; // ^- shouldn't happen but just in case…
-		}
-		_hasCalledBack = true;
-		return true;
-
-	}
-	void stopListening()
-	{
-		if (_hasStoppedListening) {
-			BOOST_THROW_EXCEPTION(logic_error("Already stopped listening"));
-			return;
-		}
-		connection__obtainedNewPassword.disconnect();
-		connection__obtainedCorrectExistingPassword.disconnect();
-		connection__canceledWhileEnteringExistingPassword.disconnect();
-		connection__canceledWhileEnteringNewPassword.disconnect();
-		_hasStoppedListening = true;
-	}
-	boost::signals2::connection connection__obtainedNewPassword;
-	boost::signals2::connection connection__obtainedCorrectExistingPassword;
-	boost::signals2::connection connection__canceledWhileEnteringExistingPassword;
-	boost::signals2::connection connection__canceledWhileEnteringNewPassword;
-private:
-	bool _hasCalledBack = false;
-	bool _hasStoppedListening = false;
-};
 void Controller::onceBootedAndPasswordObtained(
 	std::function<void(Password password, Passwords::Type passwordType)>&& fn,
 	std::function<void()> userCanceled_fn = {}
@@ -347,29 +311,54 @@ void Controller::onceBootedAndPasswordObtained(
 	std::shared_ptr<Controller> shared_this = shared_from_this();
 	std::weak_ptr<Controller> weak_this = shared_this;
 	auto callback_info_container = std::make_shared<once_booted_callback_info_container>();
-	auto _aPasswordWasObtained = [weak_this, fn = std::move(fn), callback_info_container]()
+	string callback_info_container_uuid = callback_info_container->uuid;
+	once_booted_callback_info_containers_by_uuid[callback_info_container_uuid] = callback_info_container; // store, so something is holding onto the pointer...
+	//
+	auto _aPasswordWasObtained = [weak_this, fn = std::move(fn), callback_info_container_uuid]()
 	{
 		if (auto inner_spt = weak_this.lock()) {
-			if (callback_info_container->guardAllCallBacks() != false) {
-				callback_info_container->stopListening(); // immediately unsubscribe
-				fn(*(inner_spt->_password), inner_spt->_passwordType);
+			std::unordered_map<string, std::shared_ptr<once_booted_callback_info_container>>::const_iterator cb_container_it = inner_spt->once_booted_callback_info_containers_by_uuid.find(callback_info_container_uuid);
+			if (cb_container_it != inner_spt->once_booted_callback_info_containers_by_uuid.end()) {
+				if ((cb_container_it->second)->guardAllCallBacks() != false) {
+					(cb_container_it->second)->stopListening(); // immediately unsubscribe
+					inner_spt->once_booted_callback_info_containers_by_uuid.erase(callback_info_container_uuid); // free
+					fn(*(inner_spt->_password), inner_spt->_passwordType);
+				}
+			} else {
+				// TODO: probably throw exception
+				cout << "Warning: cb_container_it is no longer there" << endl;
 			}
 		}
 	};
-	auto _obtainingPasswordWasCanceled = [userCanceled_fn, callback_info_container]()
+	auto _obtainingPasswordWasCanceled = [weak_this, userCanceled_fn, callback_info_container_uuid]()
 	{
-		if (callback_info_container->guardAllCallBacks() != false) {
-			callback_info_container->stopListening(); // immediately unsubscribe
-			userCanceled_fn();
+		if (auto inner_spt = weak_this.lock()) {
+			std::unordered_map<string, std::shared_ptr<once_booted_callback_info_container>>::const_iterator cb_container_it = inner_spt->once_booted_callback_info_containers_by_uuid.find(callback_info_container_uuid);
+			if (cb_container_it != inner_spt->once_booted_callback_info_containers_by_uuid.end()) {
+				if ((cb_container_it->second)->guardAllCallBacks() != false) {
+					(cb_container_it->second)->stopListening(); // immediately unsubscribe
+					inner_spt->once_booted_callback_info_containers_by_uuid.erase(callback_info_container_uuid); // free
+					userCanceled_fn();
+				}
+			} else {
+				// TODO: probably throw exception
+				cout << "Warning: cb_container_it is no longer there" << endl;
+			}
 		}
 	};
-	onceBooted([&callback_info_container, weak_this, _aPasswordWasObtained, _obtainingPasswordWasCanceled] () {
+	onceBooted([callback_info_container_uuid, weak_this, _aPasswordWasObtained, _obtainingPasswordWasCanceled] () {
 		// hang onto connections so we can unsub
 		if (auto inner_spt = weak_this.lock()) {
-			callback_info_container->connection__obtainedNewPassword = inner_spt->obtainedNewPassword_signal.connect(_aPasswordWasObtained);
-			callback_info_container->connection__obtainedCorrectExistingPassword = inner_spt->obtainedCorrectExistingPassword_signal.connect(_aPasswordWasObtained);
-			callback_info_container->connection__canceledWhileEnteringExistingPassword = inner_spt->canceledWhileEnteringExistingPassword_signal.connect(_obtainingPasswordWasCanceled);
-			callback_info_container->connection__canceledWhileEnteringNewPassword = inner_spt->canceledWhileEnteringNewPassword_signal.connect(_obtainingPasswordWasCanceled);
+			std::unordered_map<string, std::shared_ptr<once_booted_callback_info_container>>::const_iterator cb_container_it = inner_spt->once_booted_callback_info_containers_by_uuid.find(callback_info_container_uuid);
+			if (cb_container_it != inner_spt->once_booted_callback_info_containers_by_uuid.end()) {
+				(cb_container_it->second)->connection__obtainedNewPassword = inner_spt->obtainedNewPassword_signal.connect(_aPasswordWasObtained);
+				(cb_container_it->second)->connection__obtainedCorrectExistingPassword = inner_spt->obtainedCorrectExistingPassword_signal.connect(_aPasswordWasObtained);
+				(cb_container_it->second)->connection__canceledWhileEnteringExistingPassword = inner_spt->canceledWhileEnteringExistingPassword_signal.connect(_obtainingPasswordWasCanceled);
+				(cb_container_it->second)->connection__canceledWhileEnteringNewPassword = inner_spt->canceledWhileEnteringNewPassword_signal.connect(_obtainingPasswordWasCanceled);
+			} else {
+				// TODO: throw exception
+				cout << "Warning: cb_container_it is no longer there" << endl;
+			}
 			//
 			// now that we're subscribed, initiate the pw request
 			inner_spt->givenBooted_initiateGetNewOrExistingPasswordFromUserAndEmitIt();

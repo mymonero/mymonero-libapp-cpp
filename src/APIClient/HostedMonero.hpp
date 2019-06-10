@@ -98,6 +98,15 @@ namespace HostedMonero
 				optional<HostedMonero::ParsedResult_AddressTransactions> result
 			)> fn
 		);
+		// TODO
+//		func ImportRequestInfoAndStatus(
+//										address: MoneroAddress,
+//										view_key__private: MoneroKey,
+//										_ fn: @escaping (
+//														 _ err_str: String?,
+//														 _ result: ParsedResult_ImportRequestInfoAndStatus?
+//														 ) -> Void
+//										) -> RequestHandle?
 	private:
 		//
 		// Lifecycle

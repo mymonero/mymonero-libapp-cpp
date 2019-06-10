@@ -207,7 +207,7 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 					{ // check if wallet already entered
 						for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = inner_inner_spt->_records.begin(); it != inner_inner_spt->_records.end(); ++it) {
 							auto wallet = std::dynamic_pointer_cast<Wallets::Object>(*it);
-							if (wallet->mnemonicString() != none && wallet->mnemonicString()->size()) {
+							if (wallet->mnemonicString() == none || wallet->mnemonicString()->size() == 0) {
 								// TODO: solve limitation of this code - check if wallet with same address (but no mnemonic) was already added
 								continue;
 							}

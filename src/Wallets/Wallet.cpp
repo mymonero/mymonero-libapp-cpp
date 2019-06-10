@@ -35,7 +35,6 @@
 using namespace Wallets;
 #include "misc_log_ex.h"
 using namespace monero_wallet_utils;
-#include <unordered_map>
 //
 // Accessory types
 struct OptlErrStrCBFunctor
@@ -61,18 +60,6 @@ struct LogInReqCBFunctor
 		fn(none, std::move(*result));
 	}
 };
-
-//
-// Accessory functions
-static inline bool sorting_historicalTxRecords_byTimestamp_walletsList(
-	const HostedMonero::HistoricalTxRecord &a,
-	const HostedMonero::HistoricalTxRecord &b
-) {
-	// there are no ids here for sorting so we'll use timestamp
-	// and .mempool can mess with user's expectation of tx sorting
-	// when .isFailed is involved, so just going with a simple sort here
-	return b.timestamp < a.timestamp;
-}
 //
 // Lifecycle - Deinit
 void Object::teardown()
@@ -1039,7 +1026,7 @@ void Object::_HostPollingController_didFetch_addressTransactions(
 	for (auto it = txs_by_hash.begin(); it != txs_by_hash.end(); it++) {
 		finalized_transactions.push_back(it->second); // TODO: this is also a copy …… optimize this by using a pointer
 	}
-	sort(finalized_transactions.begin(), finalized_transactions.end(), sorting_historicalTxRecords_byTimestamp_walletsList);
+	sort(finalized_transactions.begin(), finalized_transactions.end(), HostedMonero::sorting_historicalTxRecords_byTimestamp_walletsList);
 	//
 	_transactions = std::move(finalized_transactions);
 	//

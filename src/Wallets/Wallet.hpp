@@ -36,6 +36,7 @@
 #define Wallet_hpp
 
 #include <string>
+#include <unordered_map>
 #include "../Persistence/PersistableObject.hpp"
 #include "monero_wallet_utils.hpp"
 #include "../APIClient/HostedMonero.hpp"
@@ -638,10 +639,7 @@ namespace Wallets
 				Value k(StringRef(__dictKey_transactions));
 				dict.AddMember(k, new_arrayOfSerializedDicts(*_transactions, dict.GetAllocator()).Move(), dict.GetAllocator());
 			}
-			
-			cout << "Wallet new_dictRepresentation: " << endl;
 			auto s = Persistable::new_plaintextJSONStringFrom_movedDocumentDict(dict);
-			cout << s << endl;
 			
 			return dict;
 		}

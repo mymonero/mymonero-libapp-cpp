@@ -36,10 +36,15 @@
 #define PasswordController_hpp
 
 #include <string>
+#include <unordered_map>
 #include <boost/range/algorithm.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/signals2.hpp>
 #include <memory>
+#include <boost/uuid/uuid.hpp>            // uuid class
+#include <boost/uuid/uuid_generators.hpp> // generators
+#include <boost/uuid/uuid_io.hpp>         // streaming operators etc.
+#include "misc_log_ex.h"
 #include "../Persistence/document_persister.hpp"
 #include "../Dispatch/Dispatch_Interface.hpp"
 #include "../UserIdle/UserIdle.hpp"
@@ -185,6 +190,45 @@ namespace Passwords
 		virtual boost::optional<Password> getPassword() const = 0;
 	};
 	//
+	// Accessory Structures - Internal
+	struct once_booted_callback_info_container
+	{
+	public:
+		string uuid = boost::uuids::to_string(boost::uuids::random_generator()());
+		//
+		bool guardAllCallBacks()
+		{
+			if (_hasCalledBack == true) {
+				auto err_str = string("Passwords::Controller::onceBootedAndPasswordObtained hasCalledBack already true");
+				MERROR(err_str);
+				BOOST_THROW_EXCEPTION(logic_error(err_str));
+				return false; // ^- shouldn't happen but just in case…
+			}
+			_hasCalledBack = true;
+			return true;
+			
+		}
+		void stopListening()
+		{
+			if (_hasStoppedListening) {
+				BOOST_THROW_EXCEPTION(logic_error("Already stopped listening"));
+				return;
+			}
+			connection__obtainedNewPassword.disconnect();
+			connection__obtainedCorrectExistingPassword.disconnect();
+			connection__canceledWhileEnteringExistingPassword.disconnect();
+			connection__canceledWhileEnteringNewPassword.disconnect();
+			_hasStoppedListening = true;
+		}
+		boost::signals2::connection connection__obtainedNewPassword;
+		boost::signals2::connection connection__obtainedCorrectExistingPassword;
+		boost::signals2::connection connection__canceledWhileEnteringExistingPassword;
+		boost::signals2::connection connection__canceledWhileEnteringNewPassword;
+	private:
+		bool _hasCalledBack = false;
+		bool _hasStoppedListening = false;
+	};
+	//
 	// Controllers
 	class Controller: public PasswordProvider, public std::enable_shared_from_this<Controller>
 	{
@@ -304,6 +348,8 @@ namespace Passwords
 		optional<Password> _preexistingBeforeSetNew_password = none;
 		Passwords::Type _preexistingBeforeSetNew_passwordType;
 		bool _preexistingBeforeSetNew_isForChangePassword;
+		//
+		std::unordered_map<string, std::shared_ptr<once_booted_callback_info_container>> once_booted_callback_info_containers_by_uuid;
 		//
 		void _callAndFlushAllBlocksWaitingForBootToExecute();
 		optional<vector<std::function<void()>>> __blocksWaitingForBootToExecute = none;

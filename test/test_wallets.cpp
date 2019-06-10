@@ -65,7 +65,7 @@ namespace utf = boost::unit_test;
 //
 //
 string changed_mock_password_string = string("a changed mock password");
-class Mocked_EnterCorrectChanged_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
+class Mocked_EnterExistingOrNewCorrectChanged_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
 public:
 	std::string uuid_string = boost::uuids::to_string((boost::uuids::random_generator())()); // cached
@@ -84,16 +84,22 @@ public:
 		BOOST_REQUIRE(customNavigationBarTitle == none);
 		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
 		//
+		cout << "Being asked for the existing pw" << endl;
+		//
 		App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, changed_mock_password_string);
 	}
 	void getUserToEnterNewPasswordAndType(
 		bool isForChangePassword
 	) {
-		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
+		
+		cout << "Being asked for a new pw" << endl;
+		
+		// in case test_wallets is the first test to run…
+		App::ServiceLocator::instance().passwordController->enterNewPasswordAndType_cb(false, changed_mock_password_string, Passwords::Type::password);
 	}
 };
 //
-auto initial_pwEntryDelegate_spt = std::make_shared<Mocked_EnterCorrectChanged_PasswordEntryDelegate>();
+auto initial_pwEntryDelegate_spt = std::make_shared<Mocked_EnterExistingOrNewCorrectChanged_PasswordEntryDelegate>();
 App::ServiceLocator &builtSingleton(
 	cryptonote::network_type nettype
 ) {
@@ -112,8 +118,6 @@ BOOST_AUTO_TEST_CASE(serviceLocator_build)
 	
 	BOOST_REQUIRE(ServiceLocator::instance().built == true);
 	BOOST_REQUIRE(App::ServiceLocator::instance().dispatch_ptr != nullptr);
-	ServiceLocator::instance().uniqueFlag = true;
-	BOOST_REQUIRE(ServiceLocator::instance().uniqueFlag == true);
 }
 //
 //
@@ -138,32 +142,44 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("serviceL
 			sawListUpdated = true;
 			nthCallOfListUpdated += 1;
 			size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
-			BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() == expectingNumRecords, "Expected number of records to be " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of walletsListController_addWallet but it was " << wlc_spt->records().size());
+			BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() >= expectingNumRecords, "Expected number of records to be at least " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of walletsListController_addWallet but it was " << wlc_spt->records().size());
 		}
 	);
 	//
 	BOOST_REQUIRE(wlc_spt->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
-	BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() == 0, "Expected number of records to be 0");
+	
+	// Not necessarily true...
+	size_t num_records_before_add = wlc_spt->records().size();
+//	BOOST_REQUIRE_MESSAGE(num_records_before_add == 0, "Expected number of records to be 0 before having added a wallet by mnemonic ... if necessary, delete existing ./build/Wallets__*");
 	//
 	wlc_spt->OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
 		string("Dark grey"), Wallets::SwatchColor::darkGrey,
 		string("fox sel hum nex juv dod pep emb bis ela jaz vib bis"),
-		[&hasAdded] (
+		[&hasAdded, num_records_before_add] (
 			optional<string> err_str,
 			optional<std::shared_ptr<Wallets::Object>> wallet_spt,
 			optional<bool> wasWalletAlreadyInserted
 		) {
+			if (err_str != none) {
+				cout << "Error while adding wallet: " << *err_str << endl;
+			}
 			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
 			if (err_str == none) {
 				hasAdded = true;
 			}
 			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
 			BOOST_REQUIRE(wasWalletAlreadyInserted != none);
-			BOOST_REQUIRE(*wasWalletAlreadyInserted == false);
+			if (*wasWalletAlreadyInserted == true) {
+				if (num_records_before_add > 0) {
+					cout << "Wallet by that mnemonic was already added" << endl;
+				} else {
+					BOOST_REQUIRE_MESSAGE(false, "Expected pre-existing wallets if the wallet has already been added by that mnemonic");
+				}
+			}
 		}
 	);
 	//
-	std::this_thread::sleep_for(std::chrono::milliseconds(210000 /* 6000 */)); // wait for login network request completion, async notifies……
+	std::this_thread::sleep_for(std::chrono::milliseconds(10000)); // wait for login network request completion, async notifies……
 	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected sawListUpdated");
 }
 //
