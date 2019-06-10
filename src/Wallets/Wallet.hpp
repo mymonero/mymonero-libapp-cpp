@@ -453,12 +453,24 @@ namespace Wallets
 				Value::ConstMemberIterator itr = plaintextData.FindMember(__dictKey_spentOutputs);
 				if (itr != plaintextData.MemberEnd()) {
 					_spentOutputs = SpentOutputDescription::newArray_fromJSONRepresentations(itr->value);
+//					if (_spentOutputs != none) {
+//						BOOST_FOREACH(const SpentOutputDescription &obj, *_spentOutputs)
+//						{
+//							cout << "_spentOutput recovered from disk: " << obj << endl;
+//						}
+//					}
 				}
 			}
 			{
 				Value::ConstMemberIterator itr = plaintextData.FindMember(__dictKey_transactions);
 				if (itr != plaintextData.MemberEnd()) {
 					_transactions = HistoricalTxRecord::newArray_fromJSONRepresentations(itr->value, *_blockchain_height);
+//					if (_transactions != none) {
+//						BOOST_FOREACH(const HistoricalTxRecord &obj, *_transactions)
+//						{
+//							cout << "_transaction recovered from disk: " << obj << endl;
+//						}
+//					}
 				}
 			}
 			//

@@ -34,9 +34,12 @@
 
 #include <string>
 #include <boost/optional/optional.hpp>
+#include <boost/optional/optional_io.hpp>
 #include <boost/foreach.hpp>
 #include <iostream>
 #include <ctime>
+#include "rapidjson/stringbuffer.h"
+#include <rapidjson/writer.h>
 #include "./HTTPRequests_Interface.hpp"
 #include "../Currencies/Currencies.hpp"
 #include "../Wallets/Wallet_KeyImageCache.hpp"
@@ -75,6 +78,9 @@ namespace HostedMonero
 		return timegm(&time)*1000 + millis;
 	}
 	//
+	// SpentOutputDescription
+	struct SpentOutputDescription; // forward decl
+	ostream& operator<<(ostream& os, const SpentOutputDescription& obj); // declared pre-emptively for struct methods
 	struct SpentOutputDescription
 	{
 		uint64_t amount;
@@ -110,13 +116,16 @@ namespace HostedMonero
 		{
 			assert(dict.IsObject());
 			uint64_t amount = stoull(dict["amount"].GetString()); // stored as a string
-			return SpentOutputDescription{
+			auto obj = SpentOutputDescription{
 				amount,
 				dict["tx_pub_key"].GetString(),
 				dict["key_image"].GetString(),
 				dict["mixin"].GetUint(),
 				dict["out_index"].GetUint64()
 			};
+//			cout << "SpentOutputDescription new_fromJSONRepresentation -> " << obj << endl;
+			//
+			return obj;
 		}
 		static std::vector<SpentOutputDescription> newArray_fromJSONRepresentations(
 			const rapidjson::Value &arrayValue
@@ -130,6 +139,20 @@ namespace HostedMonero
 			return descs;
 		}
 	};
+	inline ostream& operator<<(ostream& os, const SpentOutputDescription& obj)
+	{
+		os << "SpentOutputDescription{" << endl;
+		os
+			<< "amount: " << obj.amount << endl
+			<< "tx_pub_key: " << obj.tx_pub_key << endl
+			<< "key_image: " << obj.key_image << endl
+			<< "mixin: " << obj.mixin << endl
+			<< "out_index: " << obj.out_index << endl
+		;
+		os << "}" << endl;
+		//
+		return os;
+	}
 	//
 	// For API response parsing
 //	static inline std::vector<spent_output_description> newArrayFrom_spentOutputDescriptions(
@@ -194,6 +217,8 @@ namespace HostedMonero
 	}
 	//
 	// HistoricalTxRecord
+	class HistoricalTxRecord; // forward decl
+	ostream& operator<<(ostream& os, const HistoricalTxRecord& obj); // declared pre-emptively for class methods
 	class HistoricalTxRecord
 	{
 	public:
@@ -409,7 +434,8 @@ namespace HostedMonero
 					optl__to_address = itr->value.GetString();
 				}
 			}
-			return HistoricalTxRecord{
+			
+			auto obj = HistoricalTxRecord{
 				stoll(dict["amount"].GetString()),
 				stoull(dict["total_sent"].GetString()),
 				stoull(dict["total_received"].GetString()),
@@ -434,6 +460,9 @@ namespace HostedMonero
 				optl__to_address,
 				optl__isFailed
 			};
+//			cout << "HistoricalTxRecord new_fromJSONRepresentation -> " << obj << endl;
+			//
+			return obj;
 		}
 		static std::vector<HistoricalTxRecord> newArray_fromJSONRepresentations(
 			const rapidjson::Value &arrayValue,
@@ -495,6 +524,17 @@ namespace HostedMonero
 		{
 			Value k("spent_outputs", allocator);
 			std::vector<SpentOutputDescription> empty__spent_outputs;
+//			auto serializedDicts = new_arrayOfSerializedDicts(
+//															  desc.spent_outputs != none ? *(desc.spent_outputs) : empty__spent_outputs,
+//															  allocator
+//															  );
+//			if (serializedDicts.Size() > 0) {
+//				cout << "serialized spent_output" << endl;
+//				StringBuffer buffer;
+//				Writer<StringBuffer> writer(buffer);
+//				serializedDicts.Accept(writer);
+//				cout << buffer.GetString() << endl;
+//			}
 			dict.AddMember(
 				k,
 				new_arrayOfSerializedDicts(
@@ -557,6 +597,14 @@ namespace HostedMonero
 			dict.AddMember("isFailed", v.Move(), allocator);
 		}
 		//
+//		cout << "Whole serialized tx... " << endl;
+//		{
+//			StringBuffer buffer;
+//			Writer<StringBuffer> writer(buffer);
+//			dict.Accept(writer);
+//			cout << buffer.GetString() << endl;
+//		}
+		//
 		return dict;
 	}
 	static rapidjson::Value new_arrayOfSerializedDicts(
@@ -569,6 +617,49 @@ namespace HostedMonero
 			serialized_dicts.PushBack(jsonRepresentation(desc, allocator).Move(), allocator);
 		}
 		return serialized_dicts;
+	}
+	//
+	//
+	inline ostream& operator<<(ostream& os, const HistoricalTxRecord& obj)
+	{
+		os << "HistoricalTxRecord{" << endl;
+		os
+			<< "amount: " << obj.amount << endl
+			<< "totalSent: " << obj.totalSent << endl
+			<< "totalReceived: " << obj.totalReceived << endl
+			<< "approxFloatAmount: " << obj.approxFloatAmount << endl;
+		os
+		<< "spent_outputs: " << (obj.spent_outputs == none ? "--" : obj.spent_outputs->size() == 0 ? "empty" : "") << endl;
+		if (obj.spent_outputs != none) {
+			size_t i = 0;
+			BOOST_FOREACH(const SpentOutputDescription &desc, (*obj.spent_outputs))
+			{
+				os << "\t" << i << ": " << desc << endl;
+				i += 1;
+			}
+		}
+		os
+			<< "timestamp: " << obj.timestamp << endl
+			<< "hash: " << obj.hash << endl
+			<< "paymentId: " << obj.paymentId << endl
+			<< "mixin: " << obj.mixin << endl
+			//
+			<< "mempool: " << obj.mempool << endl
+			<< "unlock_time: " << obj.unlock_time << endl
+			<< "height: " << obj.height << endl
+			//
+			<< "cached__isConfirmed: " << obj.cached__isConfirmed << endl
+			<< "cached__isUnlocked: " << obj.cached__isUnlocked << endl
+			//
+			<< "isJustSentTransientTransactionRecord: " << obj.isJustSentTransientTransactionRecord << endl
+			<< "tx_key: " << obj.tx_key << endl
+			<< "tx_fee: " << obj.tx_fee << endl
+			<< "to_address: " << obj.to_address << endl
+			<< "isFailed: " << obj.isFailed << endl
+		;
+		os << "}" << endl;
+		//
+		return os;
 	}
 }
 namespace HostedMonero
