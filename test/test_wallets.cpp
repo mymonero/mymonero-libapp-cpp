@@ -131,15 +131,13 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("serviceL
 	));
 	//
 	auto wlc_spt = ServiceLocator::instance().walletsListController;
-	bool sawListUpdated = false;
 	bool hasAdded = false;
 	size_t nthCallOfListUpdated = 0;
 	auto connection = wlc_spt->list__updated_signal.connect(
-		[&sawListUpdated, &nthCallOfListUpdated, &hasAdded, &wlc_spt]()
+		[&nthCallOfListUpdated, &hasAdded, &wlc_spt]()
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
 			//
-			sawListUpdated = true;
 			nthCallOfListUpdated += 1;
 			size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
 			BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() >= expectingNumRecords, "Expected number of records to be at least " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of walletsListController_addWallet but it was " << wlc_spt->records().size());
@@ -180,7 +178,6 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("serviceL
 	);
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(10000)); // wait for login network request completion, async notifies……
-	BOOST_REQUIRE_MESSAGE(sawListUpdated, "Expected sawListUpdated");
 }
 //
 BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_addWallet"))
