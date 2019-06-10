@@ -98,7 +98,11 @@ namespace HTTPRequests
 				c = std::weak_ptr<Handle_beast>(shared_from_this())
 			] () {
 				if (auto cl = c.lock()) {
-					cl->_stream.shutdown(); // possible FIXME: this may need to be something other than shutdown()
+					if (cl->_isBeingShutDown != true && cl->_isShutDown != true && cl->_isStreamInUse == true) {
+						cl->_stream.lowest_layer().cancel();
+					} else {
+						cout << "Asked to cancel a handle but it was already shut down post-read." << endl;
+					}
 				}
 			});
 			
@@ -158,6 +162,9 @@ namespace HTTPRequests
 		//
 		// Runtime
 		bool _isConnectionClosed = false;
+		bool _isStreamInUse = false;
+		bool _isBeingShutDown = false;
+		bool _isShutDown = false;
 		bool _hasFNBeenCalled = false;
 		boost::beast::flat_buffer _buffer;
 		boost::beast::http::request<boost::beast::http::string_body> _request;
@@ -196,11 +203,15 @@ namespace HTTPRequests
 			beast::error_code ec,
 			tcp::resolver::results_type resolver_results
 		) {
+			if (ec == boost::asio::error::operation_aborted) {
+				return; // do not continue - and no need to call _fn here.. we'll assume whoever is canceling can also tell the shared_ptr holder to free
+			}
 			if (ec) {
 				// TODO: pass status code
 				_call_fn_with(string(ec.message()));
 				return;
 			}
+			_isStreamInUse = true;
 			boost::asio::async_connect( // Make the connection on the IP address we get from a lookup
 				_stream.next_layer(),
 				resolver_results.begin(),
@@ -214,6 +225,9 @@ namespace HTTPRequests
 		}
 		void on_connect(boost::beast::error_code ec)
 		{
+			if (ec == boost::asio::error::operation_aborted) {
+				return; // do not continue - and no need to call _fn here.. we'll assume whoever is canceling can also tell the shared_ptr holder to free
+			}
 			if (ec) {
 				// TODO: set _isConnectionClosed to true??
 				_call_fn_with(string(ec.message()));
@@ -232,6 +246,9 @@ namespace HTTPRequests
 		{
 			if (ec) {
 				// TODO: set _isConnectionClosed to true??
+				if (ec == boost::asio::error::operation_aborted) {
+					return; // do not continue - and no need to call _fn here.. we'll assume whoever is canceling can also tell the shared_ptr holder to free
+				}
 				_call_fn_with(string(ec.message()));
 				return;
 			}
@@ -249,6 +266,10 @@ namespace HTTPRequests
 		{
 			boost::ignore_unused(bytes_transferred);
 			//
+			if (ec == boost::asio::error::operation_aborted) {
+				return; // do not continue - and no need to call _fn here.. we'll assume whoever is canceling can also tell the shared_ptr holder to free
+
+			}
 			if (ec) {
 				_call_fn_with(string(ec.message()));
 				return;
@@ -269,19 +290,32 @@ namespace HTTPRequests
 		) {
 			boost::ignore_unused(bytes_transferred);
 			//
+			if (ec == boost::asio::error::operation_aborted) {
+				return; // do not continue - and no need to call _fn here.. we'll assume whoever is canceling can also tell the shared_ptr holder to free
+			}
 			if (ec || _response.result() != status::ok) {
 				_call_fn_with(string(ec.message()));
 				return;
 			}
 			auto data = std::make_shared<rapidjson::Document>();
 			auto r = !(*data).Parse(_response.body().c_str(), _response.body().size()).HasParseError();
+//			cout << "_response.body().c_str(): " << _response.body().c_str() << endl;
 			assert(r);
 			std::atomic_store(&_result, data);
 			//
 			// TODO: perhaps dispatch->async?
-			_call_fn_with_success();
+			//
+			_isBeingShutDown = true;
 			//
 			// Gracefully close the stream
+//			try {
+//				_stream.shutdown();
+//				_stream.lowest_layer().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+//			} catch (std::exception &e) {
+//				// it throws a 'shutdown' for some reason..?
+//				cout << "e " << e.what() << endl;
+//			}
+			
 			_stream.async_shutdown(
 				_strand.wrap(std::bind(
 					&Handle_beast::on_shutdown,
@@ -292,15 +326,19 @@ namespace HTTPRequests
 		}
 		void on_shutdown(beast::error_code ec)
 		{
+			_isShutDown = true;
+			_isBeingShutDown = false;
+			_isStreamInUse = false; // may as well unset this
+			//
 			if (ec == boost::asio::error::eof) {
 				// Rationale:
 				// http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
 				ec = {};
 			}
-			if (ec) {
-				// probably don't need to call back on fn here
-			}
 			// If we get here then the connection is closed gracefully
+			//
+			// and this will free 'this'
+			_call_fn_with_success();
 		}
 	};
 	//

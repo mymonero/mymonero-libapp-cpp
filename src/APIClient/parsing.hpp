@@ -731,26 +731,28 @@ namespace HostedMonero
 		std::vector<SpentOutputDescription> spentOutputs;
 		Value::ConstMemberIterator spent_outputs__itr = res.FindMember("spent_outputs");
 		if (spent_outputs__itr != res.MemberEnd()) {
-			for (auto &spent_output: spent_outputs__itr->value.GetArray()) {
-				assert(spent_output.IsObject());
-				auto generated__keyImage = keyImageCache->lazy_keyImage(
-					spent_output["tx_pub_key"].GetString(),
-					spent_output["out_index"].GetUint64(),
-					address,
-					view_key__private,
-					spend_key__private,
-					spend_key__public
-				);
-				string spent_output__keyImage = spent_output["key_image"].GetString();
-				if (spent_output__keyImage != generated__keyImage) { // not spent
-					MDEBUG("HostedMonero: Output used as mixin \(spent_output__keyImage)/\(generated__keyImage))");
-					uint64_t spent_output__amount = stoull(spent_output["amount"].GetString());
-					total_sent -= spent_output__amount;
+			if (spent_outputs__itr->value.IsNull() != true) { // this is actually a thing with freshly created wallets
+				for (auto &spent_output: spent_outputs__itr->value.GetArray()) {
+					assert(spent_output.IsObject());
+					auto generated__keyImage = keyImageCache->lazy_keyImage(
+						spent_output["tx_pub_key"].GetString(),
+						spent_output["out_index"].GetUint64(),
+						address,
+						view_key__private,
+						spend_key__private,
+						spend_key__public
+					);
+					string spent_output__keyImage = spent_output["key_image"].GetString();
+					if (spent_output__keyImage != generated__keyImage) { // not spent
+						MDEBUG("HostedMonero: Output used as mixin \(spent_output__keyImage)/\(generated__keyImage))");
+						uint64_t spent_output__amount = stoull(spent_output["amount"].GetString());
+						total_sent -= spent_output__amount;
+					}
+					// TODO: this is faithful to old web wallet code but is it really correct?
+					spentOutputs.push_back( // but keep output regardless of whether spent or not
+						SpentOutputDescription::new_fromJSONRepresentation(spent_output)
+					);
 				}
-				// TODO: this is faithful to old web wallet code but is it really correct?
-				spentOutputs.push_back( // but keep output regardless of whether spent or not
-					SpentOutputDescription::new_fromJSONRepresentation(spent_output)
-				);
 			}
 		}
 		//

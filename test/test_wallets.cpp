@@ -177,6 +177,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByMnemonic, *utf::depends_on("serv
 	);
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(10000)); // wait for login network request completion, async notifies……
+	connection.disconnect(); // critical
 }
 //
 BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on("walletsListController_addByMnemonic"))
@@ -187,8 +188,8 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on
 	using namespace App;
 	//
 	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
-																									string("api.mymonero.com:8443")
-																									));
+		string("api.mymonero.com:8443")
+	));
 	//
 	auto wlc_spt = ServiceLocator::instance().walletsListController;
 	bool hasAdded = false;
@@ -238,9 +239,86 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on
 	);
 	//
 	std::this_thread::sleep_for(std::chrono::milliseconds(10000)); // wait for login network request completion, async notifies……
+	connection.disconnect(); // critical
+}
+BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("walletsListController_addByAddressAndKeys"))
+{
+	cout << endl;
+	cout << "---------------------------" << endl;
+	cout << "walletsListController_createNewWallet" << endl;
+	using namespace App;
+	//
+	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+		string("api.mymonero.com:8443")
+	));
+	//
+	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	bool hasAdded = false;
+	size_t nthCallOfListUpdated = 0;
+	auto connection = wlc_spt->list__updated_signal.connect(
+		[&nthCallOfListUpdated, &hasAdded, &wlc_spt]()
+		{
+		std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
+		//
+		nthCallOfListUpdated += 1;
+//		size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
+//		BOOST_REQUIRE_MESSAGE(wlc_spt->records().size() >= expectingNumRecords, "Expected number of records to be at least " << expectingNumRecords << " in call " << nthCallOfListUpdated << " of walletsListController_addByAddressAndKeys but it was " << wlc_spt->records().size());
+		}
+	);
+		//
+	BOOST_REQUIRE(wlc_spt->hasBooted() == true); // asserting this because .setup() is all synchronous … which is why onceBooted's fn gets called -after- the first list__updated!! rather than before it ……… we could make the _flushWaitingBlocks… call asynchronously executed as well, but that might mess up other architecture assumptions…… hmm
+	
+	size_t num_records_before_add = wlc_spt->records().size();
+	cout << "num_records_before_add " << num_records_before_add << endl;
+	//
+	std::shared_ptr<Wallets::Object> cached__wallet_spt = nullptr;
+	//
+	wlc_spt->CreateNewWallet_NoBootNoListAdd(
+		string("en-US"),
+		[&hasAdded, &wlc_spt, num_records_before_add, &cached__wallet_spt] (
+			optional<string> err_str,
+			optional<std::shared_ptr<Wallets::Object>> wallet_spt
+		) {
+			if (err_str != none) {
+				cout << "Error while creating new wallet: " << *err_str << endl;
+			}
+			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while creating new wallet");
+			if (err_str == none) {
+				hasAdded = true;
+			}
+			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
+			BOOST_REQUIRE(wlc_spt->records().size() == num_records_before_add); // assert didn't add it to the list yet
+			//
+			cached__wallet_spt = *wallet_spt;
+			cout << "Created wallet " << cached__wallet_spt << endl;
+			//
+			wlc_spt->OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained(
+				cached__wallet_spt,
+				string("Blue (new)"), Wallets::SwatchColor::blue,
+				[&hasAdded, num_records_before_add, &wlc_spt, &cached__wallet_spt] (
+					optional<string> err_str,
+					optional<std::shared_ptr<Wallets::Object>> wallet_spt
+				) {
+					if (err_str != none) {
+						cout << "Error while adding wallet: " << *err_str << endl;
+					}
+					cached__wallet_spt = nullptr; // release from here
+					BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
+					if (err_str == none) {
+						hasAdded = true;
+					}
+					BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
+					BOOST_REQUIRE(wlc_spt->records().size() == num_records_before_add + 1); // assert did add it to the list
+				}
+			);
+		}
+	);
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(10000)); // wait for login network request completion, async notifies……
+	connection.disconnect(); // critical
 }
 //
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_addByAddressAndKeys"))
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_createNewWallet"))
 {
 	cout << endl;
 	cout << "---------------------------" << endl;
