@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_addWallet, *utf::depends_on("serviceL
 	bool hasAdded = false;
 	size_t nthCallOfListUpdated = 0;
 	auto connection = wlc_spt->list__updated_signal.connect(
-		[&sawListUpdated, &nthCallOfListUpdated, &hasAdded, wlc_spt]()
+		[&sawListUpdated, &nthCallOfListUpdated, &hasAdded, &wlc_spt]()
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
 			//

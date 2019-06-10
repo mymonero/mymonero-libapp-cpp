@@ -62,11 +62,6 @@ struct LogInReqCBFunctor
 };
 //
 // Lifecycle - Deinit
-void Object::teardown()
-{
-	Persistable::Object::teardown();
-	tearDownRuntime();
-}
 void Object::tearDownRuntime()
 {
 	_hostPollingController = nullptr; // stop requests

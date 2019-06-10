@@ -465,9 +465,21 @@ namespace Wallets
 			// Regenerate any runtime vals that depend on persisted vals..
 			regenerate_shouldDisplayImportAccountOption();
 		}
+		~Object()
+		{
+			cout << "A Wallets::Object concrete destructor" << endl;
+			
+			// TODO: figure out why subclass's teardown isn't being called
+			teardown();
+		}
 		//
 		// Lifecycle
-		void teardown() override; // override
+		void teardown() override
+		{
+			cout << "Wallet: Tearing down " << this << endl;
+			Persistable::Object::teardown();
+			tearDownRuntime();
+		}
 		//
 		// Accessors
 		virtual document_persister::DocumentJSON new_dictRepresentation() const override

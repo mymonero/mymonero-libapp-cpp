@@ -34,12 +34,9 @@
 #include "PersistableObject.hpp"
 //
 // Private - Lifecycle - Teardown
-Persistable::Object::~Object()
-{
-	teardown();
-}
 void Persistable::Object::teardown()
 {
+	cout << "Persistable::Object lvl log: Tearing down " << this << endl;
 	willBeDeinitialized_signal(*this);
 	//
 	documentsPath = nullptr;

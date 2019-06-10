@@ -97,8 +97,8 @@ namespace Persistable
 				//
 			}
 			// Lifecycle - Teardown
-			virtual ~Object(); // this must be virtual since there are virtual methods on this class
-			virtual void teardown(); // overridable
+			virtual ~Object();
+		virtual void teardown(); // overridable / callable .... make sure to call Persistable::Object::teardown() in your concrete ~Object(){}
 			//
 			// Properties - Dependencies
 			std::shared_ptr<const string> documentsPath;

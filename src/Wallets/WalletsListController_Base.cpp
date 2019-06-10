@@ -55,6 +55,7 @@ void ListController_Base::setup()
 }
 void ListController_Base::tearDown()
 {
+	cout << "Tearing down a WalletsListController_Base" << endl;
 	Lists::Controller::tearDown();
 	//
 	apiClient = nullptr;

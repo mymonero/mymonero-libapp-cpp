@@ -61,7 +61,9 @@ namespace Wallets
 			_nettype(nettype)
 		{
 		}
-		virtual ~ListController_Base() {}
+		virtual ~ListController_Base() {
+			cout << "Destructor for Wallets::ListController_Base" << endl;
+		}
 		//
 		// Overrides
 		std::shared_ptr<Persistable::Object> new_record(
