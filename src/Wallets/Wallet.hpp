@@ -368,8 +368,22 @@ namespace Wallets
 			_spend_sec_key = string(private_keys[__dictKey__keyDuo__spend].GetString(), private_keys[__dictKey__keyDuo__spend].GetStringLength());
 			//
 			_walletLabel = string(plaintextData[__dictKey_walletLabel].GetString(), plaintextData[__dictKey_walletLabel].GetStringLength());
-			_account_seed = string(plaintextData[__dictKey_accountSeed].GetString(), plaintextData[__dictKey_accountSeed].GetStringLength());
-			_mnemonic_wordsetName = string(plaintextData[__dictKey_mnemonic_wordsetName].GetString(), plaintextData[__dictKey_mnemonic_wordsetName].GetStringLength());
+			{
+				Value::ConstMemberIterator itr = plaintextData.FindMember(__dictKey_accountSeed);
+				if (itr != plaintextData.MemberEnd()) {
+					_account_seed = string(itr->value.GetString(), itr->value.GetStringLength());
+				} else {
+					_account_seed = none;
+				}
+			}
+			{
+				Value::ConstMemberIterator itr = plaintextData.FindMember(__dictKey_mnemonic_wordsetName);
+				if (itr != plaintextData.MemberEnd()) {
+					_mnemonic_wordsetName = string(itr->value.GetString(), itr->value.GetStringLength());
+				} else {
+					_mnemonic_wordsetName = none;
+				}
+			}
 			//
 			
 			//
@@ -661,8 +675,11 @@ namespace Wallets
 				Value k(StringRef(__dictKey_transactions));
 				dict.AddMember(k, new_arrayOfSerializedDicts(*_transactions, dict.GetAllocator()).Move(), dict.GetAllocator());
 			}
-			auto s = Persistable::new_plaintextJSONStringFrom_movedDocumentDict(dict);
-			
+//			{
+//				auto s = Persistable::new_plaintextJSONStringFrom_movedDocumentDict(dict);
+//				cout << "Serialized wallet json for writing: " << s << endl;
+//			}
+			//
 			return dict;
 		}
 		const CollectionName &collectionName() const override { return Wallets::collectionName; }

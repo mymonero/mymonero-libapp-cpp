@@ -193,33 +193,35 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 	)> fn,
 	std::function<void()> userCanceledPasswordEntry_fn
 ) {
+	WalletDescriptionRetVals walletWith__retVals;
+	bool r = wallet_with(mnemonicString, walletWith__retVals, _nettype);
+	if (!r) {
+		fn(std::move(*walletWith__retVals.err_string), none, none);
+		return;
+	}
+	if (walletWith__retVals.did_error) {
+		BOOST_THROW_EXCEPTION(logic_error("Illegal success flag but did_error"));
+		return;
+	}
+	auto addr_for_that_mnemonic = std::move((*(walletWith__retVals.optl__desc)).address_string);
 	std::shared_ptr<ListController_Base> shared_this = shared_from_this();
 	std::weak_ptr<ListController_Base> weak_this = shared_this;
 	onceBooted([
-		weak_this, walletLabel, mnemonicString, swatchColor,
+		weak_this, walletLabel, mnemonicString, swatchColor, addr_for_that_mnemonic,
 		fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
 	] () {
 		if (auto inner_spt = weak_this.lock()) {
 			inner_spt->passwordController->onceBootedAndPasswordObtained([
-				weak_this, walletLabel, mnemonicString, swatchColor,
+				weak_this, walletLabel, mnemonicString, swatchColor, addr_for_that_mnemonic,
 				fn = std::move(fn), userCanceledPasswordEntry_fn = std::move(userCanceledPasswordEntry_fn)
 			] (Passwords::Password password, Passwords::Type type) {
 				if (auto inner_inner_spt = weak_this.lock()) {
 					{ // check if wallet already entered
 						for (std::vector<std::shared_ptr<Persistable::Object>>::iterator it = inner_inner_spt->_records.begin(); it != inner_inner_spt->_records.end(); ++it) {
 							auto wallet = std::dynamic_pointer_cast<Wallets::Object>(*it);
-							if (wallet->mnemonicString() == none || wallet->mnemonicString()->size() == 0) {
-								// TODO: solve limitation of this code - check if wallet with same address (but no mnemonic) was already added
-								continue;
-							}
-							bool equal;
-							try {
-								equal = are_equal_mnemonics(*(wallet->mnemonicString()), mnemonicString);
-							} catch (std::exception const& e) {
-								fn(string(e.what()), none, none);
-								return;
-							}
-							if (equal) { // would be rather odd; NOTE: must use this comparator instead of string comparison to support partial-word mnemonic strings
+							if (wallet->public_address() == addr_for_that_mnemonic) {
+								// simply return existing wallet; note: this wallet might have mnemonic and thus seed
+								// so might not be exactly what consumer of GivenBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys is expecting
 								fn(none, wallet, true); // wasWalletAlreadyInserted: true
 								return;
 							}
@@ -246,6 +248,12 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 							if (auto inner_inner_inner_spt = weak_this.lock()) {
 								auto retained_wallet =  inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id];
 								inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.erase(retained_wallet_instance_id); // important
+								{
+									auto erased_wallet_it = inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.find(retained_wallet_instance_id);
+									if (erased_wallet_it != inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.end()) {
+										BOOST_THROW_EXCEPTION(logic_error("Expected retained wallet to have been erased."));
+									}
+								}
 								if (err_str != none) {
 									fn(err_str, none, none);
 									return;
@@ -315,7 +323,6 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys
 						inner_inner_spt->ccyConversionRatesController
 					);
 					string retained_wallet_instance_id = wallet->instance_uuid_string; // copy
-					cout << " .. retained_wallet_instance_id " << retained_wallet_instance_id << endl;
 					inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id] = wallet; // must temporarily retain this!
 					wallet->Boot_byLoggingIn_existingWallet_withAddressAndKeys(
 						walletLabel,
@@ -329,6 +336,12 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys
 							if (auto inner_inner_inner_spt = weak_this.lock()) {
 								auto retained_wallet =  inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId[retained_wallet_instance_id];
 								inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.erase(retained_wallet_instance_id); // important
+								{
+									auto erased_wallet_it = inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.find(retained_wallet_instance_id);
+									if (erased_wallet_it != inner_inner_inner_spt->__retainedWalletsWaitingToLogIn_byInstanceId.end()) {
+										BOOST_THROW_EXCEPTION(logic_error("Expected retained wallet to have been erased."));
+									}
+								}
 								if (err_str != none) {
 									fn(err_str, none, none);
 									return;

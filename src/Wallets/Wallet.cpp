@@ -289,7 +289,7 @@ void Object::_boot_byLoggingIn(
 		BOOST_THROW_EXCEPTION(logic_error("Found unexpectedly invalid wallet components without an error"));
 		return;
 	}
-	if (seed_orNone == none) {
+	if (seed_orNone != none) {
 		if (seed_orNone->empty()) {
 			BOOST_THROW_EXCEPTION(logic_error("Invalid empty string seed"));
 			return;
@@ -297,7 +297,11 @@ void Object::_boot_byLoggingIn(
 	}
 	{ // record these properties regardless of whether we are about to error on login
 		_public_address = address;
-		_account_seed = *seed_orNone;
+		if (seed_orNone != none) {
+			_account_seed = *seed_orNone;
+		} else {
+			_account_seed = none;
+		}
 		_view_pub_key = retVals.pub_viewKey_string;
 		_spend_pub_key = retVals.pub_spendKey_string;
 		_view_sec_key = sec_viewKey_string;
