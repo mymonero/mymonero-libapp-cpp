@@ -89,7 +89,7 @@ namespace HTTPRequests
 		// Imperatives - Override
 		void cancel() override
 		{
-			cout << "Canceling a HTTPRequests::Handle_beast" << endl;
+			cout << "Canceling a HTTPRequests::Handle_beast<" << this << ">" << endl;
 			if (_isConnectionClosed) {
 				return;
 			}
@@ -184,7 +184,7 @@ namespace HTTPRequests
 			assert(_hasFNBeenCalled == false);
 			_hasFNBeenCalled = true;
 			if (err_str != none) {
-				cout << "err_str is… " << err_str << endl;
+				cout << "in HTTPRequests::Handle_beast<" << this << ">, err_str is… " << err_str << endl;
 				_fn(std::move(*err_str), nullptr);
 				return;
 			}
