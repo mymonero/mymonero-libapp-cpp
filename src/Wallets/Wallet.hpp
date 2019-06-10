@@ -468,8 +468,6 @@ namespace Wallets
 		~Object()
 		{
 			cout << "A Wallets::Object concrete destructor" << endl;
-			
-			// TODO: figure out why subclass's teardown isn't being called
 			teardown();
 		}
 		//

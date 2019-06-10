@@ -61,8 +61,10 @@ namespace Wallets
 			_nettype(nettype)
 		{
 		}
-		virtual ~ListController_Base() {
-			cout << "Destructor for Wallets::ListController_Base" << endl;
+		virtual ~ListController_Base()
+		{
+			cout << "A Wallets::ListController_Base virtual destructor for " << this << endl;
+			// make sure to call 'teardown' in the concrete destructor in your base class inherited from this
 		}
 		//
 		// Overrides

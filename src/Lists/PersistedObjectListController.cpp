@@ -220,6 +220,7 @@ errOr_documentIds Controller::_new_idsOfPersistedRecords()
 // Imperatives - Lifecycle - Teardown
 void Controller::tearDown()
 { // overridable but call on super obvs
+	cout << "A Lists::Controller::tearDown()" << endl;
 	stopObserving();
 	//
 	documentsPath = nullptr;

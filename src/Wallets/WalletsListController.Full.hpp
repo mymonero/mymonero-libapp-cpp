@@ -52,7 +52,11 @@ namespace Wallets
 			ListController_Base(nettype)
 		{
 		}
-		~ListController() {}
+		~ListController() {
+			cout << "Destructor for Wallets::ListController_Full" << endl;
+			tearDown();
+		}
+
 		//
 		// Dependencies
 

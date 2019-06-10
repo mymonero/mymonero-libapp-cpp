@@ -83,8 +83,8 @@ namespace Lists
 		Controller& operator=(const Controller&) = delete;
 		virtual ~Controller()
 		{
-			cout << "Destructing a ListController" << endl;
-			tearDown();
+			cout << "A Lists::Controller virtual destructor for " << this << endl;
+			// make sure to call 'teardown' in the concrete destructor in your base class inherited from this
 		}
 		//
 		// Dependencies

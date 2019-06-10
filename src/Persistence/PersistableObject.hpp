@@ -97,7 +97,11 @@ namespace Persistable
 				//
 			}
 			// Lifecycle - Teardown
-			virtual ~Object();
+		virtual ~Object()
+		{
+			cout << "A Persistable::Object virtual destructor for " << this << endl;
+			// make sure to call 'teardown' in the concrete destructor in your base class inherited from this
+		}
 		virtual void teardown(); // overridable / callable .... make sure to call Persistable::Object::teardown() in your concrete ~Object(){}
 			//
 			// Properties - Dependencies
