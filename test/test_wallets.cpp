@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByMnemonic, *utf::depends_on("serv
 	auto connection = wlc_spt->list__updated_signal.connect(
 		[&nthCallOfListUpdated, &hasAdded, &wlc_spt]()
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
+			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the OnceBooted_… to return - since we cannot guarantee that the call will return before we enter this
 			//
 			nthCallOfListUpdated += 1;
 			size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on
 	auto connection = wlc_spt->list__updated_signal.connect(
 		[&nthCallOfListUpdated, &hasAdded, &wlc_spt]()
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
+			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the OnceBooted_… to return - since we cannot guarantee that the call will return before we enter this
 			//
 			nthCallOfListUpdated += 1;
 			size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
@@ -241,6 +241,10 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on
 	std::this_thread::sleep_for(std::chrono::milliseconds(10000)); // wait for login network request completion, async notifies……
 	connection.disconnect(); // critical
 }
+//
+//
+static const string newlyGeneratedWallet_walletLabel = "Blue (new)";
+//
 BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("walletsListController_addByAddressAndKeys"))
 {
 	cout << endl;
@@ -258,7 +262,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("wa
 	auto connection = wlc_spt->list__updated_signal.connect(
 		[&nthCallOfListUpdated, &hasAdded, &wlc_spt]()
 		{
-		std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the givenBooted_delete to return - since we cannot guarantee that the call will return before we enter this
+		std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the OnceBooted_… to return - since we cannot guarantee that the call will return before we enter this
 		//
 		nthCallOfListUpdated += 1;
 //		size_t expectingNumRecords = hasAdded ? 1 : 0; // we can rely on hasBooted being set to true before the first list__updated signal is fired because the onceBooted cb is sync and called before the signal is executed asynchronously
@@ -294,7 +298,7 @@ BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("wa
 			//
 			wlc_spt->OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained(
 				cached__wallet_spt,
-				string("Blue (new)"), Wallets::SwatchColor::blue,
+				newlyGeneratedWallet_walletLabel, Wallets::SwatchColor::blue,
 				[&hasAdded, num_records_before_add, &wlc_spt, &cached__wallet_spt] (
 					optional<string> err_str,
 					optional<std::shared_ptr<Wallets::Object>> wallet_spt
@@ -318,7 +322,58 @@ BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("wa
 	connection.disconnect(); // critical
 }
 //
-BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_createNewWallet"))
+BOOST_AUTO_TEST_CASE(walletsListController_deleteAllNewWallets, *utf::depends_on("walletsListController_createNewWallet"))
+{
+	cout << endl;
+	cout << "---------------------------" << endl;
+	cout << "walletsListController_deleteAllNewWallets" << endl;
+	using namespace App;
+	//
+	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+		string("api.mymonero.com:8443")
+	));
+	//
+	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	bool hasRemoved = false;
+	size_t nthCallOfListUpdatedSince_hasRemoved = 0;
+	auto connection = wlc_spt->list__updated_signal.connect(
+		[&nthCallOfListUpdatedSince_hasRemoved, &hasRemoved, &wlc_spt]()
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(50)); // sleeping to wait for the OnceBooted_… to return - since we cannot guarantee that the call will return before we enter this
+			//
+			if (hasRemoved == true) {
+				nthCallOfListUpdatedSince_hasRemoved += 1;
+			} else {
+				cout << "Test for delete called before remove happened" << endl;
+			}
+		}
+	);
+	//
+	BOOST_REQUIRE(wlc_spt->hasBooted() == true);
+	size_t num_records_before_delete = wlc_spt->records().size();
+	BOOST_REQUIRE_MESSAGE(num_records_before_delete >= 2, "Expected at least 2 num_records_before_delete");
+	cout << "> num_records_before_delete " << num_records_before_delete << endl;
+	//
+	// we can assume we've booted here
+	hasRemoved = true;
+	BOOST_FOREACH(std::shared_ptr<Persistable::Object> it, wlc_spt->records())
+	{
+		if (std::dynamic_pointer_cast<Wallets::Object>(it)->walletLabel() == newlyGeneratedWallet_walletLabel) {
+			optional<string> err_str = wlc_spt->givenBooted_delete(*it);
+			BOOST_REQUIRE_MESSAGE(err_str == none, "Expected no error from deleting Wallets ListController newly created objects");
+			hasRemoved = true; // the list-updated triggered by givenBooted_delete is called asynchronously .. so we put a delay in the list__updated_signal handler above to simulate synchrony
+		} else {
+			cout << "Not deleting wallet named " << std::dynamic_pointer_cast<Wallets::Object>(it)->walletLabel() << endl;
+		}
+	}
+	//
+	std::this_thread::sleep_for(std::chrono::milliseconds(3000)); // wait for all handlers
+	BOOST_REQUIRE_MESSAGE(nthCallOfListUpdatedSince_hasRemoved > 0, "Expected nthCallOfListUpdatedSince_hasRemoved > 0");
+	connection.disconnect(); // critical
+}
+// test deleting all 'Blue (new)' wallets
+//
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_deleteAllNewWallets"))
 {
 	cout << endl;
 	cout << "---------------------------" << endl;

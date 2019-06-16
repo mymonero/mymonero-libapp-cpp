@@ -74,7 +74,7 @@ namespace Wallets
 		}
 		~HostPollingController()
 		{
-			cout << "Destructing a HostPollingController" << endl;
+			cout << "Destructor for a Wallets::HostPollingController" << endl;
 			tearDown();
 		}
 		//

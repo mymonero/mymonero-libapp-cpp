@@ -57,6 +57,7 @@ namespace Wallets
 		}
 		~TxCleanupController()
 		{
+			cout << "Destructor for a Wallets::TxCleanupController" << endl;
 		}
 		//
 		// Dependencies
