@@ -75,7 +75,7 @@ namespace HostedMonero
 		time.tm_isdst = 0;
 		const int millis = input.length() > 20 ? parse_time_int(&input[20]) : 0;
 		//
-		return timegm(&time)*1000 + millis;
+		return timegm(&time) + millis/1000; // seconds!!
 	}
 	//
 	// SpentOutputDescription
@@ -434,7 +434,6 @@ namespace HostedMonero
 					optl__to_address = itr->value.GetString();
 				}
 			}
-			
 			auto obj = HistoricalTxRecord{
 				stoll(dict["amount"].GetString()),
 				stoull(dict["total_sent"].GetString()),
@@ -442,7 +441,7 @@ namespace HostedMonero
 				//
 				dict["approx_float_amount"].GetDouble(),
 				SpentOutputDescription::newArray_fromJSONRepresentations(dict["spent_outputs"]),
-				stol(dict["timestamp"].GetString()) * 1000, // this is assuming it's been stored in seconds, not milliseconds
+				stol(dict["timestamp"].GetString()), // this is assuming it's been stored in seconds, not milliseconds
 				dict["hash"].GetString(),
 				optl__paymentId,
 				dict["mixin"].GetUint(),
@@ -547,7 +546,7 @@ namespace HostedMonero
 		{
 			Value k("timestamp", allocator);
 			ostringstream oss;
-			oss << (desc.timestamp / 1000); // assume storing as a 'long' in a string; and SECONDS, so convert from time_t's milliseconds to seconds
+			oss << desc.timestamp; // assume storing as a 'long' in a string
 			Value v(oss.str(), allocator);
 			dict.AddMember(k, v.Move(), allocator);
 		}

@@ -46,10 +46,6 @@ namespace Wallets
 	using namespace std;
 	using namespace boost;
 	//
-	// Constants
-	static const size_t manualRefreshCoolDownMinimumTimeInterval = 10;
-	static const size_t pollingTimerPeriod = 30;
-	//
 	// Forward-declarations
 	class Object;
 	//

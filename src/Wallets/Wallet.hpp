@@ -718,7 +718,10 @@ namespace Wallets
 			}
 			return _keyImageCache;
 		}
-
+		optional<std::vector<HostedMonero::HistoricalTxRecord>> actual_noLock_transactions()
+		{
+			return _transactions;
+		}
 		
 		
 		
@@ -953,7 +956,7 @@ namespace Wallets
 		// Properties - Objects
 		std::shared_ptr<HTTPRequests::Handle> _logIn_requestHandle;
 		std::shared_ptr<Wallets::HostPollingController> _hostPollingController; // strong; can be nullptr
-		std::unique_ptr<Wallets::TxCleanupController> _txCleanupController; // strong; can be nullptr
+		std::shared_ptr<Wallets::TxCleanupController> _txCleanupController; // strong; can be nullptr
 		std::unique_ptr<HTTPRequests::Handle> _current_sendFunds_request;
 //		var submitter: SendFundsFormSubmissionHandle?
 		//
@@ -972,6 +975,7 @@ namespace Wallets
 			std::function<void(optional<string> err_str)>&& fn
 		);
 		void _atRuntime_setup_hostPollingController();
+		void _atRuntime_setup_txCleanupController();
 		void _boot_byLoggingIn(
 			const string &address,
 			const string &sec_viewKey_string,

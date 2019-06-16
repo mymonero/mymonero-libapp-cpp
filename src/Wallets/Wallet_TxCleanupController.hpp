@@ -37,6 +37,7 @@
 //
 //
 #include <iostream>
+#include "../Dispatch/Dispatch_Interface.hpp"
 //
 namespace Wallets
 {
@@ -47,18 +48,26 @@ namespace Wallets
 	class Object;
 	//
 	// Controllers
-	class TxCleanupController
+	class TxCleanupController: public std::enable_shared_from_this<TxCleanupController>
 	{
 	public:
 		//
 		// Lifecycle - Init
-		TxCleanupController(const Object &wallet): _wallet(wallet)
+		TxCleanupController(
+			std::weak_ptr<Object> wallet,
+			std::shared_ptr<Dispatch::Dispatch> dispatch_ptr
+		):
+		_wallet(wallet),
+		_dispatch_ptr(dispatch_ptr)
 		{
 		}
 		~TxCleanupController()
 		{
 			cout << "Destructor for a Wallets::TxCleanupController" << endl;
 		}
+		//
+		// Imperatives - Lifecycle / Instantiation
+		void setup();
 		//
 		// Dependencies
 		
@@ -75,10 +84,22 @@ namespace Wallets
 	private:
 		//
 		// Properties
-		const Object &_wallet; // a reference! this's lifecycle should be just slightly less than the wallet
+		std::weak_ptr<Object> _wallet;
+		std::shared_ptr<Dispatch::Dispatch> _dispatch_ptr;
+		//
+		std::mutex timer_mutex;
+		std::unique_ptr<Dispatch::CancelableTimerHandle> _timer; // initialized to nullptr
+		//
+		// Imperatives - Lifecycle
+		void tearDown();
+		//
+		// Imperatives - Timer
+		void startPollingTimer();
+		void invalidateTimer();
+		void __givenLocked_create_repeating_timer();
 		//
 		// Imperatives
-		
+		void __do_localTxCleanupJob();
 	};
 }
 

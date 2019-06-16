@@ -223,7 +223,7 @@ void Object::___proceed_havingActuallyBooted__trampolineFor_successfullyBooted(
 	{
 		if (auto inner_spt = weak_this.lock()) {
 			inner_spt->_atRuntime_setup_hostPollingController(); // instantiate (and kick off) polling controller
-			inner_spt->_txCleanupController = std::make_unique<Wallets::TxCleanupController>(*inner_spt);
+			inner_spt->_atRuntime_setup_txCleanupController();
 			//
 			inner_spt->booted_signal();
 		}
@@ -250,6 +250,16 @@ void Object::_atRuntime_setup_hostPollingController()
 		}
 	);
 	_hostPollingController->setup();
+}
+void Object::_atRuntime_setup_txCleanupController()
+{
+	std::shared_ptr<Object> shared_this = shared_from_this();
+	std::weak_ptr<Object> weak_this = shared_this;
+	_txCleanupController = std::make_shared<Wallets::TxCleanupController>(
+		weak_this,
+		_dispatch_ptr
+	);
+	_txCleanupController->setup();
 }
 //
 //

@@ -40,6 +40,9 @@ using namespace Wallets;
 // Lifecycle
 void HostPollingController::setup()
 {
+	if (_dispatch_ptr == nullptr) {
+		BOOST_THROW_EXCEPTION(logic_error("HostPollingController: expected dispatch_ptr != nullptr"));
+	}
 	startPollingTimer();
 	// ^ just immediately going to jump into the runtime - so only instantiate self when you're ready to do this
 	//
@@ -60,9 +63,6 @@ void HostPollingController::tearDown()
 	}
 	_didUpdate_factorOf_isFetchingAnyUpdates(); // unsure if emitting is desired here but it probably isn't harmful
 	_didUpdate_factorOf_isFetchingAnyUpdates_fn = {}; // zero (though not strictly necessary)
-	//
-	// cannot zero const ref:
-//	_wallet = nullptr; // zero (though not theoretically necessary as self ought to be destructed within the lifespan of _wallet)
 }
 //
 // Imperatives - Timer
@@ -78,6 +78,7 @@ void HostPollingController::startPollingTimer()
 	}
 	timer_mutex.unlock();
 }
+static const size_t pollingTimerPeriod = 30;
 void HostPollingController::__givenLocked_create_repeating_timer()
 {
 	if (_timer != nullptr) { // necessary?
@@ -105,7 +106,6 @@ void HostPollingController::__givenLocked_create_repeating_timer()
 		}
 	});
 }
-
 void HostPollingController::invalidateTimer()
 {
 	timer_mutex.lock();
@@ -238,6 +238,7 @@ void HostPollingController::_fetch_addressTransactions()
 }
 //
 // Imperatives - Manual refresh
+static const double manualRefreshCoolDownMinimum_s = 10;
 void HostPollingController::requestFromUI_manualRefresh()
 {
 	if (_requestHandleFor_addressInfo != nullptr || _requestHandleFor_addressTransactions != nullptr) {
@@ -245,8 +246,11 @@ void HostPollingController::requestFromUI_manualRefresh()
 	}
 	// now since addressInfo and addressTransactions are nearly happening at the same time (with failures and delays unlikely), I'm just going to use time since addressTransactions to approximate length since last collective refresh
 	auto current_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	cout << "current_time " << current_time << endl;
+	cout << "*_dateOfLast_fetch_addressTransactions " << _dateOfLast_fetch_addressTransactions << endl;
+	cout << "difftime(current_time, *_dateOfLast_fetch_addressTransactions) " << difftime(current_time, *_dateOfLast_fetch_addressTransactions) << endl;
 	bool hasBeenLongEnoughSinceLastRefreshToRefresh = _dateOfLast_fetch_addressTransactions == none /* we know a request is not _currently_ happening, so nil date means one has never happened */
-		|| abs(current_time - *_dateOfLast_fetch_addressTransactions/*negative*/) >= Wallets::manualRefreshCoolDownMinimumTimeInterval;
+		|| difftime(current_time, *_dateOfLast_fetch_addressTransactions) >= manualRefreshCoolDownMinimum_s;
 	if (hasBeenLongEnoughSinceLastRefreshToRefresh) {
 		// and here we again know we don't have any requests to cancel
 		performRequests(); // approved manual refresh
