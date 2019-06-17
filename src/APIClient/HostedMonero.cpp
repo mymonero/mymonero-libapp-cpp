@@ -48,9 +48,9 @@ enum Endpoint
 	//
 	UnspentOuts,
 	RandomOuts,
-	SubmitSerializedSignedTransaction,
+	SubmitTx,
 	//
-	ImportRequestInfoAndStatus,
+	ImportRequestInfo,
 };
 static string endpoint__login = string("login");
 static string endpoint__addressInfo = string("get_address_info");
@@ -72,9 +72,9 @@ static inline const string &_endpoint_path_from(Endpoint endpoint)
 			return endpoint__unspentOuts;
 		case RandomOuts:
 			return endpoint__randomOuts;
-		case SubmitSerializedSignedTransaction:
+		case SubmitTx:
 			return endpoint__submitTx;
-		case ImportRequestInfoAndStatus:
+		case ImportRequestInfo:
 			return endpoint__importRequest;
 	}
 }
@@ -279,41 +279,191 @@ std::shared_ptr<HTTPRequests::Handle> APIClient::addressTransactions(
 	);
 }
 //
-// TODO
-//
 // Import request info
-//func ImportRequestInfoAndStatus(
-//								address: MoneroAddress,
-//								view_key__private: MoneroKey,
-//								_ fn: @escaping (
-//												 _ err_str: String?,
-//												 _ result: ParsedResult_ImportRequestInfoAndStatus?
-//												 ) -> Void
-//								) -> RequestHandle? {
-//	let parameters: [String: Any] =
-//	[
-//	 "address": address,
-//	 "view_key": view_key__private
-//	 ]
-//	let endpoint = HostedMoneroAPI_Endpoint.ImportRequestInfoAndStatus
-//	let requestHandle = self._request(endpoint, parameters)
-//	{ [unowned self] (err_str, response_data, response_jsonDict) in
-//		if let err_str = err_str {
-//			self._shared_onMain_callBackFromRequest(err_str, nil, fn)
-//			return
-//		}
-//		let result = ParsedResult_ImportRequestInfoAndStatus(
-//															 payment_id: response_jsonDict!["payment_id"] as! MoneroPaymentID,
-//															 payment_address: response_jsonDict!["payment_address"] as! MoneroAddress,
-//															 import_fee: MoneroAmount(response_jsonDict!["import_fee"] as! String)!,
-//															 feeReceiptStatus: response_jsonDict!["status"] as? String
-//															 )
-//		self._shared_onMain_callBackFromRequest(err_str, result, fn)
-//	}
-//	return requestHandle
-//	}
-//	
-//	
+std::shared_ptr<HTTPRequests::Handle> APIClient::importRequestInfo(
+	const string &address,
+	const string &sec_view_key,
+	std::function<void(
+		optional<string> err_str,
+		optional<HostedMonero::ParsedResult_ImportRequestInfo> result
+	)> fn
+) {
+	auto params = new_parameters_forWalletRequest(address, sec_view_key);
+	std::shared_ptr<APIClient> shared_this = shared_from_this();
+	std::weak_ptr<APIClient> weak_this = shared_this;
+	return requestFactory->new_request(
+		HTTPRequests::HTTPS,
+		final_apiAddress_authority(),
+		_endpoint_path_from(ImportRequestInfo),
+		std::move(params),
+		[
+			weak_this, fn = std::move(fn)
+		] (
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> res
+		) {
+			if (auto inner_spt = weak_this.lock()) {
+				if (err_str != none) {
+					fn(std::move(*err_str), none);
+					return;
+				}
+				optional<string> feeReceiptStatus = none;
+				{
+					Value::ConstMemberIterator itr = res->FindMember("status");
+					if (itr != res->MemberEnd()) {
+						feeReceiptStatus = itr->value.GetString();
+					}
+				}
+				fn(none, ParsedResult_ImportRequestInfo{
+					std::move((*res)["payment_id"].GetString()),
+					std::move((*res)["payment_address"].GetString()),
+					stoull((*res)["import_fee"].GetString()),
+					feeReceiptStatus, // FIXME? can we just pass feeReceiptStatus?
+				});
+			} else { /* if APIClient gone, can assume no need to call back */
+			}
+		}
+	);
+}
+//
+// Sending funds
+std::shared_ptr<HTTPRequests::Handle> APIClient::unspentOuts(
+	HTTPRequests::ReqParams parameters,
+	std::function<void(
+		optional<string> err_str,
+		std::shared_ptr<HTTPRequests::ResponseJSON> response_data
+	)> fn
+) {
+	{
+		Value::ConstMemberIterator itr = parameters.FindMember("mixin");
+		if (itr != parameters.MemberEnd()) {
+			if (itr->value.IsString()) {
+				size_t val_int = stoul(itr->value.GetString());
+				Value v;
+				v.SetUint(val_int); // string -> int
+				parameters.AddMember("mixin", v.Move(), parameters.GetAllocator());
+			}
+		}
+	}
+	{
+		Value::ConstMemberIterator itr = parameters.FindMember("use_dust");
+		if (itr != parameters.MemberEnd()) {
+			if (itr->value.IsString()) {
+				string str = itr->value.GetString();
+				Value v;
+				v.SetBool((str == "true" || str == "1") ? true : false); // string -> bool
+				parameters.AddMember("use_dust", v.Move(), parameters.GetAllocator());
+			}
+		}
+	}
+	std::shared_ptr<APIClient> shared_this = shared_from_this();
+	std::weak_ptr<APIClient> weak_this = shared_this;
+	return requestFactory->new_request(
+		HTTPRequests::HTTPS,
+		final_apiAddress_authority(),
+		_endpoint_path_from(UnspentOuts),
+		std::move(parameters),
+		[
+			weak_this, fn = std::move(fn)
+		] (
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> res
+		) {
+			if (auto inner_spt = weak_this.lock()) {
+				if (err_str != none) {
+					fn(std::move(*err_str), nullptr);
+					return;
+				}
+				fn(none, res);
+			} else { /* if APIClient gone, can assume no need to call back */
+			}
+		}
+	);
+}
+std::shared_ptr<HTTPRequests::Handle> APIClient::randomOuts(
+	HTTPRequests::ReqParams parameters,
+	std::function<void(
+		optional<string> err_str,
+		std::shared_ptr<HTTPRequests::ResponseJSON> response_data
+	)> fn
+) {
+	{
+		Value::ConstMemberIterator itr = parameters.FindMember("count");
+		if (itr != parameters.MemberEnd()) {
+			if (itr->value.IsString()) {
+				size_t val_int = stoul(itr->value.GetString());
+				Value v;
+				v.SetUint(val_int); // string -> int
+				parameters.AddMember("count", v.Move(), parameters.GetAllocator());
+			}
+		}
+	}
+	std::shared_ptr<APIClient> shared_this = shared_from_this();
+	std::weak_ptr<APIClient> weak_this = shared_this;
+	return requestFactory->new_request(
+		HTTPRequests::HTTPS,
+		final_apiAddress_authority(),
+		_endpoint_path_from(RandomOuts),
+		std::move(parameters),
+		[
+			weak_this, fn = std::move(fn)
+		] (
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> res
+		) {
+			if (auto inner_spt = weak_this.lock()) {
+				if (err_str != none) {
+					fn(std::move(*err_str), nullptr);
+					return;
+				}
+				fn(none, res);
+			} else { /* if APIClient gone, can assume no need to call back */
+			}
+		}
+	);
+}
+std::shared_ptr<HTTPRequests::Handle> APIClient::submitTx(
+	HTTPRequests::ReqParams parameters,
+	std::function<void(
+		optional<string> err_str,
+		std::shared_ptr<HTTPRequests::ResponseJSON> response_data
+	)> fn
+) {
+#if DEBUG
+	#if MOCK_SUCCESSOFTXSUBMISSION
+	
+	MWARNING("HostedMonero: Merely returning mocked success response instead of actually submitting transaction to the server.");
+	fn(none, nullptr);
+	return nullptr;
+	
+	#endif
+#endif
+	//
+	MDEBUG("HostedMonero: Submitting transaction…");
+	std::shared_ptr<APIClient> shared_this = shared_from_this();
+	std::weak_ptr<APIClient> weak_this = shared_this;
+	return requestFactory->new_request(
+		HTTPRequests::HTTPS,
+		final_apiAddress_authority(),
+		_endpoint_path_from(SubmitTx),
+		std::move(parameters),
+		[
+			weak_this, fn = std::move(fn)
+		] (
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> res
+		) {
+			if (auto inner_spt = weak_this.lock()) {
+				if (err_str != none) {
+					fn(std::move(*err_str), nullptr);
+					return;
+				}
+				fn(none, res);
+			} else { /* if APIClient gone, can assume no need to call back */
+			}
+		}
+	);
+}
 //
 // Delegation
 void APIClient::SettingsController__specificAPIAddressURLAuthority_changed()

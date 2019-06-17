@@ -98,15 +98,35 @@ namespace HostedMonero
 				optional<HostedMonero::ParsedResult_AddressTransactions> result
 			)> fn
 		);
-		// TODO
-//		func ImportRequestInfoAndStatus(
-//										address: MoneroAddress,
-//										view_key__private: MoneroKey,
-//										_ fn: @escaping (
-//														 _ err_str: String?,
-//														 _ result: ParsedResult_ImportRequestInfoAndStatus?
-//														 ) -> Void
-//										) -> RequestHandle?
+		std::shared_ptr<HTTPRequests::Handle> importRequestInfo(
+			const string &address,
+			const string &sec_view_key,
+			std::function<void(
+				optional<string> err_str,
+				optional<HostedMonero::ParsedResult_ImportRequestInfo> result
+			)> fn
+		);
+		std::shared_ptr<HTTPRequests::Handle> unspentOuts(
+			HTTPRequests::ReqParams parameters,
+			std::function<void(
+				optional<string> err_str,
+				std::shared_ptr<HTTPRequests::ResponseJSON> response_data
+			)> fn
+		);
+		std::shared_ptr<HTTPRequests::Handle> randomOuts(
+			HTTPRequests::ReqParams parameters,
+			std::function<void(
+				optional<string> err_str,
+				std::shared_ptr<HTTPRequests::ResponseJSON> response_data
+			)> fn
+		);
+		std::shared_ptr<HTTPRequests::Handle> submitTx(
+			HTTPRequests::ReqParams parameters,
+			std::function<void(
+			optional<string> err_str,
+			std::shared_ptr<HTTPRequests::ResponseJSON> response_data
+			)> fn
+		);
 	private:
 		//
 		// Lifecycle

@@ -951,7 +951,7 @@ namespace HostedMonero
 		};
 	}
 	//
-	struct ParsedResult_ImportRequestInfoAndStatus
+	struct ParsedResult_ImportRequestInfo
 	{
 		string payment_id;
 		string payment_address;
