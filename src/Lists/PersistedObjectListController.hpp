@@ -117,7 +117,6 @@ namespace Lists
 		// Accessors
 		std::vector<std::shared_ptr<Persistable::Object>> records()
 		{ // accessing within the mutex and returning a copy so as to resolve possible mutability and consistency issues
-			// TODO: is this too expensive? are the pointers themselves being copied?
 			_records_mutex.lock();
 			auto r_copy = _records;
 			_records_mutex.unlock();

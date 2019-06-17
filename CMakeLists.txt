@@ -92,6 +92,8 @@ set(
 	src/Wallets/WalletsListController_Base.cpp
 	src/Wallets/WalletsListController.Full.hpp
 	src/Wallets/WalletsListController.Full.cpp
+	src/Wallets/WalletsListController.Lite.hpp
+	src/Wallets/WalletsListController.Lite.cpp
 	src/Wallets/Wallet_HostPollingController.hpp
 	src/Wallets/Wallet_HostPollingController.cpp
 	src/Wallets/Wallet_TxCleanupController.hpp

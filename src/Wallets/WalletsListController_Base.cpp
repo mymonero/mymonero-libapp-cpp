@@ -188,7 +188,7 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 	string mnemonicString,
 	std::function<void(
 		optional<string> err_str,
-		optional<std::shared_ptr<Wallets::Object>> walletInstance,
+		std::shared_ptr<Wallets::Object> walletInstance,
 		optional<bool> wasWalletAlreadyInserted
 	)> fn,
 	std::function<void()> userCanceledPasswordEntry_fn
@@ -196,7 +196,7 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 	WalletDescriptionRetVals walletWith__retVals;
 	bool r = wallet_with(mnemonicString, walletWith__retVals, _nettype);
 	if (!r) {
-		fn(std::move(*walletWith__retVals.err_string), none, none);
+		fn(std::move(*walletWith__retVals.err_string), nullptr, none);
 		return;
 	}
 	if (walletWith__retVals.did_error) {
@@ -255,7 +255,7 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString
 									}
 								}
 								if (err_str != none) {
-									fn(err_str, none, none);
+									fn(err_str, nullptr, none);
 									return;
 								}
 								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(retained_wallet);
@@ -284,7 +284,7 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys
 	string sec_spend_key,
 	std::function<void(
 		optional<string> err_str,
-		optional<std::shared_ptr<Wallets::Object>> walletInstance,
+		std::shared_ptr<Wallets::Object> walletInstance,
 		optional<bool> wasWalletAlreadyInserted
 	)> fn,
 	std::function<void()> userCanceledPasswordEntry_fn
@@ -343,7 +343,7 @@ void ListController_Base::OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys
 									}
 								}
 								if (err_str != none) {
-									fn(err_str, none, none);
+									fn(err_str, nullptr, none);
 									return;
 								}
 								inner_inner_inner_spt->_atRuntime__record_wasSuccessfullySetUp(retained_wallet);

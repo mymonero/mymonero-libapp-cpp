@@ -154,17 +154,17 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByMnemonic, *utf::depends_on("serv
 		string("fox sel hum nex juv dod pep emb bis ela jaz vib bis"),
 		[&hasAdded, num_records_before_add] (
 			optional<string> err_str,
-			optional<std::shared_ptr<Wallets::Object>> wallet_spt,
+			std::shared_ptr<Wallets::Object> wallet_spt,
 			optional<bool> wasWalletAlreadyInserted
 		) {
 			if (err_str != none) {
 				cout << "Error while adding wallet: " << *err_str << endl;
+				BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
+				return;
 			}
-			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
-			if (err_str == none) {
-				hasAdded = true;
-			}
-			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
+			hasAdded = true;
+			//
+			BOOST_REQUIRE_MESSAGE(wallet_spt != nullptr, "Expected non-none wallet_spt");
 			BOOST_REQUIRE(wasWalletAlreadyInserted != none);
 			if (*wasWalletAlreadyInserted == true) {
 				if (num_records_before_add > 0) {
@@ -216,17 +216,17 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on
 		string("4e6d43cd03812b803c6f3206689f5fcc910005fc7e91d50d79b0776dbefcd803"),
 		[&hasAdded, num_records_before_add] (
 			optional<string> err_str,
-			optional<std::shared_ptr<Wallets::Object>> wallet_spt,
+			std::shared_ptr<Wallets::Object> wallet_spt,
 			optional<bool> wasWalletAlreadyInserted
 		) {
 			if (err_str != none) {
 				cout << "Error while adding wallet: " << *err_str << endl;
+				BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
+				return;
 			}
-			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while adding wallet");
-			if (err_str == none) {
-				hasAdded = true;
-			}
-			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
+			hasAdded = true;
+			//
+			BOOST_REQUIRE_MESSAGE(wallet_spt != nullptr, "Expected non-none wallet_spt");
 			BOOST_REQUIRE(wasWalletAlreadyInserted != none);
 			if (*wasWalletAlreadyInserted == true) {
 				if (num_records_before_add > 0) {
@@ -285,11 +285,11 @@ BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("wa
 		) {
 			if (err_str != none) {
 				cout << "Error while creating new wallet: " << *err_str << endl;
+				BOOST_REQUIRE_MESSAGE(err_str == none, "Error while creating new wallet");
+				return;
 			}
-			BOOST_REQUIRE_MESSAGE(err_str == none, "Error while creating new wallet");
-			if (err_str == none) {
-				hasAdded = true;
-			}
+			hasAdded = true;
+			//
 			BOOST_REQUIRE_MESSAGE(wallet_spt != none, "Expected non-none wallet_spt");
 			BOOST_REQUIRE(wlc_spt->records().size() == num_records_before_add); // assert didn't add it to the list yet
 			//

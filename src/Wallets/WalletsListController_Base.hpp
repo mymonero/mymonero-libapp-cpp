@@ -127,29 +127,29 @@ namespace Wallets
 		
 		//
 		// Imperatives
-		void CreateNewWallet_NoBootNoListAdd( // call this first, then call OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained
+		virtual void CreateNewWallet_NoBootNoListAdd( // call this first, then call OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained
 			string localeCode,
 			std::function<void(optional<string> err, std::shared_ptr<Wallets::Object> walletInstance)> fn
-		);
-		void OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained(
+		); // overridable but callable on super
+		virtual void OnceBooted_ObtainPW_AddNewlyGeneratedWallet_externallyTmpRetained(
 			std::shared_ptr<Wallets::Object> walletInstance,
 			string walletLabel,
 			Wallets::SwatchColor swatchColor,
 			std::function<void(optional<string> err_str, std::shared_ptr<Wallets::Object> walletInstance)>&& fn,
-			std::function<void()>&& userCanceledPasswordEntry_fn = {} // default
-		);
-		void OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
+			std::function<void()>&& userCanceledPasswordEntry_fn = {}
+		); // overridable but callable on super
+		virtual void OnceBooted_ObtainPW_AddExtantWalletWith_MnemonicString(
 			string walletLabel,
 			Wallets::SwatchColor swatchColor,
 			string mnemonicString,
 			std::function<void(
 				optional<string> err_str,
-				optional<std::shared_ptr<Wallets::Object>> walletInstance,
+				std::shared_ptr<Wallets::Object> walletInstance,
 				optional<bool> wasWalletAlreadyInserted
 			)> fn,
 			std::function<void()> userCanceledPasswordEntry_fn = {} // default
-		);
-		void OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys(
+		); // overridable but callable on super
+		virtual void OnceBooted_ObtainPW_AddExtantWalletWith_AddressAndKeys(
 			string walletLabel,
 			Wallets::SwatchColor swatchColor,
 			string address,
@@ -157,11 +157,11 @@ namespace Wallets
 			string sec_spend_key,
 			std::function<void(
 				optional<string> err_str,
-				optional<std::shared_ptr<Wallets::Object>> walletInstance,
+				std::shared_ptr<Wallets::Object> walletInstance,
 				optional<bool> wasWalletAlreadyInserted
 			)> fn,
 			std::function<void()> userCanceledPasswordEntry_fn = {}
-		);
+		); // overridable but callable on super
 		//
 		// Delegation - Overrides - Booting reconstitution - Instance setup
 		void overridable_booting_didReconstitute(
