@@ -54,7 +54,7 @@ public:
 ServiceLocator::~ServiceLocator()
 {
 	if (_pImpl != NULL) {
-		delete _pImpl; // must free
+		delete _pImpl; // must free .... and here, since we can only free in the place where the type is completely defined
 		_pImpl = NULL;
 	}
 	teardown();
@@ -65,18 +65,13 @@ ServiceLocator &ServiceLocator::build(
 	network_type nettype,
 	std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
 ) {
-	if (_pImpl != NULL) {
-		assert(false);
-	}
 	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	auto httpRequestFactory = std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx);
 	//
 	return _shared_build(
 		documentsPath,
 		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr),
+		std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx),
+		std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder),
 		initial_passwordEntryDelegate_ptr
 	);
 }

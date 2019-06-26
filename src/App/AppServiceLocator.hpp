@@ -69,9 +69,6 @@ namespace App
 				std::shared_ptr<Dispatch::Dispatch> this_dispatch_ptr,
 				std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr__orNullptr
 			) {
-				//
-				// TODO: assert non-nullptr deps here?
-				//
 				documentsPath = this_documentsPath;
 				nettype = this_nettype;
 				//

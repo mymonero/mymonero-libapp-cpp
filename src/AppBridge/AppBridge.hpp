@@ -37,6 +37,7 @@
 //
 #include <string>
 #include <boost/optional/optional.hpp>
+#include "../App/AppServiceLocator.hpp"
 //
 namespace App
 {
@@ -46,6 +47,18 @@ namespace App
 	class Bridge
 	{
 	public:
+		//
+		// Setup - Methods
+		void setup()
+		{
+			// TODO: assert deps here
+			// TODO: create ServiceLocator here
+		}
+		// Setup - Deps
+		// TODO: add required deps here
+		
+		
+		
 		//
 		// Accessors
 		static inline string msg__teardown() {
@@ -59,6 +72,8 @@ namespace App
 		}
 		//
 		// Delegates
+	private:
+		std::shared_ptr<App::ServiceLocator> locator = nullptr;
 	};
 }
 
