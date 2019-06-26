@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  test_bridge.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -31,54 +31,45 @@
 //  THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //
-
-#include "AppServiceLocator.hpp"
-using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
-#include "../src/APIClient/HTTPRequests.beast.hpp"
+// Test module setup
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE LibAppTests_Bridge
+#include <boost/test/unit_test.hpp> // last
+#include <boost/assert.hpp>
 //
+// Includes & namespaces
+using namespace std;
+using namespace boost;
 //
-class App::ServiceLocator_SpecificImpl
+namespace utf = boost::unit_test;
+//
+#include "tests_common.hpp"
+#include "../src/AppBridge/AppBridge.hpp"
+//
+std::shared_ptr<App::Bridge> bridge = std::make_shared<App::Bridge>();
+//
+BOOST_AUTO_TEST_CASE(setup)
 {
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
+	cout << endl;
+	cout << "---------------------------" << endl;
+	cout << "setup" << endl;
+	using namespace App;
+}
+BOOST_AUTO_TEST_CASE(asdfasdfsa, *utf::depends_on("setup"))
+{
+	cout << endl;
+	cout << "---------------------------" << endl;
+	cout << "asdfasdfsa" << endl;
+	using namespace App;
 	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	if (_pImpl != NULL) {
-		delete _pImpl; // must free
-		_pImpl = NULL;
-	}
-	teardown();
 }
 //
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
-) {
-	if (_pImpl != NULL) {
-		assert(false);
-	}
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	auto httpRequestFactory = std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx);
+BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("asdfasdfsa"))
+{
+	cout << endl;
+	cout << "---------------------------" << endl;
+	cout << "teardownRuntime" << endl;
+	using namespace App;
 	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr),
-		initial_passwordEntryDelegate_ptr
-	);
+	bridge->send(Bridge::msg__teardown()); // -> ServiceLocatorSingleton::instance().teardown();
 }
-
-

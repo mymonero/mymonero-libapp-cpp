@@ -1,5 +1,5 @@
 //
-//  AppServiceLocator.cpp
+//  AppBridge.cpp
 //  MyMonero
 //
 //  Copyright (c) 2014-2019, MyMonero.com
@@ -32,53 +32,8 @@
 //
 //
 
-#include "AppServiceLocator.hpp"
+#include "AppBridge.hpp"
 using namespace App;
-#include <boost/asio.hpp>
-using namespace boost::asio;
-#include "../Dispatch/Dispatch.asio.hpp"
-using namespace Dispatch;
-#include "../src/APIClient/HTTPRequests.beast.hpp"
 //
 //
-class App::ServiceLocator_SpecificImpl
-{
-public:
-	io_context io_ctx;
-	io_ctx_thread_holder ctx_thread_holder{io_ctx};
-	//
-	ServiceLocator_SpecificImpl() {}
-	~ServiceLocator_SpecificImpl() {}
-};
-//
-ServiceLocator::~ServiceLocator()
-{
-	if (_pImpl != NULL) {
-		delete _pImpl; // must free
-		_pImpl = NULL;
-	}
-	teardown();
-}
-//
-ServiceLocator &ServiceLocator::build(
-	std::shared_ptr<string> documentsPath,
-	network_type nettype,
-	std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
-) {
-	if (_pImpl != NULL) {
-		assert(false);
-	}
-	_pImpl = new ServiceLocator_SpecificImpl();
-	auto dispatch_ptr = std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder);
-	auto httpRequestFactory = std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx);
-	//
-	return _shared_build(
-		documentsPath,
-		nettype,
-		httpRequestFactory,
-		std::move(dispatch_ptr),
-		initial_passwordEntryDelegate_ptr
-	);
-}
-
 

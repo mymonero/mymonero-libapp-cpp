@@ -82,11 +82,11 @@ public:
 		BOOST_REQUIRE(isForChangePassword == false);
 		BOOST_REQUIRE(isForAuthorizingAppActionOnly == false);
 		BOOST_REQUIRE(customNavigationBarTitle == none);
-		BOOST_REQUIRE(App::ServiceLocator::instance().passwordController->getPassword() == none);
+		BOOST_REQUIRE(App::ServiceLocatorSingleton::instance().passwordController->getPassword() == none);
 		//
 		cout << "Being asked for the existing pw" << endl;
 		//
-		App::ServiceLocator::instance().passwordController->enterExistingPassword_cb(false, changed_mock_password_string);
+		App::ServiceLocatorSingleton::instance().passwordController->enterExistingPassword_cb(false, changed_mock_password_string);
 	}
 	void getUserToEnterNewPasswordAndType(
 		bool isForChangePassword
@@ -95,16 +95,16 @@ public:
 		cout << "Being asked for a new pw" << endl;
 		
 		// in case test_wallets is the first test to run…
-		App::ServiceLocator::instance().passwordController->enterNewPasswordAndType_cb(false, changed_mock_password_string, Passwords::Type::password);
+		App::ServiceLocatorSingleton::instance().passwordController->enterNewPasswordAndType_cb(false, changed_mock_password_string, Passwords::Type::password);
 	}
 };
 //
 auto initial_pwEntryDelegate_spt = std::make_shared<Mocked_EnterExistingOrNewCorrectChanged_PasswordEntryDelegate>();
-App::ServiceLocator &builtSingleton(
+App::ServiceLocator &callOnce_builtSingleton(
 	cryptonote::network_type nettype
 ) {
 	using namespace App;
-	return ServiceLocator::instance().build(
+	return ServiceLocatorSingleton::instance().build(
 		new_documentsPath(),
 		nettype,
 		initial_pwEntryDelegate_spt
@@ -114,10 +114,10 @@ BOOST_AUTO_TEST_CASE(serviceLocator_build)
 {
 	using namespace App;
 
-	builtSingleton(MAINNET);
+	callOnce_builtSingleton(MAINNET);
 	
-	BOOST_REQUIRE(ServiceLocator::instance().built == true);
-	BOOST_REQUIRE(App::ServiceLocator::instance().dispatch_ptr != nullptr);
+	BOOST_REQUIRE(ServiceLocatorSingleton::instance().built == true);
+	BOOST_REQUIRE(App::ServiceLocatorSingleton::instance().dispatch_ptr != nullptr);
 }
 //
 //
@@ -128,11 +128,11 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByMnemonic, *utf::depends_on("serv
 	cout << "walletsListController_addByMnemonic" << endl;
 	using namespace App;
 	//
-	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+	BOOST_REQUIRE(ServiceLocatorSingleton::instance().settingsController->set_specificAPIAddressURLAuthority(
 		string("api.mymonero.com:8443")
 	));
 	//
-	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	auto wlc_spt = ServiceLocatorSingleton::instance().walletsListController;
 	bool hasAdded = false;
 	size_t nthCallOfListUpdated = 0;
 	auto connection = wlc_spt->list__updated_signal.connect(
@@ -187,11 +187,11 @@ BOOST_AUTO_TEST_CASE(walletsListController_addByAddressAndKeys, *utf::depends_on
 	cout << "walletsListController_addByAddressAndKeys" << endl;
 	using namespace App;
 	//
-	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+	BOOST_REQUIRE(ServiceLocatorSingleton::instance().settingsController->set_specificAPIAddressURLAuthority(
 		string("api.mymonero.com:8443")
 	));
 	//
-	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	auto wlc_spt = ServiceLocatorSingleton::instance().walletsListController;
 	bool hasAdded = false;
 	size_t nthCallOfListUpdated = 0;
 	auto connection = wlc_spt->list__updated_signal.connect(
@@ -252,11 +252,11 @@ BOOST_AUTO_TEST_CASE(walletsListController_createNewWallet, *utf::depends_on("wa
 	cout << "walletsListController_createNewWallet" << endl;
 	using namespace App;
 	//
-	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+	BOOST_REQUIRE(ServiceLocatorSingleton::instance().settingsController->set_specificAPIAddressURLAuthority(
 		string("api.mymonero.com:8443")
 	));
 	//
-	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	auto wlc_spt = ServiceLocatorSingleton::instance().walletsListController;
 	bool hasAdded = false;
 	size_t nthCallOfListUpdated = 0;
 	auto connection = wlc_spt->list__updated_signal.connect(
@@ -329,11 +329,11 @@ BOOST_AUTO_TEST_CASE(walletsListController_deleteAllNewWallets, *utf::depends_on
 	cout << "walletsListController_deleteAllNewWallets" << endl;
 	using namespace App;
 	//
-	BOOST_REQUIRE(ServiceLocator::instance().settingsController->set_specificAPIAddressURLAuthority(
+	BOOST_REQUIRE(ServiceLocatorSingleton::instance().settingsController->set_specificAPIAddressURLAuthority(
 		string("api.mymonero.com:8443")
 	));
 	//
-	auto wlc_spt = ServiceLocator::instance().walletsListController;
+	auto wlc_spt = ServiceLocatorSingleton::instance().walletsListController;
 	bool hasRemoved = false;
 	size_t nthCallOfListUpdatedSince_hasRemoved = 0;
 	auto connection = wlc_spt->list__updated_signal.connect(
@@ -380,5 +380,5 @@ BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("walletsListController_de
 	cout << "teardownRuntime" << endl;
 	using namespace App;
 	//
-	ServiceLocator::instance().teardown();
+	ServiceLocatorSingleton::instance().teardown();
 }

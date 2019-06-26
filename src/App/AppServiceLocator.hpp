@@ -56,12 +56,11 @@ namespace App
 	//
 	class ServiceLocator
 	{
-		private:
+		protected:
 			ServiceLocator() {}
-			ServiceLocator(const ServiceLocator&) = delete;
-			ServiceLocator& operator=(const ServiceLocator&) = delete;
-			//
-			ServiceLocator_SpecificImpl *_pImpl;
+		//
+		private:
+			ServiceLocator_SpecificImpl *_pImpl = NULL; // placed here for convenience for subclasses; initialized to NULL
 			//
 			ServiceLocator &_shared_build( // use this for platform-specific implementations of ServiceLocator::build
 				std::shared_ptr<string> this_documentsPath,
@@ -113,7 +112,7 @@ namespace App
 				//
 				walletsListController->documentsPath = documentsPath;
 				walletsListController->dispatch_ptr = dispatch_ptr;
-				walletsListController->passwordController = ServiceLocator::instance().passwordController;
+				walletsListController->passwordController = passwordController;
 				walletsListController->apiClient = apiClient;
 				walletsListController->userIdleController = userIdleController;
 				walletsListController->ccyConversionRatesController = ccyConversionRatesController;
@@ -125,7 +124,7 @@ namespace App
 			}
 		//
 		public:
-			~ServiceLocator();
+			~ServiceLocator(); // make sure you implement this; call teardown()
 			void teardown()
 			{
 				documentsPath = nullptr;
@@ -140,13 +139,6 @@ namespace App
 				ccyConversionRatesController = nullptr;
 				walletsListController = nullptr;
 			}
-			//
-			static ServiceLocator& instance()
-			{
-				static ServiceLocator pInstance;
-				return pInstance;
-			}
-			bool uniqueFlag = false;
 			//
 			// Properties - Initial: Status
 			bool built = false;
@@ -173,6 +165,22 @@ namespace App
 				std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
 			); // simply returns the singleton for convenience
    };
+	//
+	class ServiceLocatorSingleton: public ServiceLocator
+	{
+	private:
+		ServiceLocatorSingleton() {}
+		ServiceLocatorSingleton(const ServiceLocatorSingleton&) = delete;
+		ServiceLocatorSingleton& operator=(const ServiceLocatorSingleton&) = delete;
+	//
+	public:
+		static ServiceLocatorSingleton& instance()
+		{
+			static ServiceLocatorSingleton pInstance;
+			//
+			return pInstance;
+		}
+	};
 }
 
 #endif /* AppServiceLocator_HPP_ */
