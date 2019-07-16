@@ -59,6 +59,15 @@ public:
 };
 //
 App::ServiceLocator_SpecificImpl *pImpl_ptr = new App::ServiceLocator_SpecificImpl();
+//
+// FIXME: this will be considered a duplicate symbol because the .asio. implementation is included in the test_bridge target :( 
+//App::ServiceLocator::~ServiceLocator()
+//{ // not that we expect to see this during the lifetime of the tests...
+//	if (pImpl_ptr != NULL) {
+//		delete pImpl_ptr;
+//		pImpl_ptr = NULL;
+//	}
+//}
 static auto dispatch_ptr = std::make_shared<Dispatch::Dispatch_asio>(pImpl_ptr->ctx_thread_holder);
 static std::shared_ptr<App::Bridge> bridge_ptr = nullptr;
 static boost::signals2::connection evented_signal__connection;
