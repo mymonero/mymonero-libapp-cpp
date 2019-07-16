@@ -311,12 +311,12 @@ std::shared_ptr<HTTPRequests::Handle> APIClient::importRequestInfo(
 				{
 					Value::ConstMemberIterator itr = res->FindMember("status");
 					if (itr != res->MemberEnd()) {
-						feeReceiptStatus = itr->value.GetString();
+						feeReceiptStatus = string(itr->value.GetString(), itr->value.GetStringLength());
 					}
 				}
 				fn(none, ParsedResult_ImportRequestInfo{
-					std::move((*res)["payment_id"].GetString()),
-					std::move((*res)["payment_address"].GetString()),
+					string((*res)["payment_id"].GetString(), (*res)["payment_id"].GetStringLength()),
+					string((*res)["payment_address"].GetString(), (*res)["payment_address"].GetStringLength()),
 					stoull((*res)["import_fee"].GetString()),
 					feeReceiptStatus, // FIXME? can we just pass feeReceiptStatus?
 				});
@@ -349,7 +349,7 @@ std::shared_ptr<HTTPRequests::Handle> APIClient::unspentOuts(
 		Value::ConstMemberIterator itr = parameters.FindMember("use_dust");
 		if (itr != parameters.MemberEnd()) {
 			if (itr->value.IsString()) {
-				string str = itr->value.GetString();
+				string str = string(itr->value.GetString(), itr->value.GetStringLength());
 				Value v;
 				v.SetBool((str == "true" || str == "1") ? true : false); // string -> bool
 				parameters.AddMember("use_dust", v.Move(), parameters.GetAllocator());

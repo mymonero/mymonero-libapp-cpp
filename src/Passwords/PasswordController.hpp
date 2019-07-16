@@ -60,14 +60,29 @@ namespace Passwords
 	using namespace std;
 	//
 	enum Type
-	{ // These are given specific values for the purpose of serialization through the app lib bridge and more critically for persistence, so they should not be changed
-		minBound = -1,
+	{ // These are given specific values for the purpose of serialization through the app lib bridge and more critically for persistence, so they should NOT be changed
+		minBound = -1, // should/must always be -1 (first value before set of unsigned ints)
 		//
 		PIN = 0,
 		password = 1,
 		//
-		maxBound = 2
+		maxBound = 2 // this can in future be increased, since we discard it during bridging/serialization
 	};
+	static inline uint32_t new_bridge_serialized_with(Type t)
+	{
+		if (t <= Type::minBound || t >= Type::maxBound) {
+			BOOST_THROW_EXCEPTION(invalid_argument("new_bridge_serialized_with: t exceeds bounds"));
+		}
+		// ^--- prevented negative (… and can discard .maxBound)
+		return t;
+	}
+	static inline Type new_Type_with_bridge_serialized(uint32_t v)
+	{
+		if (v <= Type::minBound || v >= Type::maxBound) {
+			BOOST_THROW_EXCEPTION(invalid_argument("new_Type_with_bridge_serialized: v exceeds bounds"));
+		}
+		return (Type)v;
+	}
 	//
 	static inline std::string new_humanReadableString(Type type)
 	{ // TODO: this will probably need to be localized at the application layer anyway

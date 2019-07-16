@@ -65,13 +65,14 @@ ServiceLocator &ServiceLocator::build(
 	network_type nettype,
 	std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr
 ) {
-	_pImpl = new ServiceLocator_SpecificImpl();
+	ServiceLocator_SpecificImpl *pImpl_ptr = new ServiceLocator_SpecificImpl();
 	//
-	return _shared_build(
+	return shared_build(
+		pImpl_ptr,
 		documentsPath,
 		nettype,
-		std::make_shared<HTTPRequests::RequestFactory_beast>(_pImpl->io_ctx),
-		std::make_shared<Dispatch_asio>(_pImpl->ctx_thread_holder),
+		std::make_shared<HTTPRequests::RequestFactory_beast>(pImpl_ptr->io_ctx),
+		std::make_shared<Dispatch_asio>(pImpl_ptr->ctx_thread_holder),
 		initial_passwordEntryDelegate_ptr
 	);
 }

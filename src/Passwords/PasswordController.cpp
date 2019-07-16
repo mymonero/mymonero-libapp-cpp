@@ -244,7 +244,7 @@ void Controller::_proceedTo_load(const DocumentJSON &document)
 	_id = none_or_string_from(document, _dictKey(DictKey::_id));
 	int raw_passwordType_val = document[_dictKey(DictKey::passwordType)].GetInt();
 	if (raw_passwordType_val <= Passwords::Type::minBound || raw_passwordType_val >= Passwords::Type::maxBound) {
-		BOOST_THROW_EXCEPTION(logic_error("Found undefined encrypted msg for unlock challenge in saved password model document"));
+		BOOST_THROW_EXCEPTION(logic_error("Found unrecognized / out-out-bounds raw_passwordType_val"));
 		return;
 	}
 	_passwordType = (Passwords::Type)raw_passwordType_val;

@@ -109,6 +109,7 @@ set(
     src/Persistence/PersistableObject.cpp
     src/AppBridge/AppBridge.hpp
     src/AppBridge/AppBridge.cpp
+    src/AppBridge/HTTPRequests_Handle_bridge.hpp
     src/App/AppServiceLocator.hpp
     src/App/AppServiceLocator.asio.cpp
     src/SendFunds/Controllers/SendFundsFormSubmissionController.hpp

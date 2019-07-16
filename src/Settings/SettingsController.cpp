@@ -104,7 +104,7 @@ void Controller::_setup_loadState()
 			_givenLocked_initWithDefaults();
 		} else { // rather than returning directly from the if, so as to share the mutex.unlock()
 			auto documentJSON = Persistable::new_plaintextDocumentDictFromJSONString(*documentContentString); // move semantics, not copy
-			DocumentId this_id = string(documentJSON[_dictKey(Settings_DictKey::_id)].GetString());
+			DocumentId this_id = string(documentJSON[_dictKey(Settings_DictKey::_id)].GetString(), documentJSON[_dictKey(Settings_DictKey::_id)].GetStringLength());
 			optional<string> specificAPIAddressURLAuthority = none_or_string_from(documentJSON, _dictKey(Settings_DictKey::specificAPIAddressURLAuthority));
 			optional<double> existingValueFor_appTimeoutAfterS = none_or_double_from(documentJSON, _dictKey(Settings_DictKey::appTimeoutAfterS_nilForDefault_orNeverValue));
 			optional<bool> authentication__requireWhenSending = none_or_bool_from(documentJSON, _dictKey(Settings_DictKey::authentication__requireWhenSending));

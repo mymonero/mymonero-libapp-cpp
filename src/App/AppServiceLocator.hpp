@@ -56,19 +56,24 @@ namespace App
 	//
 	class ServiceLocator
 	{
-		protected:
-			ServiceLocator() {}
-		//
 		private:
 			ServiceLocator_SpecificImpl *_pImpl = NULL; // placed here for convenience for subclasses; initialized to NULL
-			//
-			ServiceLocator &_shared_build( // use this for platform-specific implementations of ServiceLocator::build
+		//
+		public:
+			ServiceLocator() {}
+			ServiceLocator &shared_build( // use this for platform-specific implementations of ServiceLocator::build
+				ServiceLocator_SpecificImpl *pImpl_ptr,
 				std::shared_ptr<string> this_documentsPath,
 				network_type this_nettype,
 				std::shared_ptr<HTTPRequests::RequestFactory> this_httpRequestFactory,
 				std::shared_ptr<Dispatch::Dispatch> this_dispatch_ptr,
 				std::shared_ptr<Passwords::PasswordEntryDelegate> initial_passwordEntryDelegate_ptr__orNullptr
 			) {
+				if (_pImpl != NULL) {
+					assert(false);
+				}
+				_pImpl = pImpl_ptr;
+				//
 				documentsPath = this_documentsPath;
 				nettype = this_nettype;
 				//
@@ -119,11 +124,18 @@ namespace App
 				//
 				return *this;
 			}
-		//
-		public:
+			//
 			~ServiceLocator(); // make sure you implement this; call teardown()
 			void teardown()
 			{
+				/*
+				 NOTE: before you call teardown, call this code (since we can't call it here since _pImpl's type is incomplete):
+				if (_pImpl != NULL) {
+					delete _pImpl; // must free
+					_pImpl = NULL;
+				}
+				 */
+				//
 				documentsPath = nullptr;
 				httpRequestFactory = nullptr;
 				initial_passwordEntryDelegate_ptr = nullptr;
@@ -166,11 +178,11 @@ namespace App
 	class ServiceLocatorSingleton: public ServiceLocator
 	{
 	private:
-		ServiceLocatorSingleton() {}
 		ServiceLocatorSingleton(const ServiceLocatorSingleton&) = delete;
 		ServiceLocatorSingleton& operator=(const ServiceLocatorSingleton&) = delete;
 	//
 	public:
+		ServiceLocatorSingleton() {}
 		static ServiceLocatorSingleton& instance()
 		{
 			static ServiceLocatorSingleton pInstance;

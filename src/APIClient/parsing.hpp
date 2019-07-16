@@ -118,8 +118,8 @@ namespace HostedMonero
 			uint64_t amount = stoull(dict["amount"].GetString()); // stored as a string
 			auto obj = SpentOutputDescription{
 				amount,
-				dict["tx_pub_key"].GetString(),
-				dict["key_image"].GetString(),
+				string(dict["tx_pub_key"].GetString(), dict["tx_pub_key"].GetStringLength()),
+				string(dict["key_image"].GetString(), dict["key_image"].GetStringLength()),
 				dict["mixin"].GetUint(),
 				dict["out_index"].GetUint64()
 			};
@@ -417,21 +417,21 @@ namespace HostedMonero
 			{
 				Value::ConstMemberIterator itr = dict.FindMember("paymentId");
 				if (itr != dict.MemberEnd()) {
-					optl__paymentId = itr->value.GetString();
+					optl__paymentId = string(itr->value.GetString(), itr->value.GetStringLength());
 				}
 			}
 			optional<string> optl__tx_key = none;
 			{
 				Value::ConstMemberIterator itr = dict.FindMember("tx_key");
 				if (itr != dict.MemberEnd()) {
-					optl__tx_key = itr->value.GetString();
+					optl__tx_key = string(itr->value.GetString(), itr->value.GetStringLength());
 				}
 			}
 			optional<string> optl__to_address = none;
 			{
 				Value::ConstMemberIterator itr = dict.FindMember("to_address");
 				if (itr != dict.MemberEnd()) {
-					optl__to_address = itr->value.GetString();
+					optl__to_address = string(itr->value.GetString(), itr->value.GetStringLength());
 				}
 			}
 			auto obj = HistoricalTxRecord{
@@ -442,7 +442,7 @@ namespace HostedMonero
 				dict["approx_float_amount"].GetDouble(),
 				SpentOutputDescription::newArray_fromJSONRepresentations(dict["spent_outputs"]),
 				stol(dict["timestamp"].GetString()), // this is assuming it's been stored in seconds, not milliseconds
-				dict["hash"].GetString(),
+				string(dict["hash"].GetString(), dict["hash"].GetStringLength()),
 				optl__paymentId,
 				dict["mixin"].GetUint(),
 				dict["mempool"].GetBool(),
@@ -734,14 +734,14 @@ namespace HostedMonero
 				for (auto &spent_output: spent_outputs__itr->value.GetArray()) {
 					assert(spent_output.IsObject());
 					auto generated__keyImage = keyImageCache->lazy_keyImage(
-						spent_output["tx_pub_key"].GetString(),
+						string(spent_output["tx_pub_key"].GetString(), spent_output["tx_pub_key"].GetStringLength()),
 						spent_output["out_index"].GetUint64(),
 						address,
 						view_key__private,
 						spend_key__private,
 						spend_key__public
 					);
-					string spent_output__keyImage = spent_output["key_image"].GetString();
+					string spent_output__keyImage = string(spent_output["key_image"].GetString(), spent_output["key_image"].GetStringLength());
 					if (spent_output__keyImage != generated__keyImage) { // not spent
 						MDEBUG("HostedMonero: Output used as mixin \(spent_output__keyImage)/\(generated__keyImage))");
 						uint64_t spent_output__amount = stoull(spent_output["amount"].GetString());
@@ -759,7 +759,7 @@ namespace HostedMonero
 		Value::ConstMemberIterator rates__itr = res.FindMember("rates");
 		if (rates__itr != res.MemberEnd()) { // jic it's not there
 			for (auto& m : rates__itr->value.GetObject()) {
-				auto ccySymbol = m.name.GetString();
+				auto ccySymbol = string(m.name.GetString(), m.name.GetStringLength());
 				double xmrToCcyRate = m.value.GetDouble();
 				Currencies::Currency ccy = Currencies::Currency::none; // initialized to zero value
 				try {
@@ -831,14 +831,14 @@ namespace HostedMonero
 					for (auto &spent_output: spent_outputs__itr->value.GetArray()) {
 						assert(spent_output.IsObject());
 						auto generated__keyImage = keyImageCache->lazy_keyImage(
-							spent_output["tx_pub_key"].GetString(),
+							string(spent_output["tx_pub_key"].GetString(), spent_output["tx_pub_key"].GetStringLength()),
 							spent_output["out_index"].GetUint64(),
 							address,
 							view_key__private,
 							spend_key__private,
 							spend_key__public
 						);
-						string spent_output__keyImage = spent_output["key_image"].GetString();
+						string spent_output__keyImage = string(spent_output["key_image"].GetString(), spent_output["key_image"].GetStringLength());
 						if (spent_output__keyImage != generated__keyImage) { // is NOT own - discard/redact
 //							cout << "Output used as mixin " << spent_output__keyImage << "/" << generated__keyImage << endl;
 							uint64_t spent_output__amount = stoull(spent_output["amount"].GetString());
@@ -887,7 +887,7 @@ namespace HostedMonero
 				{
 					Value::ConstMemberIterator itr = tx_dict.FindMember("payment_id");
 					if (itr != tx_dict.MemberEnd()) {
-						final__paymentId = itr->value.GetString();
+						final__paymentId = string(itr->value.GetString(), itr->value.GetStringLength());
 					}
 				}
 				// ^-- still not final...:
@@ -904,7 +904,7 @@ namespace HostedMonero
 						mixin = itr->value.GetUint();
 					}
 				}
-				time_t gm_timestamp_time_t = gm_time_from_ISO8601(string(tx_dict["timestamp"].GetString()));
+				time_t gm_timestamp_time_t = gm_time_from_ISO8601(string(tx_dict["timestamp"].GetString(), tx_dict["timestamp"].GetStringLength()));
 				//
 				assert(final_tx_totalSent >= 0); // since we filtered, just before
 				uint64_t assumed_positive_final_tx_totalSent = (uint64_t)final_tx_totalSent;
@@ -916,7 +916,7 @@ namespace HostedMonero
 					approxFloatAmount, // -> String -> Double
 					spentOutputs, // this has been adjusted for non-own outputs
 					gm_timestamp_time_t,
-					tx_dict["hash"].GetString(),
+					string(tx_dict["hash"].GetString(), tx_dict["hash"].GetStringLength()),
 					final__paymentId,
 					mixin,
 					//
