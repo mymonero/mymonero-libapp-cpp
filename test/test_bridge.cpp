@@ -86,7 +86,7 @@ void handle_event(const string &msg)
 	_Convenience__Event ev = new_convenience__event_with(msg);
 	if (ev.eventName == Name__getUserToEnterExistingPassword) {
 		auto rep_msg = Bridge_exec::new_msg_with(
-			Module__PasswordController,
+			Bridge_modules::Name__PasswordController,
 			PasswordController__enterExistingPassword_cb,
 			[] (Value &params, Document::AllocatorType &a)
 			{
