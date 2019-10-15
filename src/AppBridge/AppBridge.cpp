@@ -34,6 +34,7 @@
 
 #include "AppBridge.hpp"
 using namespace App;
+using namespace Bridge_modules;
 using namespace Bridge_event;
 using namespace Bridge_exec;
 using namespace std;
@@ -51,6 +52,9 @@ using namespace rapidjson;
 //
 //
 // Lifecycle - Setup
+
+
+
 void Bridge::setup(
 	ServiceLocator_SpecificImpl *pImpl_ptr__orNULL,
 	std::shared_ptr<string> documentsPath,
@@ -63,9 +67,9 @@ void Bridge::setup(
 	locator = std::make_shared<App::ServiceLocator>();
 	std::shared_ptr<App::Bridge> shared_this = shared_from_this();
 	locator->shared_build(
-		NULL,
+		pImpl_ptr__orNULL,
 		documentsPath,
-		nettype,
+		nettype, // TODO: eventually have this configurable via Settings
 		shared_this, // httprequest factory
 		this_dispatch_ptr,
 		shared_this // initial pw entry delegate
@@ -128,10 +132,12 @@ void Bridge::exec(const string &msg)
 //
 // Imperatives - Private
 void Bridge::_emitWith(
+	const ModuleName &moduleName,
 	const EventName &eventName,
 	std::function<void(Value &params, Document::AllocatorType &a)> optl__construct_fn
 ) {
 	auto msg = Bridge_event::new_msg_with(
+		moduleName,
 		eventName,
 		optl__construct_fn
 	);
@@ -148,10 +154,9 @@ void Bridge::_emitWith(
 //  - Native Extensions - PasswordController
 void _exec_PasswordController(
 	std::shared_ptr<App::ServiceLocator> locator,
-	const string &cmdName,
+	const CmdName &cmdName,
 	const Value &params
 ) {
-	// TODO: call .GetObject() on the params
 	if (cmdName == PasswordController__enterExistingPassword_cb) {
 		optional<bool> v_1 = none;
 		Value::ConstMemberIterator itr_1 = params.GetObject().FindMember(PasswordController_k__didCancel_orNone);
@@ -199,13 +204,13 @@ void _exec_PasswordController(
 
 }
 void Bridge::_exec(
-	const string &module_name,
-	const string &cmdName,
+	const ModuleName &module_name,
+	const CmdName &cmdName,
 	const Value &params/*kObjectType*/
 ) {
 	
 	assert(params.IsObject());
-	if (module_name == Module__PasswordController) {
+	if (module_name == Bridge_modules::Name__PasswordController) {
 		_exec_PasswordController(locator, cmdName, params);
 		return;
 	}
@@ -224,6 +229,7 @@ void Bridge::getUserToEnterExistingPassword(
 	boost::optional<std::string> customNavigationBarTitle
 ) {
 	_emitWith(
+		Bridge_modules::Name__PasswordController,
 		Bridge_event::Name__getUserToEnterExistingPassword,
 		[
 			isForChangePassword, isForAuthorizingAppActionOnly, customNavigationBarTitle
@@ -238,7 +244,7 @@ void Bridge::getUserToEnterExistingPassword(
 			}
 			if (customNavigationBarTitle) {
 				Value v(*customNavigationBarTitle, a);
-				params.AddMember("isForAuthorizingAppActionOnly", v, a); // copy ?
+				params.AddMember("customNavigationBarTitle", v, a); // copy ?
 			}
 		}
 	);
@@ -247,6 +253,7 @@ void Bridge::getUserToEnterNewPasswordAndType(
 	bool isForChangePassword
 ) {
 	_emitWith(
+		Bridge_modules::Name__PasswordController,
 		Bridge_event::Name__getUserToEnterNewPasswordAndType,
 		[
 			isForChangePassword
@@ -260,7 +267,7 @@ void Bridge::getUserToEnterNewPasswordAndType(
 }
 //
 // HTTPRequests::RequestFactory
-std::shared_ptr<Handle> Bridge::new_request(
+std::shared_ptr<HTTPRequests::Handle> Bridge::new_request(
 	Scheme scheme,
 	string authority, // host+':'+port
 	string endpoint_path,

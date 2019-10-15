@@ -37,6 +37,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <boost/atomic.hpp>
 #include <boost/optional/optional.hpp>
@@ -120,6 +121,9 @@ namespace document_persister
 			if (itr->value.IsString()) {
 				return stod(itr->value.GetString()); // this may throw an exception - allowing it to bubble up here
 			} else if (itr->value.IsNumber()) {
+				if (itr->value.IsInt()) {
+					return (double)itr->value.GetInt();
+				}
 				assert(itr->value.IsDouble());
 				return itr->value.GetDouble();
 			}

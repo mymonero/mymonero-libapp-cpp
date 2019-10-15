@@ -42,7 +42,7 @@
 #include "../Settings/SettingsController.hpp"
 #include "../UserIdle/UserIdle.hpp"
 #include "../Currencies/Currencies.hpp"
-#include "../Wallets/WalletsListController.Full.hpp"
+#include "../Wallets/WalletsListController.Full.hpp" // FIXME: can we include _Base instead?
 #include "../APIClient/HTTPRequests_Interface.hpp"
 #include "../APIClient/HostedMonero.hpp"
 #include "cryptonote_config.h"
@@ -54,7 +54,7 @@ namespace App
 	//
 	class ServiceLocator_SpecificImpl;
 	//
-	class ServiceLocator
+	class ServiceLocator // subclass this!! implement destructor and call teardown().
 	{
 		private:
 			ServiceLocator_SpecificImpl *_pImpl = NULL; // placed here for convenience for subclasses; initialized to NULL

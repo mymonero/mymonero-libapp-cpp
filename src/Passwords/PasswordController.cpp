@@ -242,12 +242,35 @@ void Controller::initializeRuntimeAndBoot()
 void Controller::_proceedTo_load(const DocumentJSON &document)
 {
 	_id = none_or_string_from(document, _dictKey(DictKey::_id));
-	int raw_passwordType_val = document[_dictKey(DictKey::passwordType)].GetInt();
-	if (raw_passwordType_val <= Passwords::Type::minBound || raw_passwordType_val >= Passwords::Type::maxBound) {
-		BOOST_THROW_EXCEPTION(logic_error("Found unrecognized / out-out-bounds raw_passwordType_val"));
-		return;
+	{
+		Passwords::Type type = minBound;
+		Value::ConstMemberIterator itr = document.FindMember(_dictKey(DictKey::passwordType));
+		if (itr != document.MemberEnd()) {
+			if (itr->value.IsString()) {
+				string legacy__str = itr->value.GetString();
+				if (legacy__str == "PIN" || legacy__str == "SixCharPIN") {
+					type = Passwords::Type::PIN;
+				} else if (legacy__str == "Password" || legacy__str == "password") {
+					type = Passwords::Type::password;
+				} else {
+					BOOST_THROW_EXCEPTION(invalid_argument("Unrecognized legacy string value at _dictKey(DictKey::passwordType)"));
+					return;
+				}
+			} else if (itr->value.IsInt()) {
+				int raw_val = itr->value.GetInt();
+				if (raw_val <= Passwords::Type::minBound || raw_val >= Passwords::Type::maxBound) {
+					BOOST_THROW_EXCEPTION(logic_error("Found unrecognized / out-out-bounds raw_passwordType_val"));
+					return;
+				}
+				type = (Passwords::Type)raw_val;
+			} else {
+				BOOST_THROW_EXCEPTION(invalid_argument("Unrecognized type of value at _dictKey(DictKey::passwordType)"));
+				return;
+			}
+		}
+		assert(type != minBound);
+		_passwordType = type;
 	}
-	_passwordType = (Passwords::Type)raw_passwordType_val;
 	_messageAsEncryptedDataForUnlockChallenge_base64String = none_or_string_from(document, _dictKey(DictKey::messageAsEncryptedDataForUnlockChallenge_base64String));
 	if (_id != none) { // existing doc
 		if (_messageAsEncryptedDataForUnlockChallenge_base64String == none || _messageAsEncryptedDataForUnlockChallenge_base64String->empty()) {

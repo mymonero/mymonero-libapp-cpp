@@ -76,20 +76,36 @@ namespace App
 	using namespace boost;
 	using namespace rapidjson;
 	//
+	namespace Bridge_modules
+	{
+		typedef string ModuleName;
+		//
+		static const ModuleName Name__PasswordController = "PC";
+	}
+	//
 	namespace Bridge_event
 	{
+		using namespace Bridge_modules;
+		//
+		static const string _msg_key__moduleName = "m";
 		static const string _msg_key__eventName = "e";
 		static const string _msg_key__params = "ps";
 		//
 		typedef string EventName;
 		//
 		static inline string new_msg_with(
+			const ModuleName &moduleName,
 			const EventName &eventName,
 			std::function<void(Value &params, Document::AllocatorType &a)> construct_params_fn
 		) {
 			Document root;
 			root.SetObject();
 			Document::AllocatorType &a = root.GetAllocator();
+			{
+				Value k(StringRef(_msg_key__moduleName));
+				Value v(moduleName, a); // any safe optimizations here?
+				root.AddMember(k, v.Move(), a);
+			}
 			{
 				Value k(StringRef(_msg_key__eventName));
 				Value v(eventName, a); // any safe optimizations here?
@@ -110,6 +126,7 @@ namespace App
 		//
 		struct _Convenience__Event
 		{
+			string moduleName;
 			string eventName;
 			const Value &params;
 		};
@@ -123,6 +140,7 @@ namespace App
 			}
 			BOOST_ASSERT_MSG(ok, "Failed to parse Bridge_event payload msg");
 			auto e = _Convenience__Event{
+				string(d[_msg_key__moduleName].GetString(), d[_msg_key__moduleName].GetStringLength()),
 				string(d[_msg_key__eventName].GetString(), d[_msg_key__eventName].GetStringLength()),
 				d[_msg_key__params] // hopefully this exists ..
 			};
@@ -145,16 +163,17 @@ namespace App
 {
 	namespace Bridge_exec
 	{
+		using namespace Bridge_modules;
+		//
 		static const string _msg_key__moduleName = "m";
 		static const string _msg_key__cmdName = "c";
 		static const string _msg_key__params = "ps";
 		//
-		typedef string ModuleName;
 		typedef string CmdName;
 		//
 		static inline string new_msg_with( // this is purely a convenience method since, technically, no code within AppBridge is going to need to use it...
-			const string &moduleName,
-			const string &cmdName,
+			const ModuleName &moduleName,
+			const CmdName &cmdName,
 			std::function<void(Value &params, Document::AllocatorType &a)> construct_params_fn
 		) {
 			Document root;
@@ -190,7 +209,6 @@ namespace App
 	{ // Extensions for specific components of the Bridge, including the Locator
 		//
 		// Passwords
-		static const ModuleName Module__PasswordController = "PC";
 		static const CmdName PasswordController__enterExistingPassword_cb = "enterExistingPassword_cb";
 		static const CmdName PasswordController__enterNewPasswordAndType_cb = "enterNewPasswordAndType_cb";
 		//
@@ -245,13 +263,14 @@ namespace App
 		//
 		// Imperatives - Convenience
 		void _emitWith(
+			const ModuleName &moduleName,
 			const EventName &eventName,
 			std::function<void(Value &params, Document::AllocatorType &a)> optl__construct_fn = {}
 		);
 		// Imperatives - Implementations
 		void _exec(
-			const string &module_name,
-			const string &cmdName,
+			const ModuleName &module_name,
+			const CmdName &cmdName,
 			const Value &params/*kObjectType*/
 		);
 		//
@@ -272,7 +291,7 @@ namespace App
 		);
 		//
 		// HTTPRequests RequestFactory
-		std::shared_ptr<Handle> new_request(
+		std::shared_ptr<HTTPRequests::Handle> new_request(
 			Scheme scheme,
 			string authority, // host+':'+port
 			string endpoint_path,

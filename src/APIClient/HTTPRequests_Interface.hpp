@@ -74,7 +74,7 @@ namespace HTTPRequests
 	{
 		virtual ~RequestFactory() {}
 		//
-		virtual std::shared_ptr<Handle> new_request(
+		virtual std::shared_ptr<HTTPRequests::Handle> new_request(
 			Scheme scheme,
 			string authority, // host+':'+port
 			string endpoint_path,
