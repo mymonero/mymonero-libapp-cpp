@@ -454,12 +454,10 @@ BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submissio
 {
 	using namespace App;
 	
-	callOnce_builtSingleton(MAINNET);
+	callOnce_builtSingleton(MAINNET); // if this causes an exception on a null _passwordEntryDelegate in _getUserToEnterTheirExistingPassword, make sure to delete cached list-model objects' mmdbdoc files in ../build for this first run
 	
 	BOOST_REQUIRE(ServiceLocatorSingleton::instance().built == true);
 	BOOST_REQUIRE(App::ServiceLocatorSingleton::instance().dispatch_ptr != nullptr);
-	ServiceLocatorSingleton::instance().uniqueFlag = true;
-	BOOST_REQUIRE(ServiceLocatorSingleton::instance().uniqueFlag == true);
 }
 //
 // Tests - Passwords::Controller
