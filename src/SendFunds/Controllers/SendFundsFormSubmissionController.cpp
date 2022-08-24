@@ -294,7 +294,8 @@ void FormSubmissionController::cb_I__got_unspent_outs(optional<string> err_msg, 
 	this->fee_mask = *(parsed_res.fee_mask);
 	this->use_fork_rules = monero_fork_rules::make_use_fork_rules_fn(parsed_res.fork_version);
 	//
-	this->passedIn_attemptAt_fee = boost::none;
+	this->prior_attempt_size_calcd_fee = boost::none;
+	this->prior_attempt_unspent_outs_to_mix_outs = boost::none;
 	this->constructionAttempt = 0;
 	//
 	_reenterable_construct_and_send_tx();
@@ -316,8 +317,9 @@ void FormSubmissionController::_reenterable_construct_and_send_tx()
 		this->fee_per_b,
 		this->fee_mask,
 		//
-		this->passedIn_attemptAt_fee // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when none, defaults to attempt at network min
+		this->prior_attempt_size_calcd_fee, // use this for passing step2 "must-reconstruct" return values back in, i.e. re-entry; when none, defaults to attempt at network min
 		// ^- and this will be 'none' as initial value
+		this->prior_attempt_unspent_outs_to_mix_outs // on re-entry, re-use the same outs and requested decoys, in order to land on the correct calculated fee
 	);
 	if (step1_retVals.errCode != noError) {
 		this->parameters.failure_fn(createTransactionCode_balancesProvided, boost::none, step1_retVals.errCode, step1_retVals.spendable_balance, step1_retVals.required_balance);
@@ -335,8 +337,16 @@ void FormSubmissionController::_reenterable_construct_and_send_tx()
 	//
 	this->parameters.preSuccess_nonTerminal_validationMessageUpdate_fn(fetchingDecoyOutputs);
 	//
-	auto req_params = new__req_params__get_random_outs(this->step1_retVals__using_outs); // use the one on the heap, since we've moved the one from step1_retVals
-	this->get_random_outs(req_params); // wait for cb II
+	auto req_params = new__req_params__get_random_outs(
+		this->step1_retVals__using_outs, // use the one on the heap, since we've moved the one from step1_retVals
+		this->prior_attempt_unspent_outs_to_mix_outs // mix out used in prior tx construction attempts
+	);
+	// we won't need to make request for random outs every tx construction attempt, if already passed in out for all outs
+	if (req_params.amounts.size() > 0) {
+		this->get_random_outs(req_params); // wait for cb II
+	} else {
+		cb_II__got_random_outs(boost::none, boost::none);
+	}
 }
 void FormSubmissionController::cb_II__got_random_outs(
 	optional<string> err_msg,
@@ -346,12 +356,27 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->parameters.failure_fn(errInServerResponse_withMsg, err_msg.get(), boost::none, boost::none, boost::none);
 		return;
 	}
-	auto parsed_res = new__parsed_res__get_random_outs(res.get());
+	auto parsed_res = res ? new__parsed_res__get_random_outs(res.get()) : LightwalletAPI_Res_GetRandomOuts{ boost::none/*err_msg*/, vector<RandomAmountOutputs>{}/*mix_outs*/ };
 	if (parsed_res.err_msg != boost::none) {
 		this->parameters.failure_fn(msgProvided, std::move(*(parsed_res.err_msg)), boost::none, boost::none, boost::none);
 		return;
 	}
 	THROW_WALLET_EXCEPTION_IF(this->step1_retVals__using_outs.size() == 0, error::wallet_internal_error, "Expected non-0 using_outs");
+
+	Tie_Outs_to_Mix_Outs_RetVals tie_outs_to_mix_outs_retVals;
+	monero_transfer_utils::pre_step2_tie_unspent_outs_to_mix_outs_for_all_future_tx_attempts(
+		tie_outs_to_mix_outs_retVals,
+		//
+		this->step1_retVals__using_outs,
+		*(parsed_res.mix_outs),
+		//
+		this->prior_attempt_unspent_outs_to_mix_outs
+	);
+	if (tie_outs_to_mix_outs_retVals.errCode != noError) {
+		this->parameters.failure_fn(createTranasctionCode_noBalances, boost::none, tie_outs_to_mix_outs_retVals.errCode, boost::none, boost::none);
+		return;
+	}
+
 	Send_Step2_RetVals step2_retVals;
 	uint64_t unlock_time = 0; // hard-coded for now since we don't ever expose it, presently
 	monero_transfer_utils::send_step2__try_create_transaction(
@@ -369,7 +394,7 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->step1_retVals__using_outs,
 		this->fee_per_b,
 		this->fee_mask,
-		*(parsed_res.mix_outs),
+		tie_outs_to_mix_outs_retVals.mix_outs,
 		this->use_fork_rules,
 		unlock_time,
 		this->parameters.nettype
@@ -387,7 +412,8 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->valsState = WAIT_FOR_STEP1; // must reset this
 		//
 		this->constructionAttempt += 1; // increment for re-entry
-		this->passedIn_attemptAt_fee = step2_retVals.fee_actually_needed; // -> reconstruction attempt's step1's passedIn_attemptAt_fee
+		this->prior_attempt_size_calcd_fee = step2_retVals.fee_actually_needed; // -> reconstruction attempt's step1's prior_attempt_size_calcd_fee
+		this->prior_attempt_unspent_outs_to_mix_outs = tie_outs_to_mix_outs_retVals.prior_attempt_unspent_outs_to_mix_outs_new;
 		// reset step1 vals for correctness: (otherwise we end up, for example, with duplicate outs added)
 		this->step1_retVals__final_total_wo_fee = none;
 		this->step1_retVals__change_amount = none;
