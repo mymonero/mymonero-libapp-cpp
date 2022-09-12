@@ -80,6 +80,8 @@ namespace SendFunds
 		createTransactionCode_balancesProvided = 12,
 		createTranasctionCode_noBalances = 13,
 		exceededConstructionAttempts = 14, // unable to construct for unknown reason
+		withSweepingOnlyOneAddressAllowed  = 15,
+		numAmountsDoesntMatchNumRecipients = 16,
 		//
 		codeFault_manualPaymentID_while_hasPickedAContact = 99900,
 		codeFault_unableToFindResolvedAddrOnOAContact = 99901,
@@ -97,7 +99,7 @@ namespace SendFunds
 	};
 	struct Success_RetVals
 	{
-		string target_address; // this may differ from enteredAddress.. e.g. std addr + short pid -> int addr
+		vector<string> target_addresses; // this may differ from enteredAddress.. e.g. std addr + short pid -> int addr
 		uint64_t used_fee;
 		uint64_t final_total_wo_fee;
 		uint64_t total_sent; // final_total_wo_fee + final_fee
@@ -120,7 +122,7 @@ namespace SendFunds
 		//
 		bool requireAuthentication;
 		//
-		optional<string> send_amount_double_string; // this can be "none", "0", "" if is_sweeping
+		vector<string> send_amount_strings;
 		bool is_sweeping;
 		uint32_t priority;
 		//
@@ -136,7 +138,7 @@ namespace SendFunds
 		string sec_spendKey_string;
 		string pub_spendKey_string;
 		//
-		optional<string> enteredAddressValue;
+		vector<string> enteredAddressValues;
 		//
 		optional<string> resolvedAddress;
 		bool resolvedAddress_fieldIsVisible;
@@ -201,8 +203,8 @@ namespace SendFunds
 		// - state
 		_Send_Task_ValsState valsState;
 		// - from setup
-		uint64_t sending_amount;
-		string to_address_string;
+		vector<uint64_t> sending_amounts;
+		vector<string> to_address_strings;
 		optional<string> payment_id_string;
 		bool isXMRAddressIntegrated;
 		optional<string> integratedAddressPIDForDisplay;

@@ -83,27 +83,34 @@ void FormSubmissionController::handle()
 		this->parameters.failure_fn(walletMustBeImported, boost::none, boost::none, boost::none, boost::none);
 		return;
 	}
+	
+	this->sending_amounts.clear();
+        if (this->parameters.send_amount_strings.size() != this->parameters.enteredAddressValues.size()) {
+		this->parameters.failure_fn(numAmountsDoesntMatchNumRecipients, boost::none, boost::none, boost::none, boost::none);
+		return;
+        }
+
 	if (this->parameters.is_sweeping) {
-		this->sending_amount = 0;
+		if (this->parameters.enteredAddressValues.size() != 1) {
+			this->parameters.failure_fn(withSweepingOnlyOneAddressAllowed, boost::none, boost::none, boost::none, boost::none);
+			return;
+		}
 	} else {
-		if (this->parameters.send_amount_double_string == boost::none || this->parameters.send_amount_double_string->empty()) {
-			if (this->parameters.is_sweeping == false) {
+		this->sending_amounts.reserve(this->parameters.send_amount_strings.size());
+		for (const auto& amount : this->parameters.send_amount_strings) {
+			uint64_t parsed_amount;
+			if (!cryptonote::parse_amount(parsed_amount, amount)) {
+				this->parameters.failure_fn(cannotParseAmount, boost::none, boost::none, boost::none, boost::none);
+				return;
+			}
+			if (parsed_amount <= 0) {
 				this->parameters.failure_fn(amountTooLow, boost::none, boost::none, boost::none, boost::none);
 				return;
 			}
-		}
-		bool ok = cryptonote::parse_amount(this->sending_amount, this->parameters.send_amount_double_string.get());
-		if (!ok) {
-			this->parameters.failure_fn(cannotParseAmount, boost::none, boost::none, boost::none, boost::none);
-			return;
-		}
-		if (this->sending_amount <= 0) {
-			this->parameters.failure_fn(amountTooLow, boost::none, boost::none, boost::none, boost::none);
-			return;
+			this->sending_amounts.push_back(parsed_amount);
 		}
 	}
-	bool enteredAddressValue_exists = this->parameters.enteredAddressValue != boost::none && !this->parameters.enteredAddressValue->empty(); // it will be valid if it exists
-//	let notPickedContactBut_enteredAddressValue = !hasPickedAContact && enteredAddressValue_exists ? true : false
+
 	//
 	bool resolvedAddress_exists = this->parameters.resolvedAddress != boost::none && !this->parameters.resolvedAddress->empty(); // NOTE: it might be hidden, though!
 	//
@@ -112,6 +119,7 @@ void FormSubmissionController::handle()
 		THROW_WALLET_EXCEPTION_IF(!resolvedPaymentID_exists, error::wallet_internal_error, "Expected resolvedPaymentID_exists && resolvedPaymentID_fieldIsVisible");
 	}
 	bool manuallyEnteredPaymentID_exists = this->parameters.manuallyEnteredPaymentID != boost::none && !this->parameters.manuallyEnteredPaymentID->empty();
+
 	bool canUseManualPaymentID = manuallyEnteredPaymentID_exists
 		&& this->parameters.manuallyEnteredPaymentID_fieldIsVisible
 		&& !this->parameters.resolvedPaymentID_fieldIsVisible; // but not if we have a resolved one!
@@ -121,9 +129,29 @@ void FormSubmissionController::handle()
 		this->parameters.failure_fn(codeFault_manualPaymentID_while_hasPickedAContact, boost::none, boost::none, boost::none, boost::none);
 		return;
 	}
-	optional<string> xmrAddress_toDecode = boost::none; // just initializing it to none here; may be integrated
 	optional<string> paymentID_toUseOrToNilIfIntegrated = boost::none; // may be nil
+	if (canUseManualPaymentID) {
+		paymentID_toUseOrToNilIfIntegrated = this->parameters.manuallyEnteredPaymentID.get();
+	}
+	if (canUseManualPaymentID) {
+        	if (this->parameters.resolvedPaymentID_fieldIsVisible) {
+                	cerr << "Code fault? Detected payment ID unexpectedly visible while manual input field visible." << endl;
+                        this->parameters.failure_fn(codeFault_detectedPIDVisibleWhileManualInputVisible, boost::none, boost::none, boost::none, boost::none);
+                       	return;
+                }
+                paymentID_toUseOrToNilIfIntegrated = this->parameters.manuallyEnteredPaymentID.get();
+        } else if (this->parameters.resolvedPaymentID_fieldIsVisible) {
+                	paymentID_toUseOrToNilIfIntegrated = this->parameters.resolvedPaymentID.get();
+        }
+	
+	this->isXMRAddressIntegrated = false;
+        this->integratedAddressPIDForDisplay = boost::none;
+        this->to_address_strings.clear();
+        this->to_address_strings.reserve(this->parameters.enteredAddressValues.size());
+
+	// sending to contact currently does not work along with sending to multiple addresses
 	if (this->parameters.hasPickedAContact) { // we have already re-resolved the payment_id
+		optional<string> xmrAddress_toDecode = boost::none;
 		if (this->parameters.contact_payment_id != boost::none) {
 			paymentID_toUseOrToNilIfIntegrated = this->parameters.contact_payment_id.get();
 		}
@@ -138,89 +166,97 @@ void FormSubmissionController::handle()
 		} else {
 			xmrAddress_toDecode = this->parameters.contact_address.get();
 		}
-	} else {
-		if (enteredAddressValue_exists == false) {
-			this->parameters.failure_fn(pleaseSpecifyRecipient, boost::none, boost::none, boost::none, boost::none);
-			return;
-		}
-		// address input via text input…
-		bool is_enteredAddressValue_OAAddress = OpenAlias::looksLikeOpenAliasAndNotCryptoCurrencyAddress(this->parameters.enteredAddressValue.get());
-		if (is_enteredAddressValue_OAAddress) {
-			if (this->parameters.resolvedAddress_fieldIsVisible == false || resolvedAddress_exists == false) {
-				this->parameters.failure_fn(couldntResolveThisOAAddress, boost::none, boost::none, boost::none, boost::none);
-				return;
-			}
-			xmrAddress_toDecode = this->parameters.resolvedAddress.get();
-			if (this->parameters.resolvedPaymentID_fieldIsVisible) {
-				paymentID_toUseOrToNilIfIntegrated = this->parameters.resolvedPaymentID.get();
-			} else if (canUseManualPaymentID) {
-				paymentID_toUseOrToNilIfIntegrated = this->parameters.manuallyEnteredPaymentID.get();
-			} else {
-				paymentID_toUseOrToNilIfIntegrated = boost::none;
-			}
-		} else { // then it's an XMR address
-			xmrAddress_toDecode = this->parameters.enteredAddressValue.get();
-			// we don't care whether it's an integrated address or not here since we're not going to use its payment id
-			if (canUseManualPaymentID) {
-				if (this->parameters.resolvedPaymentID_fieldIsVisible) {
-					cerr << "Code fault? Detected payment ID unexpectedly visible while manual input field visible." << endl;
-					this->parameters.failure_fn(codeFault_detectedPIDVisibleWhileManualInputVisible, boost::none, boost::none, boost::none, boost::none);
-					return;
-				}
-				paymentID_toUseOrToNilIfIntegrated = this->parameters.manuallyEnteredPaymentID.get();
-			} else if (this->parameters.resolvedPaymentID_fieldIsVisible) {
-				paymentID_toUseOrToNilIfIntegrated = this->parameters.resolvedPaymentID.get();
-			}
-		}
-	}
-	THROW_WALLET_EXCEPTION_IF(xmrAddress_toDecode == boost::none, error::wallet_internal_error, "Expected xmrAddress_toDecode");
-	//
-	auto decode_retVals = monero::address_utils::decodedAddress(xmrAddress_toDecode.get(), this->parameters.nettype);
-	if (decode_retVals.did_error) {
-		this->parameters.failure_fn(couldntValidateDestAddress, boost::none, boost::none, boost::none, boost::none);
+		THROW_WALLET_EXCEPTION_IF(xmrAddress_toDecode == boost::none, error::wallet_internal_error, "Expected xmrAddress_toDecode");
+		auto decode_retVals = monero::address_utils::decodedAddress(xmrAddress_toDecode.get(), this->parameters.nettype);
+        	if (decode_retVals.did_error) {
+                	this->parameters.failure_fn(couldntValidateDestAddress, boost::none, boost::none, boost::none, boost::none);
+                	return;
+        	}
+		if (decode_retVals.paymentID_string != boost::none) { // is integrated address!
+                	this->to_address_strings.emplace_back(*xmrAddress_toDecode); // for integrated addrs, we don't want to extract the payment id and then use the integrated addr as well (TODO: unless we use fluffy's patch?)
+                	this->payment_id_string = boost::none;
+                	this->isXMRAddressIntegrated = true;
+                	this->integratedAddressPIDForDisplay = *decode_retVals.paymentID_string;
+                	this->_proceedTo_authOrSendTransaction();
+                	return;
+        	}
+		// since we may have a payment ID here (which may also have been entered manually), validate
+        	if (monero_paymentID_utils::is_a_valid_or_not_a_payment_id(paymentID_toUseOrToNilIfIntegrated) == false) { // convenience function - will be true if nil pid
+                	this->parameters.failure_fn(enterValidPID, boost::none, boost::none, boost::none, boost::none);
+                	return;
+        	}
+        	if (paymentID_toUseOrToNilIfIntegrated != boost::none && paymentID_toUseOrToNilIfIntegrated->empty() == false) { // short pid / integrated address coersion
+                	if (decode_retVals.isSubaddress != true) { // this is critical or funds will be lost!!
+                        	if (paymentID_toUseOrToNilIfIntegrated->size() == monero_paymentID_utils::payment_id_length__short) { // a short one
+                                	THROW_WALLET_EXCEPTION_IF(decode_retVals.isSubaddress, error::wallet_internal_error, "Expected !decode_retVals.isSubaddress"); // just an extra safety measure
+                               		optional<string> fabricated_integratedAddress_orNone = monero::address_utils::new_integratedAddrFromStdAddr( // construct integrated address
+                                        	*xmrAddress_toDecode, // the monero one
+                                        	*paymentID_toUseOrToNilIfIntegrated, // short pid
+                                        	this->parameters.nettype
+                                	);
+                                	if (fabricated_integratedAddress_orNone == boost::none) {
+                                        	this->parameters.failure_fn(couldntConstructIntAddrWithShortPid, boost::none, boost::none, boost::none, boost::none);
+                                        	return;
+                                	}
+                                	this->to_address_strings.emplace_back(*fabricated_integratedAddress_orNone);
+                                	this->payment_id_string = boost::none; // must now zero this or Send will throw a "pid must be blank with integrated addr"
+                                	this->isXMRAddressIntegrated = true;
+                                	this->integratedAddressPIDForDisplay = *paymentID_toUseOrToNilIfIntegrated; // a short pid
+                                	this->_proceedTo_authOrSendTransaction();
+                                	return; // return early to prevent fall-through to non-short or zero pid case
+                        	}
+                	}
+        	}
+        	this->to_address_strings.emplace_back(*xmrAddress_toDecode); // therefore, non-integrated normal XMR address
+        	this->payment_id_string = paymentID_toUseOrToNilIfIntegrated; // may still be nil
+        	this->isXMRAddressIntegrated = false;
+        	this->integratedAddressPIDForDisplay = boost::none;
+        	this->_proceedTo_authOrSendTransaction();
 		return;
-	}
-	if (decode_retVals.paymentID_string != boost::none) { // is integrated address!
-		this->to_address_string = *xmrAddress_toDecode; // for integrated addrs, we don't want to extract the payment id and then use the integrated addr as well (TODO: unless we use fluffy's patch?)
-		this->payment_id_string = boost::none;
-		this->isXMRAddressIntegrated = true;
-		this->integratedAddressPIDForDisplay = *decode_retVals.paymentID_string;
+	} else {
+		for (string& xmrAddress_toDecode : this->parameters.enteredAddressValues) {
+			auto decode_retVals = monero::address_utils::decodedAddress(xmrAddress_toDecode, this->parameters.nettype);
+
+			if (decode_retVals.did_error) {
+               			this->parameters.failure_fn(couldntValidateDestAddress, boost::none, boost::none, boost::none, boost::none);
+                		return;
+			}
+			if (decode_retVals.paymentID_string != boost::none) { // is integrated address!
+                		this->to_address_strings.emplace_back(xmrAddress_toDecode); // for integrated addrs, we don't want to extract the payment id and then use the integrated addr as well (TODO: unless we use fluffy's patch?)
+                		this->payment_id_string = boost::none;
+                		this->isXMRAddressIntegrated = true;
+                		this->integratedAddressPIDForDisplay = *decode_retVals.paymentID_string;
+        		}
+			else if (paymentID_toUseOrToNilIfIntegrated != boost::none && paymentID_toUseOrToNilIfIntegrated->empty() == false && decode_retVals.isSubaddress &&
+				 paymentID_toUseOrToNilIfIntegrated->size() == monero_paymentID_utils::payment_id_length__short) {
+                                	THROW_WALLET_EXCEPTION_IF(decode_retVals.isSubaddress, error::wallet_internal_error, "Expected !decode_retVals.isSubaddress"); // just an extra safety measure
+                                	optional<string> fabricated_integratedAddress_orNone = monero::address_utils::new_integratedAddrFromStdAddr( // construct integrated address
+                                        	xmrAddress_toDecode, // the monero one
+                                        	*paymentID_toUseOrToNilIfIntegrated, // short pid
+                                        	this->parameters.nettype
+                                	);
+                                	if (fabricated_integratedAddress_orNone == boost::none) {
+						this->parameters.failure_fn(couldntConstructIntAddrWithShortPid, boost::none, boost::none, boost::none, boost::none);	
+                                        	return;
+                                	}
+                                	this->to_address_strings.emplace_back(*fabricated_integratedAddress_orNone);
+                                	this->payment_id_string = boost::none; // must now zero this or Send will throw a "pid must be blank with integrated addr"
+                                	this->isXMRAddressIntegrated = true;
+                                	this->integratedAddressPIDForDisplay = *paymentID_toUseOrToNilIfIntegrated; // a short pid
+
+                        }
+                	else {
+                        	this->to_address_strings.emplace_back(std::move(xmrAddress_toDecode)); // therefore, non-integrated normal XMR address
+                        	this->payment_id_string = paymentID_toUseOrToNilIfIntegrated; // may still be nil
+                        	this->isXMRAddressIntegrated = false;
+                        	this->integratedAddressPIDForDisplay = boost::none;
+                	}
+        	}
 		this->_proceedTo_authOrSendTransaction();
 		return;
 	}
-	// since we may have a payment ID here (which may also have been entered manually), validate
-	if (monero_paymentID_utils::is_a_valid_or_not_a_payment_id(paymentID_toUseOrToNilIfIntegrated) == false) { // convenience function - will be true if nil pid
-		this->parameters.failure_fn(enterValidPID, boost::none, boost::none, boost::none, boost::none);
-		return;
-	}
-	if (paymentID_toUseOrToNilIfIntegrated != boost::none && paymentID_toUseOrToNilIfIntegrated->empty() == false) { // short pid / integrated address coersion
-		if (decode_retVals.isSubaddress != true) { // this is critical or funds will be lost!!
-			if (paymentID_toUseOrToNilIfIntegrated->size() == monero_paymentID_utils::payment_id_length__short) { // a short one
-				THROW_WALLET_EXCEPTION_IF(decode_retVals.isSubaddress, error::wallet_internal_error, "Expected !decode_retVals.isSubaddress"); // just an extra safety measure
-				optional<string> fabricated_integratedAddress_orNone = monero::address_utils::new_integratedAddrFromStdAddr( // construct integrated address
-					*xmrAddress_toDecode, // the monero one
-					*paymentID_toUseOrToNilIfIntegrated, // short pid
-					this->parameters.nettype
-				);
-				if (fabricated_integratedAddress_orNone == boost::none) {
-					this->parameters.failure_fn(couldntConstructIntAddrWithShortPid, boost::none, boost::none, boost::none, boost::none);
-					return;
-				}
-				this->to_address_string = *fabricated_integratedAddress_orNone;
-				this->payment_id_string = boost::none; // must now zero this or Send will throw a "pid must be blank with integrated addr"
-				this->isXMRAddressIntegrated = true;
-				this->integratedAddressPIDForDisplay = *paymentID_toUseOrToNilIfIntegrated; // a short pid
-				this->_proceedTo_authOrSendTransaction();
-				return; // return early to prevent fall-through to non-short or zero pid case
-			}
-		}
-	}
-	this->to_address_string = *xmrAddress_toDecode; // therefore, non-integrated normal XMR address
-	this->payment_id_string = paymentID_toUseOrToNilIfIntegrated; // may still be nil
-	this->isXMRAddressIntegrated = false;
-	this->integratedAddressPIDForDisplay = boost::none;
-	this->_proceedTo_authOrSendTransaction();
 }
+
 void FormSubmissionController::_proceedTo_authOrSendTransaction()
 {
 	if (this->parameters.requireAuthentication) {
@@ -232,7 +268,7 @@ void FormSubmissionController::_proceedTo_authOrSendTransaction()
 void FormSubmissionController::_proceedTo_generateSendTransaction()
 {
 	// verify we were left with a good state
-	THROW_WALLET_EXCEPTION_IF(this->to_address_string.size() == 0, error::wallet_internal_error, "Expected non-zero this->to_address_string");
+	THROW_WALLET_EXCEPTION_IF(this->to_address_strings[0].size() == 0, error::wallet_internal_error, "Expected non-zero this->to_address_strings");
 	//
 	this->parameters.preSuccess_passedValidation_willBeginSending();
 	this->parameters.preSuccess_nonTerminal_validationMessageUpdate_fn(initiatingSend); // start with just prefix
@@ -242,6 +278,7 @@ void FormSubmissionController::_proceedTo_generateSendTransaction()
 		this->parameters.from_address_string,
 		this->parameters.sec_viewKey_string
 	);
+  
 	this->get_unspent_outs(req_params); // wait for cb I
 }
 void FormSubmissionController::cb__authentication(bool did_pass)
@@ -309,7 +346,7 @@ void FormSubmissionController::_reenterable_construct_and_send_tx()
 		step1_retVals,
 		//
 		this->payment_id_string,
-		this->sending_amount,
+		this->sending_amounts,
 		this->parameters.is_sweeping,
 		this->parameters.priority,
 		this->use_fork_rules,
@@ -385,9 +422,9 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->parameters.from_address_string,
 		this->parameters.sec_viewKey_string,
 		this->parameters.sec_spendKey_string,
-		this->to_address_string,
+		this->to_address_strings,
 		this->payment_id_string,
-		*(this->step1_retVals__final_total_wo_fee),
+		this->sending_amounts,
 		*(this->step1_retVals__change_amount),
 		*(this->step1_retVals__using_fee),
 		this->parameters.priority,
@@ -463,15 +500,15 @@ void FormSubmissionController::cb_III__submitted_tx(optional<string> err_msg)
 	{
 		optional<string> returning__payment_id = this->payment_id_string; // separated from submit_raw_tx_fn so that it can be captured w/o capturing all of args
 		if (returning__payment_id == boost::none) {
-			auto decoded = monero::address_utils::decodedAddress(this->to_address_string, this->parameters.nettype);
+			auto decoded = monero::address_utils::decodedAddress(this->to_address_strings[0], this->parameters.nettype);
 			if (decoded.did_error) { // would be very strange...
 				this->parameters.failure_fn(couldntValidateDestAddress, boost::none, boost::none, boost::none, boost::none);
 				return;
 			}
 			if (decoded.paymentID_string != boost::none) {
-				returning__payment_id = std::move(*(decoded.paymentID_string)); // just preserving this as an original return value - this can probably eventually be removed
+					returning__payment_id = std::move(*(decoded.paymentID_string)); // just preserving this as an original return value - this can probably eventually be removed
 			}
-		}
+			}
 		success_retVals.final_payment_id = returning__payment_id;
 	}
 	success_retVals.signed_serialized_tx_string = *(this->step2_retVals__signed_serialized_tx_string);
@@ -481,7 +518,7 @@ void FormSubmissionController::cb_III__submitted_tx(optional<string> err_msg)
 	success_retVals.final_total_wo_fee = *(this->step1_retVals__final_total_wo_fee);
 	success_retVals.isXMRAddressIntegrated = this-isXMRAddressIntegrated;
 	success_retVals.integratedAddressPIDForDisplay = this->integratedAddressPIDForDisplay;
-	success_retVals.target_address = this->to_address_string;
-	//
+	success_retVals.target_addresses = this->to_address_strings;
+	
 	this->parameters.success_fn(success_retVals);
 }
