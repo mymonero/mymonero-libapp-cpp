@@ -95,6 +95,7 @@ void FormSubmissionController::handle()
 			this->parameters.failure_fn(withSweepingOnlyOneAddressAllowed, boost::none, boost::none, boost::none, boost::none);
 			return;
 		}
+                this->sending_amounts.push_back(0);
 	} else {
 		this->sending_amounts.reserve(this->parameters.send_amount_strings.size());
 		for (const auto& amount : this->parameters.send_amount_strings) {
@@ -413,6 +414,9 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->parameters.failure_fn(createTranasctionCode_noBalances, boost::none, tie_outs_to_mix_outs_retVals.errCode, boost::none, boost::none);
 		return;
 	}
+        const vector<uint64_t> &sending_amounts = this->parameters.is_sweeping ?
+		vector<uint64_t>{*this->step1_retVals__final_total_wo_fee}
+ 		: this->sending_amounts;
 
 	Send_Step2_RetVals step2_retVals;
 	uint64_t unlock_time = 0; // hard-coded for now since we don't ever expose it, presently
@@ -424,7 +428,7 @@ void FormSubmissionController::cb_II__got_random_outs(
 		this->parameters.sec_spendKey_string,
 		this->to_address_strings,
 		this->payment_id_string,
-		this->sending_amounts,
+		sending_amounts,
 		*(this->step1_retVals__change_amount),
 		*(this->step1_retVals__using_fee),
 		this->parameters.priority,
