@@ -83,6 +83,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_insert)
 	}
 	std::cout << "Inserted " << id << std::endl;
 }
+
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds, *utf::depends_on("mockedPlainStringDoc_insert"))
 {
 	errOr_documentIds result  = idsOfAllDocuments(
@@ -98,6 +99,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allIds, *utf::depends_on("mockedPlainS
 	cout << "mockedPlainStringDoc_allIds: ids: " << joinedIdsString << endl;
 	BOOST_REQUIRE_MESSAGE((*(result.ids)).size() > 0, "Expected to find at least one id."); // from __insert
 }
+
 BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_allDocuments, *utf::depends_on("mockedPlainStringDoc_allIds"))
 {
 	errOr_contentStrings result = allDocuments(
@@ -133,6 +135,7 @@ BOOST_AUTO_TEST_CASE(mockedPlainStringDoc_removeAllDocuments, *utf::depends_on("
 	BOOST_REQUIRE((*result_2.numRemoved) == (*(result_1.ids)).size()); // from __insert
 	cout << "mockedPlainStringDoc_removeAllDocuments: removed " << (*result_2.numRemoved) << " document(s)" << endl;
 }
+
 //
 // Test suites - PersistableObject
 #include "../src/Passwords/PasswordController.hpp"
@@ -194,7 +197,10 @@ const std::string _persistableObject_decryptedString = "this is just a string th
 BOOST_AUTO_TEST_CASE(persistableObject_decryptBase64, *utf::depends_on("mockedPlainStringDoc_removeAllDocuments"))
 {
 	const Passwords::Password password = "123123";
+        cout << "_persistableObject_encryptedBase64String " << _persistableObject_encryptedBase64String << endl;
+        cout << "password " << password << endl;
 	const optional<std::string> decryptedString = Persistable::new_plaintextStringFrom(_persistableObject_encryptedBase64String, password);
+        cout << "decryptedString here " << decryptedString << endl;
 	BOOST_REQUIRE(decryptedString != none);
 	cout << "decryptedString: " << *decryptedString << endl;
 	BOOST_REQUIRE(*decryptedString == _persistableObject_decryptedString);
@@ -209,8 +215,10 @@ BOOST_AUTO_TEST_CASE(mockedSavedObjects_insertNew, *utf::depends_on("persistable
 	};
 	obj.addtlVal = mockedSavedObjects__addtlVal_;
 	//
+        cout << "obj.addtlVal " << obj.addtlVal << endl;
 	boost::optional<std::string> err_str = obj.saveToDisk();
 	BOOST_REQUIRE(err_str == none);
+	cout << "err_str " << err_str << endl;
 	BOOST_REQUIRE(obj._id != none);
 }
 BOOST_AUTO_TEST_CASE(mockedSavedObjects_loadExisting, *utf::depends_on("mockedSavedObjects_insertNew"))
@@ -307,6 +315,8 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 	using namespace SendFunds;
 	using namespace monero_send_routine;
 	using namespace serial_bridge_utils;
+	vector<string> send_amounts = {"0"};
+	vector<string> entered_addresses = {"4APbcAKxZ2KPVPMnqa5cPtJK25tr7maE7LrJe67vzumiCtWwjDBvYnHZr18wFexJpih71Mxsjv8b7EpQftpB9NjPPXmZxHN"};
 	//
 	Parameters parameters{
 		false,
@@ -315,7 +325,7 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 		//
 		true, // requireAuthentication
 		//
-		string("0"),
+		send_amounts,
 		true,
 		1,
 		//
@@ -331,7 +341,7 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 		string("4e6d43cd03812b803c6f3206689f5fcc910005fc7e91d50d79b0776dbefcd803"),
 		string("3eb884d3440d71326e27cc07a861b873e72abd339feb654660c36a008a0028b3"),		
 		//
-		string("4APbcAKxZ2KPVPMnqa5cPtJK25tr7maE7LrJe67vzumiCtWwjDBvYnHZr18wFexJpih71Mxsjv8b7EpQftpB9NjPPXmZxHN"),
+		entered_addresses,
 		//
 		boost::none,
 		false,
@@ -361,8 +371,8 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 		[] () -> void { // canceled_fn
 			BOOST_REQUIRE(false);
 		},
-		[] (SendFunds::Success_RetVals retVals) -> void { // success_fn
-			BOOST_REQUIRE(retVals.target_address == string("4L6Gcy9TAHqPVPMnqa5cPtJK25tr7maE7LrJe67vzumiCtWwjDBvYnHZr18wFexJpih71Mxsjv8b7EpQftpB9NjPaRYYBm62jmF59EWcj6"));
+		[entered_addresses] (SendFunds::Success_RetVals retVals) -> void { // success_fn
+			BOOST_REQUIRE(retVals.target_addresses == entered_addresses);
 		}
 	};
 	FormSubmissionController controller{
@@ -387,6 +397,7 @@ BOOST_AUTO_TEST_CASE(sendFunds_submission_manualAddrPID, *utf::depends_on("mocke
 			(*controller_ptr).cb_I__got_unspent_outs(boost::none, res);
 		}
 	);
+	
 	controller.set__get_random_outs_fn(
 		[controller_ptr] (LightwalletAPI_Req_GetRandomOuts req_params) -> void
 		{ // get_random_outs
@@ -440,7 +451,10 @@ public:
 		BOOST_REQUIRE_MESSAGE(false, "Didn't expect to get asked for new password");
 	}
 };
-auto initial_pwEntryDelegate_spt = nullptr; // since we expect there never to be any records on a fresh run, we'll set this to nullptr 
+
+//auto initial_pwEntryDelegate_spt = nullptr; // since we expect there never to be any records on a fresh run, we'll set this to nullptr 
+auto initial_pwEntryDelegate_spt = std::make_shared<Mocked_EnterCorrectChanged_PasswordEntryDelegate>();
+
 App::ServiceLocator &callOnce_builtSingleton(cryptonote::network_type nettype)
 {
 	using namespace App;
@@ -450,6 +464,7 @@ App::ServiceLocator &callOnce_builtSingleton(cryptonote::network_type nettype)
 		initial_pwEntryDelegate_spt
 	);
 }
+
 BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submission_manualAddrPID"))
 {
 	using namespace App;
@@ -459,6 +474,7 @@ BOOST_AUTO_TEST_CASE(serviceLocator_build, *utf::depends_on("sendFunds_submissio
 	BOOST_REQUIRE(ServiceLocatorSingleton::instance().built == true);
 	BOOST_REQUIRE(App::ServiceLocatorSingleton::instance().dispatch_ptr != nullptr);
 }
+
 //
 // Tests - Passwords::Controller
 #include "../src/Passwords/PasswordController.hpp"
@@ -478,6 +494,7 @@ class Mock_DeleteEverythingRegistrant: public Passwords::DeleteEverythingRegistr
 		return none;
 	}
 };
+
 BOOST_AUTO_TEST_CASE(passwords_controller_deleteEverything, *utf::depends_on("serviceLocator_build"))
 {
 	cout << "passwords_controller_deleteEverything" << endl;
@@ -490,6 +507,7 @@ BOOST_AUTO_TEST_CASE(passwords_controller_deleteEverything, *utf::depends_on("se
 		ServiceLocatorSingleton::instance().passwordController->removeRegistrantForDeleteEverything(deleteEverythingRegistrant);
 	}
 }
+
 class Mocked_EnterCorrectNew_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
 public:
@@ -527,6 +545,7 @@ public:
 		);
 	}
 };
+
 BOOST_AUTO_TEST_CASE(passwords_controller_enterNew, *utf::depends_on("passwords_controller_deleteEverything"))
 {
 	cout << "passwords_controller_enterNew" << endl;
@@ -566,6 +585,7 @@ BOOST_AUTO_TEST_CASE(passwords_controller_enterNew, *utf::depends_on("passwords_
 	std::this_thread::sleep_for(std::chrono::milliseconds(300)); // wait for notifies, although they are not presently async, before removing entryDelegate, to ensure test
 	ServiceLocatorSingleton::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
+
 class Mocked_EnterCorrectExisting_PasswordEntryDelegate: public Passwords::PasswordEntryDelegate
 {
 public:
@@ -1198,8 +1218,10 @@ BOOST_AUTO_TEST_CASE(passwords_controller_spammingIncorrectEntry, *utf::depends_
 		BOOST_REQUIRE(false);
 	};
 	ServiceLocatorSingleton::instance().passwordController->onceBootedAndPasswordObtained(passwordObtained_fn, userCanceled_fn);
+	
 	//
 	auto sleep_ms = (Passwords::maxLegal_numberOfTriesDuringThisTimePeriod+1+2/*enough time to wait*/) * spamTryInterval_ms + pwEntrySpamming_unlockInT_ms/*wait for unlock too */;
+	
 	cout << "Test: Sleeping for " << sleep_ms << "ms" << endl;
 	std::this_thread::sleep_for(std::chrono::milliseconds(sleep_ms));
 	//
@@ -1937,11 +1959,12 @@ BOOST_AUTO_TEST_CASE(listController_deleteExistingRecord, *utf::depends_on("list
 	connection.disconnect();
 	ServiceLocatorSingleton::instance().passwordController->clearPasswordEntryDelegate(entryDelegate);
 }
-//
+
 BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("listController_deleteExistingRecord"))
 {
 	cout << "teardownRuntime" << endl;
 	using namespace App;
 	//
 	ServiceLocatorSingleton::instance().teardown();
+        cout << "teardown done" << endl;
 }
