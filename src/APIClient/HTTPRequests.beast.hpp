@@ -175,6 +175,7 @@ namespace HTTPRequests
 		ssl::context &callOnce_setupAndReturn__ssl_ctx()
 		{
 			load_root_certificates(_ssl_ctx);
+			_ssl_ctx.set_default_verify_paths();
 			_ssl_ctx.set_verify_mode(ssl::verify_peer);
 			//
 			return _ssl_ctx;

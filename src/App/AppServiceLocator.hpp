@@ -128,13 +128,13 @@ namespace App
 			~ServiceLocator(); // make sure you implement this; call teardown()
 			void teardown()
 			{
-				/*
-				 NOTE: before you call teardown, call this code (since we can't call it here since _pImpl's type is incomplete):
+				
+				// NOTE: before you call teardown, call this code (since we can't call it here since _pImpl's type is incomplete):
 				if (_pImpl != NULL) {
 					delete _pImpl; // must free
 					_pImpl = NULL;
 				}
-				 */
+				 
 				//
 				documentsPath = nullptr;
 				httpRequestFactory = nullptr;

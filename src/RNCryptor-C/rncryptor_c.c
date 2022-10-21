@@ -263,7 +263,7 @@ static int verify_hmac(RNCryptorInfo *ci,const char *password, int password_len)
         *sha256=NULL;
 
     HMAC_CTX
-        hmac_ctx;
+        *hmac_ctx;
 
     unsigned int
         hmac_len;
@@ -303,11 +303,9 @@ static int verify_hmac(RNCryptorInfo *ci,const char *password, int password_len)
     ** which is the last 32 bytes of the data
     */
     sha256 = EVP_sha256();
-    HMAC_CTX_init(&hmac_ctx);
-    HMAC_Init(&hmac_ctx,ci->hmac_key,32,sha256);
-    HMAC_Update(&hmac_ctx,ci->blob->data,ci->blob->length - 32);
-    HMAC_Final(&hmac_ctx,hmac_sha256,&hmac_len);
-    HMAC_CTX_cleanup(&hmac_ctx);
+
+    HMAC(sha256, ci->hmac_key, 32, ci->blob->data, ci->blob->length - 32, hmac_sha256, &hmac_len);
+
 /*    rc = memcmp(ci->hmac,hmac_sha256,32); */
     rc = util_cmp_const(ci->hmac,hmac_sha256,32);
     if (rc != 0)
@@ -331,6 +329,7 @@ unsigned char *rncryptorc_encrypt_data_with_password(const unsigned char *indata
         char *errbuf,
         int errbuf_len)
 {
+    printf("encrypt_data_with_password function");
     int
         rc=FAILURE;
 
@@ -422,6 +421,7 @@ unsigned char *rncryptorc_encrypt_data_with_password_with_salts_and_iv(const uns
         char *errbuf,
         int errbuf_len)
 {
+    printf("encrypt_data_with_password_with_salts_and_iv function");
     RNCryptorInfo
         *ci = NULL;
 
@@ -429,10 +429,11 @@ unsigned char *rncryptorc_encrypt_data_with_password_with_salts_and_iv(const uns
         *blob = NULL;
 
     EVP_CIPHER_CTX
-        cipher_ctx;
+        *cipher_ctx;
+    cipher_ctx = EVP_CIPHER_CTX_new();
 
     HMAC_CTX
-        hmac_ctx;
+        *hmac_ctx;
 
     int
         rc=FAILURE;
@@ -514,8 +515,10 @@ unsigned char *rncryptorc_encrypt_data_with_password_with_salts_and_iv(const uns
                 "Could not derive key from password with encr salt and iter");
         goto ExitProcessing;
     }
-    EVP_EncryptInit(&cipher_ctx,EVP_aes_256_cbc(),encr_key,iv_16);
-    blocksize = EVP_CIPHER_CTX_block_size(&cipher_ctx);
+    printf("before EVP_EncryptInit_ex");
+    EVP_EncryptInit_ex(cipher_ctx,EVP_aes_256_cbc(),NULL,encr_key,iv_16);
+    printf("before get_block_size");
+    blocksize = EVP_CIPHER_CTX_get_block_size(cipher_ctx);
     log_debug("%s:%d - Block size: %ld",MCFL,blocksize);
 
     if (indata == NULL && indata_len == 0)
@@ -574,10 +577,12 @@ unsigned char *rncryptorc_encrypt_data_with_password_with_salts_and_iv(const uns
     ciphertext_len = indata_len + blocksize - (indata_len % blocksize);
     ciphertext = (unsigned char *) malloc(ciphertext_len * sizeof(unsigned char));
     CHECK_MALLOC(ciphertext);
-
-    EVP_EncryptUpdate(&cipher_ctx,ciphertext,&outlen1,indata,indata_len);
-    EVP_EncryptFinal(&cipher_ctx,ciphertext + outlen1,&outlen2);
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    printf("before EVP_EncryptUpdate");
+    EVP_EncryptUpdate(cipher_ctx,ciphertext,&outlen1,indata,indata_len);
+    printf("before EVP_EncryptFinal_ex");
+    EVP_EncryptFinal_ex(cipher_ctx,ciphertext + outlen1,&outlen2);
+    printf("before cleanup");
+    EVP_CIPHER_CTX_cleanup(cipher_ctx);
     mutils_write_blob(blob,outlen1 + outlen2,ciphertext);
 
     log_debug("%s:%d - Plain text length: %d",MCFL,indata_len);
@@ -590,11 +595,7 @@ unsigned char *rncryptorc_encrypt_data_with_password_with_salts_and_iv(const uns
     log_debug("%s:%d - calculating HMAC-SHA256",MCFL);
     /* calculate HMAC-SHA256 */
     sha256 = EVP_sha256();
-    HMAC_CTX_init(&hmac_ctx);
-    HMAC_Init(&hmac_ctx,hmac_key,sizeof(hmac_key),sha256);
-    HMAC_Update(&hmac_ctx,blob->data,blob->length);
-    HMAC_Final(&hmac_ctx,hmac_sha256,&hmac_len);
-    HMAC_CTX_cleanup(&hmac_ctx);
+    HMAC(sha256, hmac_key, sizeof(hmac_key), blob->data, blob->length, hmac_sha256, &hmac_len);
 
     mutils_write_blob(blob,hmac_len,hmac_sha256);
     log_debug("%s:%d - Output lenth %lu",MCFL,blob->length);
@@ -689,10 +690,11 @@ unsigned char *rncryptorc_encrypt_data_with_key_iv(const unsigned char *indata,
         *blob = NULL;
 
     EVP_CIPHER_CTX
-        cipher_ctx;
+        *cipher_ctx;
+    cipher_ctx = EVP_CIPHER_CTX_new();
 
     HMAC_CTX
-        hmac_ctx;
+       *hmac_ctx;
 
     const EVP_MD
         *sha256 = NULL;
@@ -729,8 +731,8 @@ unsigned char *rncryptorc_encrypt_data_with_key_iv(const unsigned char *indata,
     }
 
     memset(errbuf,0,errbuf_len);
-    EVP_EncryptInit(&cipher_ctx,EVP_aes_256_cbc(),encr_key_32,iv_16);
-    blocksize = EVP_CIPHER_CTX_block_size(&cipher_ctx);
+    EVP_EncryptInit_ex(cipher_ctx,EVP_aes_256_cbc(),NULL,encr_key_32,iv_16);
+    blocksize = EVP_CIPHER_CTX_get_block_size(cipher_ctx);
     log_debug("%s:%d - Block size: %ld",MCFL,blocksize);
 
     if (indata == NULL && indata_len == 0)
@@ -777,19 +779,15 @@ unsigned char *rncryptorc_encrypt_data_with_key_iv(const unsigned char *indata,
     log_debug("%s:%d - Padding %d bytes",
             MCFL,(ciphertext_length - indata_len));
 
-    EVP_EncryptUpdate(&cipher_ctx,ciphertext,&outlen1,indata,indata_len);
-    EVP_EncryptFinal(&cipher_ctx,ciphertext + outlen1,&outlen2);
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    EVP_EncryptUpdate(cipher_ctx,ciphertext,&outlen1,indata,indata_len);
+    EVP_EncryptFinal(cipher_ctx,ciphertext + outlen1,&outlen2);
+    EVP_CIPHER_CTX_free(cipher_ctx);
 
     mutils_write_blob(blob,outlen1 + outlen2,ciphertext);
 
     /* calculate HMAC-SHA256 */
     sha256 = EVP_sha256();
-    HMAC_CTX_init(&hmac_ctx);
-    HMAC_Init(&hmac_ctx,hmac_key_32,32,sha256);
-    HMAC_Update(&hmac_ctx,blob->data,blob->length);
-    HMAC_Final(&hmac_ctx,hmac_sha256,&hmac_len);
-    HMAC_CTX_cleanup(&hmac_ctx);
+    HMAC(sha256, hmac_key_32, 32, blob->data, blob->length, hmac_sha256, &hmac_len); 
 
     mutils_write_blob(blob,hmac_len,hmac_sha256);
     output = (unsigned char *)malloc(blob->length * sizeof(unsigned char));
@@ -835,7 +833,8 @@ unsigned char *rncryptorc_decrypt_data_with_password(const unsigned char *indata
         outlen2=0;
 
     EVP_CIPHER_CTX
-        cipher_ctx;
+        *cipher_ctx;
+     cipher_ctx = EVP_CIPHER_CTX_new();
 
     unsigned char
         *outdata = NULL;
@@ -923,12 +922,12 @@ unsigned char *rncryptorc_decrypt_data_with_password(const unsigned char *indata
     outdata = (unsigned char *)malloc(ci->cipher_text_length *sizeof(unsigned char));
     CHECK_MALLOC(outdata);
 
-    log_debug("%s:%d - Decrypting..",MCFL);
-    EVP_DecryptInit(&cipher_ctx,EVP_aes_256_cbc(),ci->encr_key,ci->iv);
-    EVP_DecryptUpdate(&cipher_ctx,outdata,&outlen1,ci->cipher_text,
+    log_debug("%s:%d - Decrypting..",MCFL); 
+    EVP_DecryptInit_ex(cipher_ctx,EVP_aes_256_cbc(),NULL,ci->encr_key,ci->iv); 
+    EVP_DecryptUpdate(cipher_ctx,outdata,&outlen1,ci->cipher_text,
             ci->cipher_text_length);
-    EVP_DecryptFinal(&cipher_ctx,outdata + outlen1,&outlen2);
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    EVP_DecryptFinal_ex(cipher_ctx,outdata + outlen1,&outlen2);
+    EVP_CIPHER_CTX_free(cipher_ctx);
 
     *outdata_len = outlen1 + outlen2;
     log_debug("%s:%d - Done decrypting, output length %d bytes",MCFL,*outdata_len);
@@ -965,7 +964,7 @@ unsigned char *rncryptorc_decrypt_data_with_key(const unsigned char *indata,
         outlen2=0;
 
     EVP_CIPHER_CTX
-        cipher_ctx;
+        *cipher_ctx = NULL;
 
     unsigned char
         *outdata = NULL;
@@ -1035,11 +1034,11 @@ unsigned char *rncryptorc_decrypt_data_with_key(const unsigned char *indata,
     CHECK_MALLOC(outdata);
 
     /* decrypt */
-    EVP_DecryptInit(&cipher_ctx,EVP_aes_256_cbc(),ci->encr_key,ci->iv);
-    EVP_DecryptUpdate(&cipher_ctx,outdata,&outlen1,ci->cipher_text,
+    EVP_DecryptInit(cipher_ctx,EVP_aes_256_cbc(),ci->encr_key,ci->iv);
+    EVP_DecryptUpdate(cipher_ctx,outdata,&outlen1,ci->cipher_text,
             ci->cipher_text_length);
-    EVP_DecryptFinal(&cipher_ctx,outdata + outlen1,&outlen2);
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    EVP_DecryptFinal(cipher_ctx,outdata + outlen1,&outlen2);
+    EVP_CIPHER_CTX_free(cipher_ctx);
 
     *outdata_len = outlen1 + outlen2;
 

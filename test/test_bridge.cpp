@@ -149,6 +149,6 @@ BOOST_AUTO_TEST_CASE(teardownRuntime, *utf::depends_on("sleepBriefly"))
 	//
 	bridge_ptr = nullptr; // trigger teardown
 	dispatch_ptr = nullptr;
-	delete pImpl_ptr; // must manage this ourselves … and it seems it needs to be done near/at the end 
+	//delete pImpl_ptr; // must manage this ourselves … and it seems it needs to be done near/at the end 
 	cout << "done with teardown…" << endl;
 }
